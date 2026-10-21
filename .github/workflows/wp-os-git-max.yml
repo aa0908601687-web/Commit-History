@@ -1,4 +1,4 @@
-name: WP-OS Git MAX checks
+name: WP-OS Git MAX data and checks
 on:
   push:
     paths:
@@ -6,29 +6,36 @@ on:
       - '.github/workflows/wp-os-git-max.yml'
   workflow_dispatch:
   schedule:
-    # 22:00 Taiwan time (UTC+8), Monday and Thursday.
+    # Taiwan time Monday and Thursday at 22:00 (UTC+8).
     - cron: '0 14 * * 1,4'
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: wp-os-git-max-main
+  cancel-in-progress: false
 
 jobs:
-  validate-and-test:
+  update-test-and-sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Refresh official data (scheduled or manual only)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: python WP-OS-Git-MAX/update_official_data.py
       - name: Run unit tests
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_*.py'
-      - name: Validate checked-in lottery CSV and generate research output
+      - name: Verify loaded draw data and generate prediction
         run: |
-          python WP-OS-Git-MAX/wp_os_git_max.py --csv WP-OS-Git-MAX/historical_latest_10.csv > /tmp/wp-os-research-output.json
-          python -m json.tool /tmp/wp-os-research-output.json > /dev/null
-      - name: Run historical backtest only if enough draws exist
+          python WP-OS-Git-MAX/wp_os_git_max.py --csv WP-OS-Git-MAX/historical_latest_10.csv > /tmp/wp-os-prediction.json
+          python -m json.tool /tmp/wp-os-prediction.json > /dev/null
+      - name: Historical backtest when more than ten draws exist
         run: |
           python - <<'PY'
           import csv, subprocess, sys
@@ -38,10 +45,17 @@ jobs:
           if n > 10:
               subprocess.run([sys.executable, 'WP-OS-Git-MAX/wp_os_git_max.py', '--csv', p, '--backtest'], check=True)
           else:
-              print(f'Skipping out-of-sample backtest: {n} historical draws; at least 11 are needed.')
+              print(f'Skipped: only {n} historical draws; 11+ required for backtest')
           PY
-      - name: Explain data-update status
+      - name: Commit verified changed data
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
-          echo 'This workflow validates stored data and runs existing research code.'
-          echo 'It does NOT fetch official draw results or push automated updates.'
-          echo 'Official-data ingestion must be built and source-validated separately.'
+          if git diff --quiet -- WP-OS-Git-MAX/historical_latest_10.csv; then
+            echo 'No updated draw data; no commit needed.'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add WP-OS-Git-MAX/historical_latest_10.csv
+            git commit -m 'Update verified WP-OS lottery historical data'
+            git push
+          fi
