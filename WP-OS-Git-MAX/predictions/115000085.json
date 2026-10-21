@@ -1,0 +1,22 @@
+{
+  "system": "WP-OS Git MAX",
+  "target_draw": "115000085",
+  "first_zone": [
+    6,
+    21,
+    24,
+    26,
+    27,
+    37
+  ],
+  "second_zone": 6,
+  "source_through_draw": "115000084",
+  "source_csv": "WP-OS-Git-MAX/historical_latest_10.csv",
+  "model_file": "WP-OS-Git-MAX/wp_os_git_max.py",
+  "selection_window_draws": [
+    5,
+    10
+  ],
+  "record_type": "research_candidate",
+  "note": "Fixed prediction submitted to GitHub without modifying the original 10-draw data or model weights. Git commit metadata establishes the submission timestamp. This research prediction does not imply a predictive advantage."
+}
