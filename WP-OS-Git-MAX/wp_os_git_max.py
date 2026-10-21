@@ -31,7 +31,7 @@ def score(seq, upper):
         p5 = counts5[n]/5
         p10 = counts10[n]/10
         prior = (counts10[n] + 1)/(10 + upper)
-        repeat = float(n in last10[-1])
+        repeat = float(n == last10[-1])
         ago = next((i for i, x in enumerate(reversed(last10)) if x == n), 10)
         recency = min(ago, 10)/10
         s = .45*p5 + .25*p10 + .15*prior + .10*repeat + .05*recency
