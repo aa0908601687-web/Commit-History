@@ -48,3 +48,9 @@ The model does not claim an advantage over random selection. A fair first-zone j
 - Successful workflow execution and automated `github-actions[bot]` push have **not** been confirmed. A run without new data does not produce a commit by design.
 - Manual check: [WP-OS Git MAX Actions](https://github.com/aa0908601687-web/Commit-History/actions/workflows/wp-os-git-max.yml) → Run workflow on `main` → examine steps and logs.
 - The 5-/10-draw heuristics are not evidence of greater lottery winning probability. Preserve every prediction and source cutoff before its target draw.
+
+## Update status — 2026-10-21 (latest)
+- Confirmed latest publicly released draw is `115000084`; the current 10-draw CSV already contains it. No fictional or future results inserted.
+- GitHub Actions now uploads the model's output JSON as a 30-day Actions artifact on successful runs, making each run's generated output easier to inspect. This is not the same as a pre-draw prediction timestamp unless execution occurred before the draw.
+- Live Actions run results, official API import success, and automated bot push remain **unverified** until inspected from GitHub Actions logs. The GitHub workflow exists, but that alone does not prove it has run successfully.
+- Original scoring weights and original stored drawing values are unchanged.
