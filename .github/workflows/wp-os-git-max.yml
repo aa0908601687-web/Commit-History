@@ -35,6 +35,13 @@ jobs:
         run: |
           python WP-OS-Git-MAX/wp_os_git_max.py --csv WP-OS-Git-MAX/historical_latest_10.csv > /tmp/wp-os-prediction.json
           python -m json.tool /tmp/wp-os-prediction.json > /dev/null
+      - name: Upload prediction research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-os-prediction-${{ github.run_id }}
+          path: /tmp/wp-os-prediction.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Historical backtest when more than ten draws exist
         run: |
           python - <<'PY'
