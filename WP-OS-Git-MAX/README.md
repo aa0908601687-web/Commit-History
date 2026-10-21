@@ -27,7 +27,7 @@ The model does not claim an advantage over random selection. A fair first-zone j
 ## Status
 - GitHub repository linkage: active for this folder
 - Native Python prototype: included
-- Official draw data ingestion: **not yet connected**
+- Official draw data ingestion: API updater code exists; scheduled/manual end-to-end success **not yet verified**
 - External GitHub crawler source integration: **not yet merged**
 - Real-world out-of-sample validation: **not completed**
 - Commit history and contributors: use GitHub repository's actual commit and contributor pages
@@ -40,3 +40,11 @@ The model does not claim an advantage over random selection. A fair first-zone j
 - The source CSV currently contains ten rows ending at draw `115000084`; with only ten rows, the walk-forward backtest is skipped. To perform a real backtest, retain more than ten previous draws in a separate historical dataset.
 - Check [Actions](https://github.com/aa0908601687-web/Commit-History/actions) for the latest job logs. In GitHub, select **WP-OS Git MAX data and checks** and **Run workflow** for manual verification.
 - External upstream crawlers are not merged; no predictive advantage is established. Results should be checked against the [official historical results site](https://apislb.taiwanlottery.com/lotto/history/history_result/).
+
+## Verification update — 2026-10-21
+- Latest publicly verified Power Lottery result: draw `115000084` (2026-10-19), first zone `09 10 21 24 27 36`, second zone `08`. Source: https://lotto.ctbcbank.com/result_all.htm
+- `historical_latest_10.csv` already ends at draw `115000084`; no future (unreleased) draw data was added.
+- Workflow includes diagnostics for triggering event, commit SHA, CSV row count and latest saved draw; these diagnostics must be read from actual Actions logs to verify execution.
+- Successful workflow execution and automated `github-actions[bot]` push have **not** been confirmed. A run without new data does not produce a commit by design.
+- Manual check: [WP-OS Git MAX Actions](https://github.com/aa0908601687-web/Commit-History/actions/workflows/wp-os-git-max.yml) → Run workflow on `main` → examine steps and logs.
+- The 5-/10-draw heuristics are not evidence of greater lottery winning probability. Preserve every prediction and source cutoff before its target draw.
