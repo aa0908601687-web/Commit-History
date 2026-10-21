@@ -31,3 +31,12 @@ The model does not claim an advantage over random selection. A fair first-zone j
 - External GitHub crawler source integration: **not yet merged**
 - Real-world out-of-sample validation: **not completed**
 - Commit history and contributors: use GitHub repository's actual commit and contributor pages
+
+
+## Automation status (2026-10-21)
+- GitHub Actions workflow: [wp-os-git-max.yml](../.github/workflows/wp-os-git-max.yml) committed on `main`; scheduled at 22:00 Asia/Taipei Mondays and Thursdays, and supports manual dispatch.
+- On scheduled/manual runs, the workflow attempts to download draw data via `update_official_data.py`, validates the response and existing CSV, runs unit tests and the model, then commits the CSV only if its contents changed.
+- **Not yet verified end-to-end**: a successful GitHub Actions run, the external API schema/availability, and a successful bot push. The updater intentionally exits without overwriting saved data if the API response fails validation.
+- The source CSV currently contains ten rows ending at draw `115000084`; with only ten rows, the walk-forward backtest is skipped. To perform a real backtest, retain more than ten previous draws in a separate historical dataset.
+- Check [Actions](https://github.com/aa0908601687-web/Commit-History/actions) for the latest job logs. In GitHub, select **WP-OS Git MAX data and checks** and **Run workflow** for manual verification.
+- External upstream crawlers are not merged; no predictive advantage is established. Results should be checked against the [official historical results site](https://apislb.taiwanlottery.com/lotto/history/history_result/).
