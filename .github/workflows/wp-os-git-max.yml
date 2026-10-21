@@ -47,6 +47,17 @@ jobs:
           else:
               print(f'Skipped: only {n} historical draws; 11+ required for backtest')
           PY
+      - name: Show data and workflow diagnostics
+        if: always()
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Commit: ${{ github.sha }}"
+          if [ -f WP-OS-Git-MAX/historical_latest_10.csv ]; then
+            echo "Latest saved draw:"
+            tail -n 1 WP-OS-Git-MAX/historical_latest_10.csv
+            echo "Saved draw count:"
+            python -c "import csv; print(sum(1 for _ in csv.DictReader(open('WP-OS-Git-MAX/historical_latest_10.csv', encoding='utf-8-sig'))))"
+          fi
       - name: Commit verified changed data
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
