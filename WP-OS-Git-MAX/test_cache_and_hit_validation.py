@@ -30,4 +30,31 @@ class CacheAndHitTests(unittest.TestCase):
     def test_missing_target(self):
         p=m.make_prediction_snapshot(self.draws[:10],"115000012")
         with self.assertRaises(ValueError):m.validate(p,self.draws)
+    def test_versioned_cache_hit_and_invalidation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "features.json"
+            first, status1 = m.get_versioned_cache(self.draws[:10], cache)
+            same, status2 = m.get_versioned_cache(self.draws[:10], cache)
+            self.assertEqual((status1, status2), ("refreshed", "hit"))
+            self.assertEqual(first, same)
+            changed, status3 = m.get_versioned_cache(self.draws[:11], cache)
+            self.assertEqual(status3, "refreshed")
+            self.assertNotEqual(first["source_sha256"], changed["source_sha256"])
+
+    def test_cache_tampering_and_schema_invalidate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "features.json"
+            obj, _ = m.get_versioned_cache(self.draws[:10], cache)
+            obj["first_5"]["1"] = 999
+            cache.write_text(json.dumps(obj), encoding="utf-8")
+            fixed, status = m.get_versioned_cache(self.draws[:10], cache)
+            self.assertEqual(status, "refreshed")
+            self.assertNotEqual(fixed["first_5"]["1"], 999)
+            fixed["cache_schema_version"] = -1
+            fixed["sha256"] = m.digest({k:v for k,v in fixed.items() if k!="sha256"})
+            cache.write_text(json.dumps(fixed), encoding="utf-8")
+            restored, status = m.get_versioned_cache(self.draws[:10], cache)
+            self.assertEqual(status, "refreshed")
+            self.assertEqual(restored["cache_schema_version"], m.CACHE_SCHEMA_VERSION)
+
 if __name__=="__main__": unittest.main()
