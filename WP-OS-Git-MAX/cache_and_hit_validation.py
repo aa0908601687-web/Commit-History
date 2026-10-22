@@ -127,9 +127,11 @@ def main():
         output.write_text(json.dumps(snap,ensure_ascii=False,sort_keys=True,indent=2)+"\n",encoding="utf-8")
         print(f"Created prediction snapshot: {output}")
     else:
-        obj=cache_features(rows)
         if args.feature_cache:
-            Path(args.feature_cache).write_text(json.dumps(obj,ensure_ascii=False,sort_keys=True,indent=2)+"\n",encoding="utf-8")
-        print(json.dumps(obj,ensure_ascii=False,indent=2))
+            obj, status = get_versioned_cache(rows, args.feature_cache)
+            print("Cache status: " + status)
+        else:
+            obj = build_versioned_cache(rows)
+        print(json.dumps(obj, ensure_ascii=False, indent=2))
 if __name__=="__main__":
     main()
