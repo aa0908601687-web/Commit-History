@@ -40,6 +40,37 @@ def cache_features(draws):
     out["sha256"]=digest(out)
     return out
 
+
+CACHE_SCHEMA_VERSION = 2
+CACHE_MODEL_VERSION = "wp-os-git-max-5-10-v1"
+
+def build_versioned_cache(draws):
+    obj = cache_features(draws)
+    obj["cache_schema_version"] = CACHE_SCHEMA_VERSION
+    obj["model_version"] = CACHE_MODEL_VERSION
+    obj["sha256"] = digest({k: v for k, v in obj.items() if k != "sha256"})
+    return obj
+
+def get_versioned_cache(draws, path):
+    """Reuse a verified cache only for exactly matching input, model and schema."""
+    expected = build_versioned_cache(draws)
+    path = Path(path)
+    if path.exists():
+        try:
+            cached = json.loads(path.read_text(encoding="utf-8"))
+            checksum = cached.get("sha256")
+            intact = isinstance(checksum, str) and checksum == digest(
+                {k: v for k, v in cached.items() if k != "sha256"})
+            if intact and cached == expected:
+                return cached, "hit"
+        except (OSError, ValueError, TypeError, AttributeError):
+            pass
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(path.name + ".tmp")
+    temp.write_text(json.dumps(expected, ensure_ascii=False, sort_keys=True, indent=2) + "\\n", encoding="utf-8")
+    temp.replace(path)
+    return expected, "refreshed"
+
 def make_prediction_snapshot(draws, target_draw):
     from wp_os_git_max import predict
     if not (target_draw.isdigit() and len(target_draw)==9 and target_draw>draws[-1]["draw_id"]):
