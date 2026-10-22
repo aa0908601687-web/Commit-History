@@ -67,7 +67,7 @@ def get_versioned_cache(draws, path):
             pass
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + ".tmp")
-    temp.write_text(json.dumps(expected, ensure_ascii=False, sort_keys=True, indent=2) + "\\n", encoding="utf-8")
+    temp.write_text(json.dumps(expected, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     temp.replace(path)
     return expected, "refreshed"
 
