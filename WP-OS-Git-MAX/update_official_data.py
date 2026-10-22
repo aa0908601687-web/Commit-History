@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "historical_latest_10.csv"
+HISTORY = ROOT / "historical_archive.csv"
 URL = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/SuperLotto638Result"
 
 def parse_response(obj):
@@ -43,10 +44,11 @@ def fetch(month):
         data = json.load(response)
     return parse_response(data)
 
-def existing():
-    if not DATA.exists():
+def existing(path=None):
+    path = DATA if path is None else path
+    if not path.exists():
         return []
-    with DATA.open(newline="", encoding="utf-8-sig") as f:
+    with path.open(newline="", encoding="utf-8-sig") as f:
         records = list(csv.DictReader(f))
     out = []
     for r in records:
@@ -69,16 +71,24 @@ def main():
         raise ValueError("Invalid month")
     retrieved = fetch(month)
     old = existing()
+    archive = existing(HISTORY)
     by_period = {row[0]: row for row in old}
-    for row in retrieved:
+    for row in archive + retrieved:
         if row[0] in by_period and by_period[row[0]] != row:
             raise ValueError(f"Conflicting official data for {row[0]}; manual review required")
         by_period[row[0]] = row
     merged = sorted(by_period.values(), key=lambda row: int(row[0]))
+    # Preserve all verified records for walk-forward evaluation.
     # Keep the most recent 10 draws for the 5/10-feature model.
     last10 = merged[-10:]
     if len(last10) < 10 or int(last10[-1][0]) < int(old[-1][0] if old else "0"):
         raise ValueError("Insufficient or stale API data; refusing update")
+    archive_buffer = io.StringIO(newline="")
+    archive_writer = csv.writer(archive_buffer, lineterminator="\n")
+    archive_writer.writerow(["draw_id", "first", "second"])
+    for draw_id, first, second in merged:
+        archive_writer.writerow([draw_id, " ".join(f"{n:02d}" for n in first), f"{second:02d}"])
+    HISTORY.write_text(archive_buffer.getvalue(), encoding="utf-8")
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer, lineterminator="\n")
     writer.writerow(["draw_id", "first", "second"])
@@ -93,3 +103,4 @@ def main():
         print(f"No changes; through draw {last10[-1][0]}")
 if __name__ == "__main__":
     main()
+

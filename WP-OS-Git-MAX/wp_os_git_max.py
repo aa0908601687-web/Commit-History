@@ -19,6 +19,11 @@ def load(path):
             out.append({"draw_id":row["draw_id"], "first":first, "second":second})
     if len(set(d["draw_id"] for d in out)) != len(out):
         raise ValueError("Duplicate draw IDs")
+    ids = [d["draw_id"] for d in out]
+    if any(not i.isdigit() or len(i) != 9 for i in ids):
+        raise ValueError("Draw IDs must be nine digits")
+    if ids != sorted(ids):
+        raise ValueError("Draws must be oldest to newest")
     return out
 
 def score(seq, upper):
@@ -92,3 +97,4 @@ def main():
 
 if __name__=="__main__":
     main()
+

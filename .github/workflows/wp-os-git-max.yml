@@ -46,7 +46,7 @@ jobs:
         run: |
           python - <<'PY'
           import csv, subprocess, sys
-          p = 'WP-OS-Git-MAX/historical_latest_10.csv'
+          p = 'WP-OS-Git-MAX/historical_archive.csv'
           with open(p, encoding='utf-8-sig', newline='') as f:
               n = sum(1 for _ in csv.DictReader(f))
           if n > 10:
@@ -68,12 +68,12 @@ jobs:
       - name: Commit verified changed data
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
-          if git diff --quiet -- WP-OS-Git-MAX/historical_latest_10.csv; then
+          if git diff --quiet -- WP-OS-Git-MAX/historical_latest_10.csv WP-OS-Git-MAX/historical_archive.csv; then
             echo 'No updated draw data; no commit needed.'
           else
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add WP-OS-Git-MAX/historical_latest_10.csv
+            git add WP-OS-Git-MAX/historical_latest_10.csv WP-OS-Git-MAX/historical_archive.csv
             git commit -m 'Update verified WP-OS lottery historical data'
             git push
           fi
