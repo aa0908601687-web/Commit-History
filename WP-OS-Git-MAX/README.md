@@ -39,3 +39,10 @@ The model does not claim an advantage over random selection. A fair first-zone j
 - Schedule: Mondays and Thursdays 22:00 Asia/Taipei, subject to GitHub queue delays; manual dispatch also supported.
 
 [Scheduled run](https://github.com/aa0908601687-web/Commit-History/actions/runs/39796734408)
+
+## External draw verification — 2026-10-23 (Asia/Taipei)
+- Independently checked the latest stored draw, **115000085 (2026-10-22)**, against the Taiwan Lottery results displayed by CTBC: first zone `01 09 10 21 22 31`, second zone `06`.
+- Official result page: https://lotto.ctbcbank.com/result_all.htm (live page may change after the next draw).
+- Secondary dated report: https://www.cna.com.tw/news/ahel/202610220397.aspx .
+- The repository's `historical_latest_10.csv` and `historical_archive.csv` both retain the same latest draw. No upcoming draw is added before its result is published.
+- **Verification scope:** only draw 115000085 was externally cross-checked in this update; the prior nine draws were not independently rechecked. Existing tests and Actions were not executed by this documentation-only update; prior README claims about workflow runs are historical, not fresh run attestations. Automated bot push success remains unproven unless a bot-authored data commit is observed.
