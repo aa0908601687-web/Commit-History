@@ -181,5 +181,46 @@ class MoreUpdaterBranches(unittest.TestCase):
                     updater.main()
 
 
+
+class EntryPointCoverage(unittest.TestCase):
+    """Exercise actual __main__ branches using only temporary CSVs."""
+
+    def draw_csv(self, directory, count=11):
+        p=Path(directory)/"draws.csv"
+        with p.open("w",newline="",encoding="utf-8") as handle:
+            writer=csv.writer(handle)
+            writer.writerow(["draw_id","first","second"])
+            for d in rows(count):
+                writer.writerow([d["draw_id"],"01 02 03 04 05 06",d["second"]])
+        return p
+
+    def test_cache_cli_plain_and_snapshot_validation(self):
+        import runpy
+        with tempfile.TemporaryDirectory() as directory:
+            csv_path=self.draw_csv(directory)
+            with patch.object(sys,"argv",["cache","--csv",str(csv_path)]),contextlib.redirect_stdout(io.StringIO()) as output:
+                runpy.run_path(str(BASE/"cache_and_hit_validation.py"),run_name="__main__")
+            self.assertIn("through_draw",output.getvalue())
+            snapshot=cache.make_prediction_snapshot(rows(10),"115000011")
+            snap_path=Path(directory)/"snapshot.json"
+            snap_path.write_text(json.dumps(snapshot),encoding="utf-8")
+            with patch.object(sys,"argv",["cache","--csv",str(csv_path),"--validate-snapshot",str(snap_path)]),contextlib.redirect_stdout(io.StringIO()) as output:
+                cache.main()
+            self.assertIn("first_zone_hits",output.getvalue())
+
+    def test_model_main_entry_point(self):
+        import runpy
+        with tempfile.TemporaryDirectory() as directory:
+            csv_path=self.draw_csv(directory)
+            with patch.object(sys,"argv",["model","--csv",str(csv_path)]),contextlib.redirect_stdout(io.StringIO()) as output:
+                runpy.run_path(str(BASE/"wp_os_git_max.py"),run_name="__main__")
+            self.assertIn("first",output.getvalue())
+
+    def test_updater_main_entry_point_without_network_or_file_writes(self):
+        import runpy
+        with patch.object(sys,"argv",["updater","--month","invalid"]):
+            with self.assertRaisesRegex(ValueError,"Invalid month"):
+                runpy.run_path(str(BASE/"update_official_data.py"),run_name="__main__")
+
 if __name__ == "__main__":
     unittest.main()
