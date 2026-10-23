@@ -10,6 +10,8 @@ on:
       - 'WP-OS-Git-MAX/**'
       - '.github/workflows/wp-coverage.yml'
   workflow_dispatch:
+  schedule:
+    - cron: '15 0 * * *' # Daily at 08:15 Asia/Taipei (UTC+8)
 
 permissions:
   contents: read
@@ -30,11 +32,34 @@ jobs:
           python -m coverage report -m --omit='*/test_*.py' | tee coverage-summary.txt
           python -m coverage xml -o coverage.xml
           python -m coverage html -d htmlcov
+          python -m coverage json -o coverage.json
+          python - <<'PY'
+          import json, os
+          data = json.load(open('coverage.json', encoding='utf-8'))
+          totals = data['totals']
+          percent = totals['percent_covered']
+          report = {
+              'commit_sha': os.environ.get('GITHUB_SHA', ''),
+              'covered_percent': percent,
+              'target_percent': 100,
+              'covered_statements': totals['covered_lines'],
+              'total_statements': totals['num_statements'],
+              'covered_branches': totals['covered_branches'],
+              'total_branches': totals['num_branches'],
+              'meets_target': percent >= 100
+          }
+          with open('coverage-status.json', 'w', encoding='utf-8') as fp:
+              json.dump(report, fp, indent=2)
+          print(f"Current coverage: {percent:.2f}% | Target: 100%")
+          PY
           python -m coverage report --fail-under=100 --omit='*/test_*.py'
       - name: Show coverage in Actions summary
         if: always()
         run: |
           echo '## WP-OS Git MAX code coverage' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f coverage-status.json ]; then
+            echo 'Coverage percentage and commit are recorded in coverage-status.json.' >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ -f coverage-summary.txt ]; then
             echo 'Target: 100% statement and branch coverage. Test files excluded. A lower score fails this workflow.' >> "$GITHUB_STEP_SUMMARY"
             echo '```text' >> "$GITHUB_STEP_SUMMARY"
@@ -51,5 +76,7 @@ jobs:
           path: |
             coverage-summary.txt
             coverage.xml
+            coverage.json
+            coverage-status.json
             htmlcov/
           if-no-files-found: warn
