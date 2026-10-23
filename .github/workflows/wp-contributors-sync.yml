@@ -1,0 +1,77 @@
+name: WP-OS commit and contributor sync
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # 08:00 Asia/Taipei
+permissions:
+  contents: read
+concurrency:
+  group: wp-contributors-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch commits and build contributor report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import collections, csv, datetime, html, json, os, pathlib, urllib.request
+          repo = os.environ['GH_REPO']
+          token = os.environ['GH_TOKEN']
+          commits = {}
+          for page in range(1, 101):
+              url = f'https://api.github.com/repos/{repo}/commits?per_page=100&page={page}'
+              req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json', 'User-Agent': 'wp-os-audit'})
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  batch = json.load(resp)
+              if not isinstance(batch, list):
+                  raise ValueError('Unexpected commit API payload')
+              for item in batch:
+                  commits[item['sha']] = item
+              if len(batch) < 100:
+                  break
+          else:
+              raise RuntimeError('More than 100 pages: refusing to publish incomplete figures')
+          counts = collections.Counter()
+          days = collections.Counter()
+          for item in commits.values():
+              linked = item.get('author')
+              raw = item.get('commit', {}).get('author') or {}
+              identity = linked.get('login') if linked else 'Unlinked author: ' + (raw.get('name') or 'Unknown')
+              counts[identity] += 1
+              day = (raw.get('date') or '')[:10]
+              if day: days[day] += 1
+          total = len(commits)
+          contributors = [{'author': name, 'commits': count, 'percent': round(100*count/total, 4)} for name, count in counts.most_common()] if total else []
+          out = pathlib.Path('contributor-report')
+          out.mkdir(exist_ok=True)
+          payload = {'repository': repo, 'commit_count': total, 'unique_sha_count': total, 'contributors': contributors, 'daily_commit_counts': dict(sorted(days.items())), 'attribution_note': 'Linked GitHub login where available, otherwise raw Git author name; this cannot verify a real person or manual versus bot action.', 'generated_utc': datetime.datetime.now(datetime.timezone.utc).isoformat()}
+          (out/'report.json').write_text(json.dumps(payload, indent=2, ensure_ascii=False)+'\n', encoding='utf-8')
+          with (out/'contributors.csv').open('w', newline='', encoding='utf-8') as f:
+              writer = csv.writer(f)
+              writer.writerow(['author','commits','percent'])
+              writer.writerows((x['author'],x['commits'],x['percent']) for x in contributors)
+          width = 840
+          height = max(170, 105 + 45*len(contributors))
+          parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">', '<rect width="100%" height="100%" fill="white"/>', '<text x="22" y="35" font-size="21" font-family="sans-serif">Commit contributors (GitHub author attribution)</text>']
+          for i, row in enumerate(contributors):
+              y = 65 + i*45
+              label = html.escape(row['author'])
+              bar = 400 * row['commits'] / total if total else 0
+              parts += [f'<text x="22" y="{y+17}" font-size="13" font-family="sans-serif">{label}</text>',f'<rect x="360" y="{y}" width="{bar:.2f}" height="23" fill="#4479a8"/>',f'<text x="{370+bar:.2f}" y="{y+17}" font-size="13" font-family="sans-serif">{row["commits"]} ({row["percent"]:.2f}%)</text>']
+          parts.append('</svg>')
+          (out/'contributors.svg').write_text('\n'.join(parts)+'\n', encoding='utf-8')
+          print(f'Unique commits: {total}; attributed contributor labels: {len(contributors)}; sum of counts: {sum(counts.values())}')
+          assert sum(counts.values()) == total
+          PY
+      - name: Upload contributor chart and counts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-contributors-report
+          path: contributor-report/
+          if-no-files-found: error
+          retention-days: 30
