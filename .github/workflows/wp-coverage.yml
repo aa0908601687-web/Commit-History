@@ -30,12 +30,13 @@ jobs:
           python -m coverage report -m --omit='*/test_*.py' | tee coverage-summary.txt
           python -m coverage xml -o coverage.xml
           python -m coverage html -d htmlcov
+          python -m coverage report --fail-under=100 --omit='*/test_*.py'
       - name: Show coverage in Actions summary
         if: always()
         run: |
           echo '## WP-OS Git MAX code coverage' >> "$GITHUB_STEP_SUMMARY"
           if [ -f coverage-summary.txt ]; then
-            echo 'Actual application code; test files excluded. Branch coverage enabled.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Target: 100% statement and branch coverage. Test files excluded. A lower score fails this workflow.' >> "$GITHUB_STEP_SUMMARY"
             echo '```text' >> "$GITHUB_STEP_SUMMARY"
             cat coverage-summary.txt >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
