@@ -1,4 +1,5 @@
 import json
+import copy
 from pathlib import Path
 import subprocess
 import tempfile
@@ -95,6 +96,47 @@ class CacheTests(unittest.TestCase):
         self.assertEqual(json.loads(result)['status'], 'refreshed')
         result = subprocess.check_output(['python3', str(Path(cache.__file__)), *args], text=True)
         self.assertEqual(json.loads(result)['status'], 'hit')
+
+    def test_pick_stable_and_valid(self):
+        obj = self.refresh()[0]
+        first = cache.pick_from_cache(obj, 'owner/repo', obj['head_sha'])
+        for _ in range(20):
+            self.assertEqual(first, cache.pick_from_cache(obj, 'owner/repo', obj['head_sha']))
+        self.assertEqual(len(set(first['first'])), 6)
+        self.assertTrue(all(1 <= n <= 38 for n in first['first']))
+        self.assertTrue(1 <= first['second'] <= 8)
+        changed = copy.deepcopy(obj)
+        changed['generated_utc'] = '2030-01-01T00:00:00+00:00'
+        changed['sha256'] = cache.digest({k:v for k,v in changed.items() if k != 'sha256'})
+        self.assertEqual(first['seed_sha256'], cache.pick_from_cache(changed, 'owner/repo', obj['head_sha'])['seed_sha256'])
+        self.commit('new\n')
+        updated = self.refresh()[0]
+        self.assertNotEqual(first['seed_sha256'], cache.pick_from_cache(updated, 'owner/repo', updated['head_sha'])['seed_sha256'])
+
+    def test_pick_rejects_tampered_wrong_repo_and_stale(self):
+        obj = self.refresh()[0]
+        with self.assertRaisesRegex(ValueError, 'requested commit'):
+            cache.pick_from_cache(obj, 'owner/repo', '0' * 40)
+        with self.assertRaisesRegex(ValueError, 'Invalid'):
+            cache.pick_from_cache(obj, 'other/repo', obj['head_sha'])
+        bad = copy.deepcopy(obj)
+        bad['summary']['additions'] += 1
+        with self.assertRaisesRegex(ValueError, 'Invalid'):
+            cache.pick_from_cache(bad, 'owner/repo', obj['head_sha'])
+        bad['sha256'] = cache.digest({k:v for k,v in bad.items() if k != 'sha256'})
+        with self.assertRaisesRegex(ValueError, 'Invalid'):
+            cache.pick_from_cache(bad, 'owner/repo', obj['head_sha'])
+
+    def test_pick_cli_artifact(self):
+        out = self.root / 'reports'
+        args = ['python3', str(Path(cache.__file__)), '--repo', str(self.repo),
+                '--repository', 'owner/repo', '--cache', str(self.path),
+                '--report-dir', str(out), '--pick']
+        subprocess.check_output(args)
+        first = json.loads((out / 'git_pick.json').read_text())
+        subprocess.check_output(args)
+        self.assertEqual(first, json.loads((out / 'git_pick.json').read_text()))
+        self.assertEqual(first['source_cache_sha256'], json.loads(self.path.read_text())['sha256'])
 
 if __name__ == '__main__':
     unittest.main()
