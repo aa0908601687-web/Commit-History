@@ -1,0 +1,41 @@
+name: WP-OS Git history cache
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 0 * * *' # 08:15 Asia/Taipei
+permissions:
+  contents: read
+jobs:
+  cache-and-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test cache behavior
+        run: python -m unittest discover -s Git-History-Cache -p 'test_git_history_cache.py' -v
+      - name: Restore prior history cache
+        uses: actions/cache@v4
+        with:
+          path: .wp-git-cache/history.json
+          key: wp-git-history-v1-${{ github.repository_id }}-${{ github.ref }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            wp-git-history-v1-${{ github.repository_id }}-${{ github.ref }}-
+      - name: Read or refresh verified history and charts
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python Git-History-Cache/git_history_cache.py --repository "$REPOSITORY" --cache .wp-git-cache/history.json --report-dir git-history-report
+          cp .wp-git-cache/history.json git-history-report/history.json
+      - name: Upload history cache and charts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-git-history-${{ github.run_id }}
+          path: git-history-report/
+          if-no-files-found: error
+          retention-days: 30
