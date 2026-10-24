@@ -30,7 +30,7 @@ jobs:
         env:
           REPOSITORY: ${{ github.repository }}
         run: |
-          python Git-History-Cache/git_history_cache.py --repository "$REPOSITORY" --cache .wp-git-cache/history.json --report-dir git-history-report
+          python Git-History-Cache/git_history_cache.py --repository "$REPOSITORY" --cache .wp-git-cache/history.json --report-dir git-history-report --pick
           cp .wp-git-cache/history.json git-history-report/history.json
       - name: Upload history cache and charts
         uses: actions/upload-artifact@v4

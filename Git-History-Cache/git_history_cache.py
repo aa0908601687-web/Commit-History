@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verified local Git history cache and SVG reports; no lottery input changes."""
+"""Verified Git cache, reports and optional deterministic Git-seeded lottery picks."""
 import argparse
 import collections
 import datetime
@@ -13,6 +13,7 @@ import tempfile
 
 SCHEMA = 1
 POLICY = 'all-reachable-no-renames-root-and-single-parent-v1'
+PICK_VERSION = 'wp-git-seeded-sha256-fisher-yates-v1'
 
 def git(repo, *args):
     return subprocess.check_output(['git', '-C', str(repo), *args]).decode('utf-8', errors='replace')
@@ -29,6 +30,8 @@ def valid(obj, repository):
             return False
         records = obj['commits']
         if not isinstance(records, list) or len({r['sha'] for r in records}) != len(records):
+            return False
+        if not records or obj.get('head_sha') != records[0]['sha']:
             return False
         for r in records:
             if len(r['sha']) != 40 or any(c not in '0123456789abcdef' for c in r['sha']):
@@ -133,6 +136,44 @@ def charts(obj, out):
         parts.append('</svg>')
         (out / (name + '.svg')).write_text('\n'.join(parts), encoding='utf-8')
 
+def pick_from_cache(obj, repository, expected_head):
+    """Deterministic selection, not a forecast. Reject invalid or stale input."""
+    if not valid(obj, repository):
+        raise ValueError('Invalid Git history cache')
+    if obj['head_sha'] != expected_head:
+        raise ValueError('Cache does not match requested commit')
+    # Exclude generation timestamps, SVG layout and cache checksum from seed.
+    # Include all commit records and the exact data used for contribution charts.
+    material = dict(algorithm=PICK_VERSION, repository=repository,
+                    head_sha=obj['head_sha'], policy=obj['policy'],
+                    commits=sorted(obj['commits'], key=lambda row: row['sha']),
+                    summary=obj['summary'])
+    seed = digest(material)
+    counter = 0
+
+    def below(upper):
+        nonlocal counter
+        limit = (1 << 256) - ((1 << 256) % upper)
+        while True:
+            block = hashlib.sha256(bytes.fromhex(seed) + counter.to_bytes(8, 'big')).digest()
+            counter += 1
+            value = int.from_bytes(block, 'big')
+            if value < limit:
+                return value % upper
+
+    pool = list(range(1, 39))
+    for i in range(6):
+        j = i + below(38 - i)
+        pool[i], pool[j] = pool[j], pool[i]
+    result = dict(mode='git-cache', algorithm=PICK_VERSION, repository=repository,
+                  through_commit=obj['head_sha'], source_cache_sha256=obj['sha256'],
+                  seed_sha256=seed, first=sorted(pool[:6]), second=below(8) + 1,
+                  commit_count=obj['summary']['commit_count'],
+                  note='Deterministic Git-derived selection; no draw data or predictive advantage. '
+                       'Changing Git data can change the pick; commit timing is not proof of a pre-draw forecast.')
+    result['sha256'] = digest(result)
+    return result
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--repo', default='.')
@@ -140,9 +181,15 @@ def main():
     ap.add_argument('--ref', default='HEAD')
     ap.add_argument('--cache', required=True)
     ap.add_argument('--report-dir', required=True)
+    ap.add_argument('--pick', action='store_true', help='Write git_pick.json from verified current Git cache')
     args = ap.parse_args()
     obj, status, fetched = refresh(args.repo, args.cache, args.repository, args.ref)
     charts(obj, args.report_dir)
+    if args.pick:
+        pick = pick_from_cache(obj, args.repository, obj['head_sha'])
+        (Path(args.report_dir) / 'git_pick.json').write_text(
+            json.dumps(pick, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        print(json.dumps(pick, ensure_ascii=False, indent=2))
     print(json.dumps(dict(status=status, new_commits_read=fetched, head_sha=obj['head_sha'],
                           summary=obj['summary']), ensure_ascii=False, indent=2))
 
