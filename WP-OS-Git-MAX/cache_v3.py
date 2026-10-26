@@ -73,6 +73,9 @@ def run(csv_path, cache_dir):
                     json.dumps({k: v for k, v in payload.items() if k != "sha256"},
                                sort_keys=True, ensure_ascii=False).encode()
                 ).hexdigest()):
+                # JSON restores tuples as lists; recover the original public predict() shape.
+                payload["top_first_scores"] = [tuple(item) for item in payload["top_first_scores"]]
+                payload["second_scores"] = [tuple(item) for item in payload["second_scores"]]
                 return {"prediction": payload, "cache": {"draws": "hit" if source_hit else "refreshed",
                          "features": feature_status, "prediction": "hit"}}
         except (OSError, ValueError, TypeError, AttributeError):
