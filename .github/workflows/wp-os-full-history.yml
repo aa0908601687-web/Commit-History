@@ -1,0 +1,47 @@
+name: WP-OS full official history backfill
+on:
+  push:
+    paths:
+      - '.github/workflows/wp-os-full-history.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: wp-os-history-backfill
+  cancel-in-progress: false
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Retrieve and verify all official SuperLotto638 months
+        run: python WP-OS-Git-MAX/backfill_official_history.py
+      - name: Verify archive with existing tests and evidence audit
+        run: |
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_*.py'
+          python WP-OS-Git-MAX/evidence_audit.py --csv WP-OS-Git-MAX/historical_archive.csv --backtest-count 100 --output evidence-report.json > /dev/null
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-os-full-history-evidence
+          path: |
+            evidence-report.json
+            WP-OS-Git-MAX/history_backfill_manifest.json
+          if-no-files-found: error
+      - name: Commit verified archive only on success
+        run: |
+          if ! git diff --quiet -- WP-OS-Git-MAX/historical_archive.csv WP-OS-Git-MAX/historical_latest_20.csv WP-OS-Git-MAX/historical_latest_10.csv; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add WP-OS-Git-MAX/historical_archive.csv WP-OS-Git-MAX/historical_latest_20.csv WP-OS-Git-MAX/historical_latest_10.csv WP-OS-Git-MAX/history_backfill_manifest.json
+            git commit -m 'Backfill validated official WP-OS draw history'
+            git push
+          else
+            echo 'No verified changes'
+          fi
