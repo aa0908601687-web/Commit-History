@@ -27,6 +27,12 @@ class BackfillCoverageAdditions(unittest.TestCase):
             z.writestr("draw.csv", csvtext)
         return bio.getvalue()
 
+    def empty_zip(self):
+        bio = io.BytesIO()
+        with zipfile.ZipFile(bio, "w"):
+            pass
+        return bio.getvalue()
+
     def test_parse_and_render_valid_official_csv(self):
         raw = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\n威力彩,97000001,6,5,4,3,2,1,8\n"
         rows = self.module.parse_annual_zip(2008, self.zipped(raw))
@@ -37,7 +43,7 @@ class BackfillCoverageAdditions(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "No 威力彩 records"):
             self.module.parse_annual_zip(2008, self.zipped("遊戲名稱,期別\n大樂透,097000001\n"))
         with self.assertRaisesRegex(ValueError, "ZIP is empty"):
-            self.module.parse_annual_zip(2008, self.zipped(""))
+            self.module.parse_annual_zip(2008, self.empty_zip())
 
     def test_missing_second_zone_and_bad_numbers_rejected(self):
         header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\n"
