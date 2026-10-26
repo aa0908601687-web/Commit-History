@@ -22,17 +22,17 @@ concurrency:
 
 jobs:
   update-test-and-sync:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: true
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - name: Restore Scion-style regional cache layer
         id: v3-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .cache/wp-os-v3
           key: wp-os-v3-${{ runner.os }}-${{ hashFiles('WP-OS-Git-MAX/historical_latest_20.csv', 'WP-OS-Git-MAX/cache_and_hit_validation.py', 'WP-OS-Git-MAX/three_layer_cache_v3.py', 'WP-OS-Git-MAX/wp_os_git_max.py') }}
@@ -92,7 +92,7 @@ jobs:
               json.dumps(status, ensure_ascii=False, sort_keys=True, indent=2) + '\n')
           PY
       - name: Upload V3 verified result cache
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wp-os-v3-result-cache-${{ github.run_id }}
           path: |
@@ -102,14 +102,14 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Upload analysis cache artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wp-os-feature-cache-${{ github.run_id }}
           path: .cache/wp-os-v3/wp-os-feature-cache.json
           if-no-files-found: error
           retention-days: 30
       - name: Upload prediction research artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wp-os-prediction-${{ github.run_id }}
           path: /tmp/wp-os-prediction.json
@@ -140,7 +140,7 @@ jobs:
           print('Snapshot requires external timestamp verification before pre-draw claims:',target)
           PY
       - name: Upload V3 verified cache and prediction
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wp-os-v3-${{ github.run_id }}
           path: |
