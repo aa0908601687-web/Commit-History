@@ -78,6 +78,7 @@ def backtest(draws):
     counts=Counter()
     hit_second=0
     jackpot_hits=0
+    per_draw=[]
     for end in range(10,len(draws)):
         pred=predict(draws[:end])
         actual=draws[end]
@@ -86,6 +87,13 @@ def backtest(draws):
         second_hit = pred["second"] == actual["second"]
         hit_second += second_hit
         jackpot_hits += hits == 6 and second_hit
+        per_draw.append({
+            "target_draw":actual["draw_id"], "through_draw":draws[end-1]["draw_id"],
+            "predicted_first":pred["first"], "predicted_second":pred["second"],
+            "actual_first":list(actual["first"]), "actual_second":actual["second"],
+            "first_zone_hits":hits, "second_zone_hit":int(second_hit),
+            "jackpot_hit":int(hits == 6 and second_hit),
+        })
     tested = max(0, len(draws) - 10)
     rate = lambda hits: hits / tested if tested else 0.0
     return {"tested":tested, "first_zone_hits":{str(n):counts[n] for n in range(7)},
@@ -97,6 +105,7 @@ def backtest(draws):
       "first_zone_6_rate":rate(counts[6]),
       "second_zone_hits":hit_second, "second_zone_hit_rate":rate(hit_second),
       "jackpot_hits":jackpot_hits, "jackpot_hit_rate":rate(jackpot_hits),
+      "per_draw":per_draw,
       "random_first_zone_3plus":sum(math.comb(6,k)*math.comb(32,6-k) for k in range(3,7))/math.comb(38,6),
       "fair_jackpot_probability":1/(math.comb(38,6)*8)}
 
