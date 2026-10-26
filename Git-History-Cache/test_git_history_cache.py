@@ -94,11 +94,17 @@ class CacheTests(unittest.TestCase):
         args = ['--repo', str(self.repo), '--repository', 'owner/repo', '--cache', str(self.path), '--report-dir', str(self.root / 'reports')]
         result = subprocess.check_output(['python3', str(Path(cache.__file__)), *args], text=True)
         self.assertEqual(json.loads(result)['status'], 'refreshed')
-        self.assertEqual(json.loads((self.root / 'reports/cache_lookup.json').read_text())['misses'], 1)
+        first_metrics = json.loads((self.root / 'reports/cache_lookup.json').read_text())
+        self.assertEqual((first_metrics['misses'], first_metrics['reused_commits'], first_metrics['commit_reuse_percent']), (1, 0, 0))
         result = subprocess.check_output(['python3', str(Path(cache.__file__)), *args], text=True)
         self.assertEqual(json.loads(result)['status'], 'hit')
         metrics = json.loads((self.root / 'reports/cache_lookup.json').read_text())
         self.assertEqual((metrics['lookups'], metrics['hits'], metrics['misses']), (1, 1, 0))
+        self.assertEqual((metrics['total_commits'], metrics['reused_commits'], metrics['commit_reuse_percent']), (1, 1, 100))
+        self.commit('another\n')
+        subprocess.check_output(['python3', str(Path(cache.__file__)), *args], text=True)
+        metrics = json.loads((self.root / 'reports/cache_lookup.json').read_text())
+        self.assertEqual((metrics['status'], metrics['total_commits'], metrics['reused_commits'], metrics['commit_reuse_percent']), ('updated', 2, 1, 50))
 
     def test_pick_stable_and_valid(self):
         obj = self.refresh()[0]
