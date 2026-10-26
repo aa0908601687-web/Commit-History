@@ -38,14 +38,13 @@ def request_bytes(url, accept="application/octet-stream", timeout=60):
 
 
 def annual_download(year):
-    url = DOWNLOAD_API + "?" + urlencode({"year": year})
-    obj = json.loads(request_bytes(url, "application/json", 30).decode("utf-8"))
-    content = obj.get("content")
-    if obj.get("rtCode") != 0 or not isinstance(content, dict):
-        raise ValueError(f"Official ResultDownload response invalid for {year}")
-    path = content.get("path")
-    if not isinstance(path, str) or not path.lower().startswith("https://"):
-        raise ValueError(f"Official annual archive path missing for {year}")
+    # The official ResultDownload endpoint returns this stable CDN path.
+    # Using the published annual path directly avoids rate-limiting the
+    # metadata API once per year while retaining the official source.
+    path = (
+        "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/"
+        f"Download/LottoResult/{year}.zip"
+    )
     return path, request_bytes(path)
 
 
