@@ -298,5 +298,45 @@ class BackfillCoverageAdditions(unittest.TestCase):
             self.assertTrue((Path(tmp) / "historical_archive.csv").exists())
 
 
+
+    def test_decode_csv_all_encodings_rejected(self):
+        raw = mock.Mock()
+        raw.decode.side_effect = UnicodeDecodeError("utf-8", b"x", 0, 1, "bad")
+        with self.assertRaisesRegex(UnicodeError, "unsupported"):
+            self.module.decode_csv(raw)
+        self.assertEqual(raw.decode.call_count, 4)
+
+    def test_main_appends_unique_live_draw(self):
+        import contextlib
+        from io import StringIO
+        annual = [(f"{i:09d}", [1, 2, 3, 4, 5, 6], 1) for i in range(1, 1500)]
+        live = ("000001500", [1, 2, 3, 4, 5, 7], 2)
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(self.module, "ROOT", Path(tmp)), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[]), \
+                 mock.patch.object(self.module, "annual_download", return_value=("fixture", b"fake")), \
+                 mock.patch.object(self.module, "parse_annual_zip", return_value=annual), \
+                 mock.patch.object(self.module, "fetch", return_value=[live]), \
+                 mock.patch.object(self.module.time, "sleep"), \
+                 contextlib.redirect_stdout(StringIO()):
+                self.module.main()
+            self.assertIn("000001500", (Path(tmp) / "historical_archive.csv").read_text())
+
+    def test_main_defensive_out_of_order_detection(self):
+        annual = [(f"{i:09d}", [1, 2, 3, 4, 5, 6], 1) for i in range(1, 1501)]
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(self.module, "ROOT", Path(tmp)), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[]), \
+                 mock.patch.object(self.module, "annual_download", return_value=("fixture", b"fake")), \
+                 mock.patch.object(self.module, "parse_annual_zip", return_value=annual), \
+                 mock.patch.object(self.module, "fetch", return_value=[]), \
+                 mock.patch.object(self.module.time, "sleep"), \
+                 mock.patch.object(self.module, "sorted", new=lambda rows, key: list(reversed(list(rows))), create=True):
+                with self.assertRaisesRegex(RuntimeError, "Invalid official period order"):
+                    self.module.main()
+
+
 if __name__ == "__main__":
     unittest.main()
