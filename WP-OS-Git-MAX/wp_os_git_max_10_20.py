@@ -63,6 +63,29 @@ def predict(draws):
     return payload
 
 
+def backtest(draws):
+    hits = Counter()
+    second_hits = 0
+    for end in range(20, len(draws)):
+        prediction = predict(draws[:end])
+        actual = draws[end]
+        matched = len(set(prediction["first"]) & set(actual["first"]))
+        hits[matched] += 1
+        second_hits += prediction["second"] == actual["second"]
+    tested = max(0, len(draws) - 20)
+    rate = lambda value: value / tested if tested else 0.0
+    return {
+        "model_version": MODEL_VERSION,
+        "tested": tested,
+        "feature_windows": [10, 20],
+        "first_zone_hits": {str(n): hits[n] for n in range(7)},
+        "first_zone_3plus_rate": rate(sum(hits[n] for n in range(3, 7))),
+        "second_zone_hits": second_hits,
+        "second_zone_hit_rate": rate(second_hits),
+        "method": "Walk-forward; each target uses only prior 10/20 draws",
+    }
+
+
 def compare(main_prediction, control_prediction):
     main_first = set(main_prediction["first"])
     control_first = set(control_prediction["first"])
@@ -83,8 +106,11 @@ def compare(main_prediction, control_prediction):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True)
+    parser.add_argument("--backtest", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(predict(load(args.csv)), ensure_ascii=False, indent=2))
+    draws = load(args.csv)
+    result = backtest(draws) if args.backtest else predict(draws)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
