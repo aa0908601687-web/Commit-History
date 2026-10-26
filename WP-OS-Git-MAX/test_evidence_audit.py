@@ -100,4 +100,23 @@ class EvidenceAuditTests(unittest.TestCase):
                 with contextlib.redirect_stdout(io.StringIO()) as capture:
                     evidence_audit.main()
             self.assertEqual(json.loads(capture.getvalue())["walkforward"]["status"],"insufficient_history")
+
+    def test_script_entrypoint_and_non_numeric_target(self):
+        import subprocess
+        import sys
+        import json
+        d=load(ROOT/"historical_archive.csv")
+        with tempfile.TemporaryDirectory() as td:
+            ledger=Path(td)/"ledger.csv"
+            with ledger.open("w",newline="",encoding="utf-8") as fp:
+                w=csv.DictWriter(fp,fieldnames=["target_draw","through_draw","first","second","prediction_sha256"])
+                w.writeheader()
+                w.writerow({"target_draw":"not-a-draw","through_draw":d[-1]["draw_id"],
+                            "first":"01 02 03 04 05 06","second":"03","prediction_sha256":"hash"})
+            with self.assertRaisesRegex(ValueError,"ordering"):
+                verify_forecast_ledger(ledger,d)
+            result=subprocess.run([sys.executable,str(ROOT/"evidence_audit.py"),
+                "--csv",str(ROOT/"historical_archive.csv"),"--backtest-count","100"],
+                capture_output=True,text=True,check=True)
+            self.assertEqual(json.loads(result.stdout)["history"]["count"],len(d))
 if __name__=="__main__":unittest.main()
