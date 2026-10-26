@@ -30,6 +30,9 @@ def result_cache(draws, features, path):
                 if isinstance(result, dict) and result.get("sha256") == hashlib.sha256(
                     json.dumps({k:v for k,v in result.items() if k != "sha256"}, sort_keys=True, ensure_ascii=False).encode()
                 ).hexdigest() and result.get("through_draw") == key["through_draw"]:
+                    # JSON converts score tuples to lists; restore the public predict() shape.
+                    result["top_first_scores"] = [tuple(x) for x in result["top_first_scores"]]
+                    result["second_scores"] = [tuple(x) for x in result["second_scores"]]
                     return result, "hit"
         except (ValueError, OSError, TypeError, AttributeError):
             pass
