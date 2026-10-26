@@ -3,6 +3,7 @@ import csv
 import contextlib
 import io
 import json
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -98,6 +99,15 @@ class V3Tests(unittest.TestCase):
             writer.writerows(rows[:9])
         with self.assertRaisesRegex(ValueError, "Need at least 10 draws"):
             run(short, self.folder)
+
+    def test_main_guard_in_coverage_process(self):
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["cache_v3.py", "--csv", str(self.csv),
+                                        "--cache-dir", str(self.folder)]):
+            with contextlib.redirect_stdout(output):
+                runpy.run_path(str(ROOT / "cache_v3.py"), run_name="__main__")
+        self.assertEqual(json.loads(output.getvalue())["prediction"]["first"],
+                         predict(load(self.csv))["first"])
 
     def test_actual_script_entrypoint(self):
         script = ROOT / "cache_v3.py"
