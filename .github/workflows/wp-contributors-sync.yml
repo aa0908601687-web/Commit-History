@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Fetch commits and build contributor report
         env:
@@ -126,7 +126,7 @@ jobs:
           assert sum(counts.values()) == total
           PY
       - name: Upload contributor chart and counts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wp-contributors-report
           path: contributor-report/
