@@ -203,5 +203,30 @@ class BackfillCoverageAdditions(unittest.TestCase):
                     self.module.main()
 
 
+
+    def test_official_parser_empty_csv_and_short_record(self):
+        header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\n"
+        with self.assertRaisesRegex(ValueError, "No 威力彩 records"):
+            self.module.parse_annual_zip(2008, self.zipped(""))
+        with self.assertRaisesRegex(ValueError, "No 威力彩 records"):
+            self.module.parse_annual_zip(2008, self.zipped(header + "威力彩,097000001,01\n"))
+
+    def test_existing_history_missing_is_rejected_before_write(self):
+        first = [(f"{i:09d}", [1, 2, 3, 4, 5, 6], 1) for i in range(1, 1501)]
+        missing = ("999999999", [1, 2, 3, 4, 5, 6], 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(self.module, "ROOT", root), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[missing]), \
+                 mock.patch.object(self.module, "annual_download", return_value=("fixture", b"fake")), \
+                 mock.patch.object(self.module, "parse_annual_zip", return_value=first), \
+                 mock.patch.object(self.module, "fetch", return_value=[]), \
+                 mock.patch.object(self.module.time, "sleep"):
+                with self.assertRaisesRegex(ValueError, "not independently confirmed"):
+                    self.module.main()
+            self.assertFalse((root / "historical_archive.csv").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
