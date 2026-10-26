@@ -28,19 +28,19 @@ class BackfillCoverageAdditions(unittest.TestCase):
         return bio.getvalue()
 
     def test_parse_and_render_valid_official_csv(self):
-        raw = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\\n威力彩,97000001,6,5,4,3,2,1,8\\n"
+        raw = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\n威力彩,97000001,6,5,4,3,2,1,8\n"
         rows = self.module.parse_annual_zip(2008, self.zipped(raw))
         self.assertEqual(rows, [("097000001", [1, 2, 3, 4, 5, 6], 8)])
         self.assertIn("097000001,01 02 03 04 05 06,08", self.module.render(rows))
 
     def test_no_draws_or_empty_zip_rejected(self):
         with self.assertRaisesRegex(ValueError, "No 威力彩 records"):
-            self.module.parse_annual_zip(2008, self.zipped("遊戲名稱,期別\\n大樂透,097000001\\n"))
+            self.module.parse_annual_zip(2008, self.zipped("遊戲名稱,期別\n大樂透,097000001\n"))
         with self.assertRaisesRegex(ValueError, "ZIP is empty"):
             self.module.parse_annual_zip(2008, self.zipped(""))
 
     def test_missing_second_zone_and_bad_numbers_rejected(self):
-        header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\\n"
+        header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\n"
         for tail, message in [
             ("1,2,3,4,5,6,", "lacks second-zone"),
             ("1,1,3,4,5,6,2", "Invalid first-zone"),
@@ -48,7 +48,7 @@ class BackfillCoverageAdditions(unittest.TestCase):
         ]:
             with self.subTest(tail=tail):
                 with self.assertRaisesRegex(ValueError, message):
-                    self.module.parse_annual_zip(2008, self.zipped(header + "威力彩,097000001," + tail + "\\n"))
+                    self.module.parse_annual_zip(2008, self.zipped(header + "威力彩,097000001," + tail + "\n"))
 
     def test_archive_cache_requires_existing_zip(self):
         with tempfile.TemporaryDirectory() as tmp:
