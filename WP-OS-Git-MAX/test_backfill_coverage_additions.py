@@ -271,5 +271,32 @@ class BackfillCoverageAdditions(unittest.TestCase):
                 runpy.run_path(str(TARGET), run_name="__main__")
 
 
+
+    def test_parser_ignores_csv_without_required_columns(self):
+        valid = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\n威力彩,097000001,1,2,3,4,5,6,2\n"
+        bio = io.BytesIO()
+        with zipfile.ZipFile(bio, "w") as z:
+            z.writestr("unrelated.csv", "欄位,內容\n其他,內容\n")
+            z.writestr("draw.csv", valid)
+        rows = self.module.parse_annual_zip(2008, bio.getvalue())
+        self.assertEqual(len(rows), 1)
+
+    def test_existing_saved_history_matches_valid_new_archive(self):
+        import contextlib
+        from io import StringIO
+        first = [(f"{i:09d}", [1, 2, 3, 4, 5, 6], 1) for i in range(1, 1501)]
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(self.module, "ROOT", Path(tmp)), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[first[0]]), \
+                 mock.patch.object(self.module, "annual_download", return_value=("fixture", b"fake")), \
+                 mock.patch.object(self.module, "parse_annual_zip", return_value=first), \
+                 mock.patch.object(self.module, "fetch", return_value=[]), \
+                 mock.patch.object(self.module.time, "sleep"), \
+                 contextlib.redirect_stdout(StringIO()):
+                self.module.main()
+            self.assertTrue((Path(tmp) / "historical_archive.csv").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
