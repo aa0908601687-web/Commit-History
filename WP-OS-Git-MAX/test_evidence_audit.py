@@ -119,4 +119,19 @@ class EvidenceAuditTests(unittest.TestCase):
                 "--csv",str(ROOT/"historical_archive.csv"),"--backtest-count","100"],
                 capture_output=True,text=True,check=True)
             self.assertEqual(json.loads(result.stdout)["history"]["count"],len(d))
+    def test_monotonic_audit_guard_and_in_process_entrypoint(self):
+        import contextlib
+        import io
+        import runpy
+        import sys
+        from unittest.mock import patch
+        import evidence_audit
+        d=load(ROOT/"historical_archive.csv")
+        with patch.object(evidence_audit,"load",return_value=[d[1],d[0]]):
+            with self.assertRaisesRegex(ValueError,"not increasing"):
+                audit_history(ROOT/"historical_archive.csv")
+        with patch.object(sys,"argv",["evidence_audit.py","--csv",str(ROOT/"historical_archive.csv"),"--backtest-count","100"]):
+            with contextlib.redirect_stdout(io.StringIO()) as captured:
+                runpy.run_path(str(ROOT/"evidence_audit.py"),run_name="__main__")
+        self.assertIn('"tested": 15',captured.getvalue())
 if __name__=="__main__":unittest.main()
