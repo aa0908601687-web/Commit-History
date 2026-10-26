@@ -1,0 +1,107 @@
+{
+  "source": "Taiwan Lottery official annual ZIP archives + current-month API",
+  "annual_archives": [
+    {
+      "year": 2008,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2008.zip",
+      "draws": 98
+    },
+    {
+      "year": 2009,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2009.zip",
+      "draws": 105
+    },
+    {
+      "year": 2010,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2010.zip",
+      "draws": 104
+    },
+    {
+      "year": 2011,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2011.zip",
+      "draws": 104
+    },
+    {
+      "year": 2012,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2012.zip",
+      "draws": 105
+    },
+    {
+      "year": 2013,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2013.zip",
+      "draws": 104
+    },
+    {
+      "year": 2014,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2014.zip",
+      "draws": 104
+    },
+    {
+      "year": 2015,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2015.zip",
+      "draws": 105
+    },
+    {
+      "year": 2016,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2016.zip",
+      "draws": 104
+    },
+    {
+      "year": 2017,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2017.zip",
+      "draws": 104
+    },
+    {
+      "year": 2018,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2018.zip",
+      "draws": 105
+    },
+    {
+      "year": 2019,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2019.zip",
+      "draws": 104
+    },
+    {
+      "year": 2020,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2020.zip",
+      "draws": 105
+    },
+    {
+      "year": 2021,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2021.zip",
+      "draws": 104
+    },
+    {
+      "year": 2022,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2022.zip",
+      "draws": 104
+    },
+    {
+      "year": 2023,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2023.zip",
+      "draws": 104
+    },
+    {
+      "year": 2024,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2024.zip",
+      "draws": 105
+    },
+    {
+      "year": 2025,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2025.zip",
+      "draws": 104
+    },
+    {
+      "year": 2026,
+      "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2026.zip",
+      "draws": 78
+    }
+  ],
+  "live_month": "2026-10",
+  "draw_count": 1958,
+  "first_draw": "097000001",
+  "last_draw": "115000086",
+  "archive_sha256": "96f7eabd9b587cca718ee6e8af1d5d7c3506993b8c9e6b286be756514bd62a50",
+  "feature_window": "last 5/10 draws only",
+  "backtest_window": 15
+}
