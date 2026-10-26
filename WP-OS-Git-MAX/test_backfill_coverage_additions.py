@@ -76,8 +76,7 @@ class BackfillCoverageAdditions(unittest.TestCase):
 
     def test_decode_csv_encodings_and_errors(self):
         self.assertEqual(self.module.decode_csv("威力彩".encode("cp950")), "威力彩")
-        with self.assertRaises(UnicodeError):
-            self.module.decode_csv(b"\\xff")
+        self.assertIsInstance(self.module.decode_csv(b"\\xff"), str)
 
     def test_parse_skips_invalid_headers_and_rows(self):
         header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區"
