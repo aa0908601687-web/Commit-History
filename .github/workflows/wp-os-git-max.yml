@@ -49,6 +49,29 @@ jobs:
         run: |
           python WP-OS-Git-MAX/wp_os_git_max.py --csv WP-OS-Git-MAX/historical_latest_10.csv > /tmp/wp-os-prediction.json
           python -m json.tool /tmp/wp-os-prediction.json > /dev/null
+      - name: Generate independent 10/20-draw control comparison
+        run: |
+          python WP-OS-Git-MAX/wp_os_git_max_10_20.py --csv WP-OS-Git-MAX/historical_latest_20.csv > /tmp/wp-os-control-10-20.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          main=json.loads(Path('/tmp/wp-os-prediction.json').read_text())
+          control=json.loads(Path('/tmp/wp-os-control-10-20.json').read_text())
+          if main['through_draw'] != control['through_draw']:
+              raise ValueError('Main/control data cutoff mismatch')
+          a, b=set(main['first']), set(control['first'])
+          report={
+              'through_draw': main['through_draw'],
+              'main_window':[5,10], 'control_window':[10,20],
+              'main_first':main['first'], 'main_second':main['second'],
+              'control_first':control['first'], 'control_second':control['second'],
+              'first_overlap':sorted(a & b), 'first_overlap_count':len(a & b),
+              'second_same':main['second']==control['second'],
+              'note':'Descriptive control comparison; no predictive advantage claim'
+          }
+          Path('/tmp/wp-os-main-vs-control.json').write_text(
+              json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2)+'\n')
+          PY
       - name: Generate validated 5/10-draw feature cache
         run: |
           python WP-OS-Git-MAX/cache_and_hit_validation.py --csv WP-OS-Git-MAX/historical_latest_10.csv --feature-cache .cache/wp-os-v3/wp-os-feature-cache.json > /dev/null
@@ -113,6 +136,15 @@ jobs:
         with:
           name: wp-os-prediction-${{ github.run_id }}
           path: /tmp/wp-os-prediction.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload independent 10/20 control comparison
+        uses: actions/upload-artifact@v6
+        with:
+          name: wp-os-control-10-20-${{ github.run_id }}
+          path: |
+            /tmp/wp-os-control-10-20.json
+            /tmp/wp-os-main-vs-control.json
           if-no-files-found: error
           retention-days: 30
       - name: V3 end-to-end cache and selection parity
