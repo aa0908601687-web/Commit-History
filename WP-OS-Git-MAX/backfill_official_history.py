@@ -21,7 +21,12 @@ sys.path.insert(0, str(ROOT))
 from update_official_data import fetch, existing
 
 DOWNLOAD_API = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/ResultDownload"
-HEADERS = {"User-Agent": "WP-OS-Git-MAX/2.0", "Accept": "application/json"}
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/141 Safari/537.36",
+    "Accept": "application/json",
+    "Referer": "https://www.taiwanlottery.com/lotto/history/result_download/",
+    "Origin": "https://www.taiwanlottery.com",
+}
 FIRST_YEAR = 2008
 
 
