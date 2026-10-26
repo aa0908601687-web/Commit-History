@@ -1,5 +1,7 @@
 """Regression checks: V3 cache must never change original selection output."""
 import csv
+import contextlib
+import io
 import json
 import sys
 import tempfile
@@ -8,6 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from wp_os_git_max import load, predict
+from unittest.mock import patch
+import cache_v3
 from cache_v3 import run
 
 ROOT = Path(__file__).resolve().parent
@@ -40,7 +44,8 @@ class V3Tests(unittest.TestCase):
 
     def test_changed_history_refreshes_layers(self):
         run(self.csv, self.folder)
-        rows = list(csv.DictReader(self.csv.open(encoding="utf-8")))
+        with self.csv.open(encoding="utf-8") as source:
+            rows = list(csv.DictReader(source))
         rows[-1]["second"] = "01" if rows[-1]["second"] != "01" else "02"
         alternative = self.folder / "changed.csv"
         with alternative.open("w", newline="", encoding="utf-8") as f:
@@ -58,6 +63,29 @@ class V3Tests(unittest.TestCase):
         obj["model_version"] = "old"
         p.write_text(json.dumps(obj), encoding="utf-8")
         self.assertEqual(run(self.csv, self.folder)["cache"]["prediction"], "refreshed")
+
+    def test_bad_draw_cache_rebuilds(self):
+        run(self.csv, self.folder)
+        (self.folder / "draws.json").write_text("{invalid", encoding="utf-8")
+        result = run(self.csv, self.folder)
+        self.assertEqual(result["cache"]["draws"], "refreshed")
+        self.assertEqual(result["cache"]["prediction"], "hit")
+
+    def test_bad_prediction_cache_rebuilds(self):
+        run(self.csv, self.folder)
+        (self.folder / "prediction.json").write_text("{invalid", encoding="utf-8")
+        result = run(self.csv, self.folder)
+        self.assertEqual(result["cache"]["prediction"], "refreshed")
+        self.assertEqual(result["prediction"], predict(load(self.csv)))
+
+    def test_cli_outputs_prediction(self):
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["cache_v3.py", "--csv", str(self.csv), "--cache-dir", str(self.folder)]):
+            with contextlib.redirect_stdout(output):
+                cache_v3.main()
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["prediction"]["first"], predict(load(self.csv))["first"])
+        self.assertEqual(result["cache"]["prediction"], "refreshed")
 
 if __name__ == "__main__":
     unittest.main()
