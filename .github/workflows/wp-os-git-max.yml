@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: .cache/wp-os-v3
-          key: wp-os-v3-${{ runner.os }}-${{ hashFiles('WP-OS-Git-MAX/historical_latest_20.csv', 'WP-OS-Git-MAX/cache_and_hit_validation.py', 'WP-OS-Git-MAX/three_layer_cache_v3.py', 'WP-OS-Git-MAX/research_cache_v3.py', 'WP-OS-Git-MAX/wp_os_git_max.py', 'WP-OS-Git-MAX/wp_os_git_max_10_20.py', 'WP-OS-Git-MAX/wp_os_git_max_fusion.py') }}
+          key: wp-os-v3-${{ runner.os }}-${{ hashFiles('WP-OS-Git-MAX/historical_latest_20.csv', 'WP-OS-Git-MAX/historical_archive.csv', 'WP-OS-Git-MAX/cache_and_hit_validation.py', 'WP-OS-Git-MAX/three_layer_cache_v3.py', 'WP-OS-Git-MAX/research_cache_v3.py', 'WP-OS-Git-MAX/historical_backtest_cache_v3.py', 'WP-OS-Git-MAX/wp_os_git_max.py', 'WP-OS-Git-MAX/wp_os_git_max_10_20.py', 'WP-OS-Git-MAX/wp_os_git_max_fusion.py') }}
           restore-keys: |
             wp-os-v3-${{ runner.os }}-
       - name: Prepare node cache layer
@@ -122,6 +122,21 @@ jobs:
           assert second['consistency_verified']
           print('V3 control/fusion repeated-run cache hits and direct parity: passed')
           PY
+      - name: V3 full-history backtest cache
+        run: |
+          python WP-OS-Git-MAX/historical_backtest_cache_v3.py --csv WP-OS-Git-MAX/historical_archive.csv --cache .cache/wp-os-v3/wp-os-full-history-backtests.json > /tmp/wp-os-history-cache-run-1.json
+          python WP-OS-Git-MAX/historical_backtest_cache_v3.py --csv WP-OS-Git-MAX/historical_archive.csv --cache .cache/wp-os-v3/wp-os-full-history-backtests.json > /tmp/wp-os-history-cache-run-2.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          first=json.loads(Path('/tmp/wp-os-history-cache-run-1.json').read_text())
+          second=json.loads(Path('/tmp/wp-os-history-cache-run-2.json').read_text())
+          assert second['cache'] == 'hit'
+          assert first['archive_sha256'] == second['archive_sha256']
+          assert first['backtests'] == second['backtests']
+          assert set(second['backtests']) == {'main_5_10','control_10_20','fusion_5_10_20'}
+          print('V3 full-history backtest cache hit and parity: passed')
+          PY
       - name: Record three-layer cache status
         run: |
           python - <<'PY'
@@ -157,6 +172,8 @@ jobs:
             /tmp/wp-os-v3-research-run-2.json
             .cache/wp-os-v3/wp-os-control-cache.json
             .cache/wp-os-v3/wp-os-fusion-cache.json
+            .cache/wp-os-v3/wp-os-full-history-backtests.json
+            /tmp/wp-os-history-cache-run-2.json
           if-no-files-found: error
           retention-days: 30
       - name: Upload analysis cache artifact
