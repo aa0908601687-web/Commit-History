@@ -252,5 +252,24 @@ class BackfillCoverageAdditions(unittest.TestCase):
                 self.assertEqual(get.call_count, 2)
 
 
+
+    def test_annual_zip_ignores_directory_and_skips_empty_csv(self):
+        with io.BytesIO() as bio:
+            with zipfile.ZipFile(bio, "w") as z:
+                z.writestr("folder/", b"")
+                z.writestr("empty.csv", b"")
+                z.writestr("draw.csv", "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\n威力彩,097000001,1,2,3,4,5,6,2\n")
+            rows = self.module.parse_annual_zip(2008, bio.getvalue())
+        self.assertEqual(len(rows), 1)
+
+    def test_backfill_script_entrypoint_with_offline_abort(self):
+        import runpy
+        with mock.patch("sys.argv", ["backfill_official_history.py"]), \
+             mock.patch.dict(os.environ, {"HISTORY_ARCHIVE_DIR": "/nonexistent-archive"}, clear=False), \
+             mock.patch("time.sleep"):
+            with self.assertRaisesRegex(RuntimeError, "inaccessible"):
+                runpy.run_path(str(TARGET), run_name="__main__")
+
+
 if __name__ == "__main__":
     unittest.main()
