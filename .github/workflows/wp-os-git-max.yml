@@ -73,6 +73,21 @@ jobs:
           Path('/tmp/wp-os-main-vs-control.json').write_text(
               json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2)+'\n')
           PY
+      - name: Generate equal-weight 5/10 and 10/20 fusion
+        run: |
+          python WP-OS-Git-MAX/wp_os_git_max_fusion.py --csv WP-OS-Git-MAX/historical_latest_20.csv > /tmp/wp-os-fusion.json
+          python WP-OS-Git-MAX/wp_os_git_max_fusion.py --csv WP-OS-Git-MAX/historical_archive.csv --backtest > /tmp/wp-os-fusion-backtest.json
+          python -m json.tool /tmp/wp-os-fusion.json > /dev/null
+          python -m json.tool /tmp/wp-os-fusion-backtest.json > /dev/null
+      - name: Upload equal-weight fusion output
+        uses: actions/upload-artifact@v6
+        with:
+          name: wp-os-fusion-5-10-20-${{ github.run_id }}
+          path: |
+            /tmp/wp-os-fusion.json
+            /tmp/wp-os-fusion-backtest.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Generate validated 5/10-draw feature cache
         run: |
           python WP-OS-Git-MAX/cache_and_hit_validation.py --csv WP-OS-Git-MAX/historical_latest_10.csv --feature-cache .cache/wp-os-v3/wp-os-feature-cache.json > /dev/null
