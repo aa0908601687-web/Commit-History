@@ -62,3 +62,10 @@ This project uses a **Scion-style** cache layout; it is not Anthropic's internal
 3. **Authoritative layer:** repository CSV files and Python source are the source of truth.
 
 The cache key includes the draw CSV and cache/model source files. Each cached object also carries its own schema/model identity and SHA-256 digest. A missing, stale, malformed, or modified object is recomputed, and the workflow compares cached output with direct computation before publishing artifacts. This architecture improves reuse and integrity; it does not improve lottery odds or imply Anthropic compatibility.
+
+
+## Independent 10/20-draw control
+
+The production research selection remains the fixed 5/10-draw model. An independent 10/20-draw control model runs beside it using the same data cutoff and the same weight categories scaled to 10/20 draws. The workflow publishes both control output and a main-versus-control overlap report in the `wp-os-control-10-20-<run_id>` artifact.
+
+The control is for prospective comparison only. It does not feed the production selection, the V3 prediction cache, or contributor statistics, and it must not replace the main model without sufficient pre-draw observations and walk-forward evidence.
