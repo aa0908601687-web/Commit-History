@@ -9,6 +9,7 @@ import datetime as dt
 import hashlib
 import io
 import json
+import os
 import sys
 import time
 import zipfile
@@ -38,13 +39,17 @@ def request_bytes(url, accept="application/octet-stream", timeout=60):
 
 
 def annual_download(year):
-    # The official ResultDownload endpoint returns this stable CDN path.
-    # Using the published annual path directly avoids rate-limiting the
-    # metadata API once per year while retaining the official source.
+    # The official ResultDownload endpoint publishes this stable CDN path.
     path = (
         "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/"
         f"Download/LottoResult/{year}.zip"
     )
+    cache_dir = os.environ.get("HISTORY_ARCHIVE_DIR")
+    if cache_dir:
+        cached = Path(cache_dir) / f"{year}.zip"
+        if not cached.is_file():
+            raise FileNotFoundError(f"Pre-downloaded official archive missing: {cached}")
+        return path, cached.read_bytes()
     return path, request_bytes(path)
 
 
