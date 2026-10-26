@@ -40,6 +40,15 @@ class ResearchCacheV3Tests(unittest.TestCase):
         self.assertEqual(result["models"]["control_10_20"]["cache"], "refreshed")
         self.assertEqual(result["models"]["fusion_5_10_20"]["cache"], "refreshed")
 
+    def test_intact_wrapper_with_invalid_prediction_refreshes(self):
+        self.run_cache()
+        obj = json.loads(self.control.read_text())
+        obj["prediction"]["through_draw"] = "000000000"
+        obj["sha256"] = cache.digest({k: v for k, v in obj.items() if k != "sha256"})
+        self.control.write_text(json.dumps(obj))
+        result = self.run_cache()
+        self.assertEqual(result["models"]["control_10_20"]["cache"], "refreshed")
+
     def test_intact_but_stale_key_refreshes(self):
         self.run_cache()
         obj = json.loads(self.control.read_text())
