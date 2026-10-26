@@ -42,6 +42,17 @@ class ResearchTests(unittest.TestCase):
         r=m.backtest(self.draws)
         self.assertEqual(r["tested"],5)
         self.assertEqual(sum(r["first_zone_hits"].values()),5)
+        self.assertAlmostEqual(sum(r["first_zone_hit_rates"].values()),1.0)
+        self.assertAlmostEqual(r["first_zone_3plus_rate"],
+                               sum(r["first_zone_hits"][str(k)] for k in range(3,7))/5)
+        self.assertAlmostEqual(r["second_zone_hit_rate"],r["second_zone_hits"]/5)
+        self.assertAlmostEqual(r["jackpot_hit_rate"],r["jackpot_hits"]/5)
+    def test_zero_backtest_rates(self):
+        r=m.backtest(self.draws[:10])
+        self.assertEqual(r["tested"],0)
+        self.assertEqual(r["first_zone_3plus_rate"],0.0)
+        self.assertEqual(r["second_zone_hit_rate"],0.0)
+        self.assertEqual(r["jackpot_hit_rate"],0.0)
     def test_requires_history(self):
         with self.assertRaises(ValueError): m.predict(self.draws[:9])
 
