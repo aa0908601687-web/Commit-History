@@ -41,6 +41,11 @@ class ImportHistoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Conflicting"):
             prepare(self.archive, self.source)
 
+    def test_unexpected_csv_columns_rejected(self):
+        self.source.write_text("period,numbers,bonus\n115000002,01 02 03 04 05 06,01\n")
+        with self.assertRaisesRegex(ValueError, "Expected draw_id,first,second columns"):
+            prepare(self.archive, self.source)
+
     def test_duplicate_rejected(self):
         self.source.write_text("draw_id,first,second\n115000002,01 02 03 04 05 06,01\n115000002,01 02 03 04 05 06,01\n")
         with self.assertRaisesRegex(ValueError, "Duplicate"):
