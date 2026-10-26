@@ -77,14 +77,27 @@ def rank_draws(draws, upper):
 def backtest(draws):
     counts=Counter()
     hit_second=0
+    jackpot_hits=0
     for end in range(10,len(draws)):
         pred=predict(draws[:end])
         actual=draws[end]
         hits=len(set(pred["first"]) & set(actual["first"]))
         counts[hits]+=1
-        hit_second += pred["second"] == actual["second"]
-    return {"tested":max(0,len(draws)-10), "first_zone_hits":{str(n):counts[n] for n in range(7)},
-      "second_zone_hits":hit_second, "random_first_zone_3plus":sum(math.comb(6,k)*math.comb(32,6-k) for k in range(3,7))/math.comb(38,6),
+        second_hit = pred["second"] == actual["second"]
+        hit_second += second_hit
+        jackpot_hits += hits == 6 and second_hit
+    tested = max(0, len(draws) - 10)
+    rate = lambda hits: hits / tested if tested else 0.0
+    return {"tested":tested, "first_zone_hits":{str(n):counts[n] for n in range(7)},
+      "first_zone_hit_rates":{str(n):rate(counts[n]) for n in range(7)},
+      "first_zone_2plus_rate":rate(sum(counts[n] for n in range(2,7))),
+      "first_zone_3plus_rate":rate(sum(counts[n] for n in range(3,7))),
+      "first_zone_4plus_rate":rate(sum(counts[n] for n in range(4,7))),
+      "first_zone_5plus_rate":rate(sum(counts[n] for n in range(5,7))),
+      "first_zone_6_rate":rate(counts[6]),
+      "second_zone_hits":hit_second, "second_zone_hit_rate":rate(hit_second),
+      "jackpot_hits":jackpot_hits, "jackpot_hit_rate":rate(jackpot_hits),
+      "random_first_zone_3plus":sum(math.comb(6,k)*math.comb(32,6-k) for k in range(3,7))/math.comb(38,6),
       "fair_jackpot_probability":1/(math.comb(38,6)*8)}
 
 def main():
