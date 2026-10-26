@@ -33,11 +33,11 @@ jobs:
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_*.py'
       - name: Verify loaded draw data and generate prediction
         run: |
-          python WP-OS-Git-MAX/wp_os_git_max.py --csv WP-OS-Git-MAX/historical_latest_20.csv > /tmp/wp-os-prediction.json
+          python WP-OS-Git-MAX/wp_os_git_max.py --csv WP-OS-Git-MAX/historical_latest_10.csv > /tmp/wp-os-prediction.json
           python -m json.tool /tmp/wp-os-prediction.json > /dev/null
       - name: Generate validated 5/10-draw feature cache
         run: |
-          python WP-OS-Git-MAX/cache_and_hit_validation.py --csv WP-OS-Git-MAX/historical_latest_20.csv --feature-cache /tmp/wp-os-feature-cache.json > /dev/null
+          python WP-OS-Git-MAX/cache_and_hit_validation.py --csv WP-OS-Git-MAX/historical_latest_10.csv --feature-cache /tmp/wp-os-feature-cache.json > /dev/null
           python -m json.tool /tmp/wp-os-feature-cache.json > /dev/null
       - name: Upload analysis cache artifact
         uses: actions/upload-artifact@v4
