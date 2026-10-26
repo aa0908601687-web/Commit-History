@@ -3,6 +3,7 @@ import csv
 import contextlib
 import io
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -86,6 +87,26 @@ class V3Tests(unittest.TestCase):
         result = json.loads(output.getvalue())
         self.assertEqual(result["prediction"]["first"], predict(load(self.csv))["first"])
         self.assertEqual(result["cache"]["prediction"], "refreshed")
+
+    def test_rejects_insufficient_draws(self):
+        with self.csv.open(encoding="utf-8") as source:
+            rows = list(csv.DictReader(source))
+        short = self.folder / "short.csv"
+        with short.open("w", newline="", encoding="utf-8") as output:
+            writer = csv.DictWriter(output, fieldnames=["draw_id", "first", "second"])
+            writer.writeheader()
+            writer.writerows(rows[:9])
+        with self.assertRaisesRegex(ValueError, "Need at least 10 draws"):
+            run(short, self.folder)
+
+    def test_actual_script_entrypoint(self):
+        script = ROOT / "cache_v3.py"
+        result = subprocess.run(
+            [sys.executable, str(script), "--csv", str(self.csv),
+             "--cache-dir", str(self.folder)], capture_output=True,
+            text=True, check=True)
+        self.assertEqual(json.loads(result.stdout)["prediction"]["first"],
+                         predict(load(self.csv))["first"])
 
 if __name__ == "__main__":
     unittest.main()
