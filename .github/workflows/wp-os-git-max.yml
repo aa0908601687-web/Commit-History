@@ -30,6 +30,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Restore Scion-style regional cache layer
+        id: v3-cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/wp-os-v3
+          key: wp-os-v3-${{ runner.os }}-${{ hashFiles('WP-OS-Git-MAX/historical_latest_20.csv', 'WP-OS-Git-MAX/cache_and_hit_validation.py', 'WP-OS-Git-MAX/three_layer_cache_v3.py', 'WP-OS-Git-MAX/wp_os_git_max.py') }}
+          restore-keys: |
+            wp-os-v3-${{ runner.os }}-
+      - name: Prepare node cache layer
+        run: mkdir -p .cache/wp-os-v3
       - name: Refresh official data (scheduled or manual only)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: python WP-OS-Git-MAX/update_official_data.py
@@ -41,12 +51,12 @@ jobs:
           python -m json.tool /tmp/wp-os-prediction.json > /dev/null
       - name: Generate validated 5/10-draw feature cache
         run: |
-          python WP-OS-Git-MAX/cache_and_hit_validation.py --csv WP-OS-Git-MAX/historical_latest_10.csv --feature-cache /tmp/wp-os-feature-cache.json > /dev/null
-          python -m json.tool /tmp/wp-os-feature-cache.json > /dev/null
+          python WP-OS-Git-MAX/cache_and_hit_validation.py --csv WP-OS-Git-MAX/historical_latest_10.csv --feature-cache .cache/wp-os-v3/wp-os-feature-cache.json > /dev/null
+          python -m json.tool .cache/wp-os-v3/wp-os-feature-cache.json > /dev/null
       - name: V3 result cache and cached/direct consistency checks
         run: |
-          python WP-OS-Git-MAX/three_layer_cache_v3.py --csv WP-OS-Git-MAX/historical_latest_20.csv --feature-cache /tmp/wp-os-feature-cache.json --prediction-cache /tmp/wp-os-v3-prediction-cache.json --verify > /tmp/wp-os-v3-run-1.json
-          python WP-OS-Git-MAX/three_layer_cache_v3.py --csv WP-OS-Git-MAX/historical_latest_20.csv --feature-cache /tmp/wp-os-feature-cache.json --prediction-cache /tmp/wp-os-v3-prediction-cache.json --verify > /tmp/wp-os-v3-run-2.json
+          python WP-OS-Git-MAX/three_layer_cache_v3.py --csv WP-OS-Git-MAX/historical_latest_20.csv --feature-cache .cache/wp-os-v3/wp-os-feature-cache.json --prediction-cache .cache/wp-os-v3/wp-os-v3-prediction-cache.json --verify > /tmp/wp-os-v3-run-1.json
+          python WP-OS-Git-MAX/three_layer_cache_v3.py --csv WP-OS-Git-MAX/historical_latest_20.csv --feature-cache .cache/wp-os-v3/wp-os-feature-cache.json --prediction-cache .cache/wp-os-v3/wp-os-v3-prediction-cache.json --verify > /tmp/wp-os-v3-run-2.json
           python - <<'PY'
           import json
           from pathlib import Path
@@ -57,6 +67,30 @@ jobs:
           assert second["consistency_verified"]
           print("V3 repeated-run hit, result integrity and parity: passed")
           PY
+      - name: Record three-layer cache status
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          run = json.loads(Path('/tmp/wp-os-v3-run-2.json').read_text())
+          source = Path('WP-OS-Git-MAX/historical_latest_20.csv').read_bytes()
+          status = {
+              'architecture': 'Scion-style (not Anthropic Scion)',
+              'schema_version': 3,
+              'layers': {
+                  'node': '.cache/wp-os-v3',
+                  'regional': 'GitHub Actions cache',
+                  'authoritative': 'repository CSV and source'
+              },
+              'actions_cache_restored': '${{ steps.v3-cache.outputs.cache-hit }}' == 'true',
+              'source_sha256': hashlib.sha256(source).hexdigest(),
+              'feature_cache': run['feature_cache'],
+              'prediction_cache': run['prediction_cache'],
+              'consistency_verified': run['consistency_verified']
+          }
+          Path('/tmp/wp-os-v3-cache-status.json').write_text(
+              json.dumps(status, ensure_ascii=False, sort_keys=True, indent=2) + '\n')
+          PY
       - name: Upload V3 verified result cache
         uses: actions/upload-artifact@v4
         with:
@@ -64,13 +98,14 @@ jobs:
           path: |
             /tmp/wp-os-v3-prediction-cache.json
             /tmp/wp-os-v3-run-2.json
+            /tmp/wp-os-v3-cache-status.json
           if-no-files-found: error
           retention-days: 30
       - name: Upload analysis cache artifact
         uses: actions/upload-artifact@v4
         with:
           name: wp-os-feature-cache-${{ github.run_id }}
-          path: /tmp/wp-os-feature-cache.json
+          path: .cache/wp-os-v3/wp-os-feature-cache.json
           if-no-files-found: error
           retention-days: 30
       - name: Upload prediction research artifact
