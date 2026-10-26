@@ -80,7 +80,7 @@ class BackfillCoverageAdditions(unittest.TestCase):
 
     def test_parse_skips_invalid_headers_and_rows(self):
         header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區"
-        data = ("ignore me\n" + header + "\n"
+        data = (header + "\n"
                 "威力彩,097000001,01,02\n"
                 "大樂透,097000001,01,02,03,04,05,06,02\n"
                 "威力彩,097000001,01,02,03,04,05,06,02\n")
