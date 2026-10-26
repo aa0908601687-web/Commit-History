@@ -80,8 +80,9 @@ def main():
         by_period[row[0]] = row
     merged = sorted(by_period.values(), key=lambda row: int(row[0]))
     # Preserve all verified records for walk-forward evaluation.
-    # Retain 20 draws for storage; the model still uses only its last 5/10.
-    last20 = merged[-20:]
+    # Accumulate all verified draws in the legacy latest_20 file for compatibility.
+    # Selection remains restricted to the separate latest_10 file.
+    last20 = merged
     # Keep the legacy ten-draw file for existing snapshots and clients.
     last10 = merged[-10:]
     if len(last10) < 10 or int(last10[-1][0]) < int(old[-1][0] if old else "0"):
