@@ -185,6 +185,13 @@ def main():
     args = ap.parse_args()
     obj, status, fetched = refresh(args.repo, args.cache, args.repository, args.ref)
     charts(obj, args.report_dir)
+    # This report records one lookup; it is not a long-term hit rate.
+    metrics = dict(lookups=1, hits=int(status == 'hit'),
+                   misses=int(status != 'hit'), status=status,
+                   scope='one Git history cache lookup in this run',
+                   new_commits_read=fetched, head_sha=obj['head_sha'])
+    (Path(args.report_dir) / 'cache_lookup.json').write_text(
+        json.dumps(metrics, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     if args.pick:
         pick = pick_from_cache(obj, args.repository, obj['head_sha'])
         (Path(args.report_dir) / 'git_pick.json').write_text(
