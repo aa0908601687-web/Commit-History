@@ -69,3 +69,10 @@ The cache key includes the draw CSV and cache/model source files. Each cached ob
 The production research selection remains the fixed 5/10-draw model. An independent 10/20-draw control model runs beside it using the same data cutoff and the same weight categories scaled to 10/20 draws. The workflow publishes both control output and a main-versus-control overlap report in the `wp-os-control-10-20-<run_id>` artifact.
 
 The control is for prospective comparison only. It does not feed the production selection, the V3 prediction cache, or contributor statistics, and it must not replace the main model without sufficient pre-draw observations and walk-forward evidence.
+
+
+## Equal-weight 5/10 + 10/20 fusion
+
+The fusion model combines the complete score tables of the main 5/10 model and the independent 10/20 control at **50% each**. It emits one fused first-zone six-number set and one second-zone number while preserving both component predictions in the JSON output.
+
+The fusion needs at least 20 completed draws. Walk-forward evaluation starts with the 21st stored draw and uses only information available before each target draw. The workflow publishes the current fusion output and its historical backtest in the `wp-os-fusion-5-10-20-<run_id>` artifact. This is a research comparison and does not increase the theoretical lottery odds.
