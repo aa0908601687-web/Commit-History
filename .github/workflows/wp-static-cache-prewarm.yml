@@ -1,0 +1,53 @@
+name: WP-OS static cache prewarm
+on:
+  push:
+    paths:
+      - 'WP-OS-Git-MAX/**'
+      - '.github/workflows/wp-static-cache-prewarm.yml'
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/**'
+      - '.github/workflows/wp-static-cache-prewarm.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prebuild-and-prove-cache-only:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Run static prewarm tests
+        run: python -m unittest WP-OS-Git-MAX/test_static_cache_prewarm.py
+      - name: Prebuild all supported responses
+        run: |
+          mkdir -p .cache/wp-os-static
+          python WP-OS-Git-MAX/static_cache_prewarm.py \
+            --csv WP-OS-Git-MAX/historical_archive.csv \
+            --cache .cache/wp-os-static/all-responses.json \
+            --prewarm > /tmp/wp-os-static-prewarm-status.json
+      - name: Prove every supported request is served cache-only
+        run: |
+          python - <<'PY'
+          import json, subprocess, sys
+          cache = json.load(open('.cache/wp-os-static/all-responses.json', encoding='utf-8'))
+          for profile in cache['profiles']:
+              subprocess.run([sys.executable, 'WP-OS-Git-MAX/static_cache_prewarm.py',
+                  '--cache', '.cache/wp-os-static/all-responses.json', '--profile', profile],
+                  check=True, stdout=subprocess.DEVNULL)
+          assert len(cache['profiles']) == 6
+          print('Static cache coverage: 6/6 supported profiles (100%)')
+          PY
+      - name: Upload prewarmed static cache
+        uses: actions/upload-artifact@v6
+        with:
+          name: wp-os-static-prewarmed-${{ github.run_id }}
+          path: |
+            .cache/wp-os-static/all-responses.json
+            /tmp/wp-os-static-prewarm-status.json
+          if-no-files-found: error
+          retention-days: 30
