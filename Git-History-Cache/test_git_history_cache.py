@@ -94,8 +94,11 @@ class CacheTests(unittest.TestCase):
         args = ['--repo', str(self.repo), '--repository', 'owner/repo', '--cache', str(self.path), '--report-dir', str(self.root / 'reports')]
         result = subprocess.check_output(['python3', str(Path(cache.__file__)), *args], text=True)
         self.assertEqual(json.loads(result)['status'], 'refreshed')
+        self.assertEqual(json.loads((self.root / 'reports/cache_lookup.json').read_text())['misses'], 1)
         result = subprocess.check_output(['python3', str(Path(cache.__file__)), *args], text=True)
         self.assertEqual(json.loads(result)['status'], 'hit')
+        metrics = json.loads((self.root / 'reports/cache_lookup.json').read_text())
+        self.assertEqual((metrics['lookups'], metrics['hits'], metrics['misses']), (1, 1, 0))
 
     def test_pick_stable_and_valid(self):
         obj = self.refresh()[0]
