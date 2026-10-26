@@ -2,6 +2,9 @@ import importlib.util
 import json
 import tempfile
 import unittest
+from unittest import mock
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -65,6 +68,41 @@ class ThreeLayerCacheV3Tests(unittest.TestCase):
         obj["sha256"] = v3.digest({k:v for k,v in obj.items() if k != "sha256"})
         self.prediction.write_text(json.dumps(obj))
         self.assertEqual(self.run_v3()["prediction_cache"], "refreshed")
+
+    def test_prediction_source_mismatch_rejected(self):
+        self.run_v3()
+        with mock.patch.object(v3, "predict", return_value={"through_draw": "000000000"}):
+            with self.assertRaisesRegex(ValueError, "Prediction source mismatch"):
+                v3.run(self.csv, self.feature, self.root / "new_prediction.json")
+
+    def test_prediction_cache_invalid_payload_refreshes(self):
+        self.run_v3()
+        obj = json.loads(self.prediction.read_text())
+        obj["prediction"]["through_draw"] = "000000000"
+        obj["sha256"] = v3.digest({k: v for k, v in obj.items() if k != "sha256"})
+        self.prediction.write_text(json.dumps(obj))
+        self.assertEqual(self.run_v3()["prediction_cache"], "refreshed")
+
+    def test_verify_detects_divergence(self):
+        self.run_v3()
+        with mock.patch.object(v3, "predict", return_value={"through_draw": "000000000"}):
+            with self.assertRaisesRegex(ValueError, "Cached and direct predictions differ"):
+                v3.run(self.csv, self.feature, self.prediction, verify=True)
+
+    def test_short_history_is_rejected(self):
+        self.csv.write_text("\\n".join(self.csv.read_text().splitlines()[:10]) + "\\n")
+        with self.assertRaisesRegex(ValueError, "At least ten prior draws"):
+            self.run_v3()
+
+    def test_cli_main_outputs_json(self):
+        args = ["cache_v3", "--csv", str(self.csv), "--feature-cache",
+                str(self.feature), "--prediction-cache", str(self.prediction), "--verify"]
+        buf = StringIO()
+        with mock.patch("sys.argv", args), redirect_stdout(buf):
+            v3.main()
+        result = json.loads(buf.getvalue())
+        self.assertTrue(result["consistency_verified"])
+        self.assertEqual(result["selection_window"], [5, 10])
 
 if __name__ == "__main__":
     unittest.main()
