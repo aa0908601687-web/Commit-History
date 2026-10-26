@@ -228,5 +228,29 @@ class BackfillCoverageAdditions(unittest.TestCase):
             self.assertFalse((root / "historical_archive.csv").exists())
 
 
+
+    def test_annual_download_without_local_cache(self):
+        with mock.patch.dict(os.environ, {}, clear=True), \
+             mock.patch.object(self.module, "request_bytes", return_value=b"downloaded") as get:
+            url, data = self.module.annual_download(2026)
+        self.assertTrue(url.endswith("/2026.zip"))
+        self.assertEqual(data, b"downloaded")
+        get.assert_called_once_with(url)
+
+    def test_main_retries_then_rejects_incomplete_archive(self):
+        record = ("115000001", [1, 2, 3, 4, 5, 6], 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(self.module, "ROOT", Path(tmp)), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[]), \
+                 mock.patch.object(self.module, "annual_download", side_effect=[OSError("temporary"), ("fixture", b"x")]) as get, \
+                 mock.patch.object(self.module, "parse_annual_zip", return_value=[record]), \
+                 mock.patch.object(self.module, "fetch", return_value=[]), \
+                 mock.patch.object(self.module.time, "sleep"):
+                with self.assertRaisesRegex(RuntimeError, "incomplete"):
+                    self.module.main()
+                self.assertEqual(get.call_count, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
