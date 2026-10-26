@@ -103,7 +103,7 @@ def compare(main_prediction, control_prediction):
     }
 
 
-def main():
+def main():  # pragma: no cover - exercised by workflow CLI smoke tests
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True)
     parser.add_argument("--backtest", action="store_true")
