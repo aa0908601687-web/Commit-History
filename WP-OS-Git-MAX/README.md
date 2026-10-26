@@ -76,3 +76,8 @@ The control is for prospective comparison only. It does not feed the production 
 The fusion model combines the complete score tables of the main 5/10 model and the independent 10/20 control at **50% each**. It emits one fused first-zone six-number set and one second-zone number while preserving both component predictions in the JSON output.
 
 The fusion needs at least 20 completed draws. Walk-forward evaluation starts with the 21st stored draw and uses only information available before each target draw. The workflow publishes the current fusion output and its historical backtest in the `wp-os-fusion-5-10-20-<run_id>` artifact. This is a research comparison and does not increase the theoretical lottery odds.
+
+
+## V3 cached control and fusion results
+
+The independent 10/20 control and equal-weight 5/10 + 10/20 fusion are now connected to the Scion-style three-layer cache V3. Their cache identities include the latest 20-draw history digest, cache schema, and model version. Every workflow performs a second cached run and compares each cached prediction with a fresh direct computation before publishing it. Any changed data, model source, malformed JSON, digest mismatch, or cutoff mismatch causes automatic recomputation.
