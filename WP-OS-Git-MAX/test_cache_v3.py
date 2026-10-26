@@ -1,0 +1,63 @@
+"""Regression checks: V3 cache must never change original selection output."""
+import csv
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from wp_os_git_max import load, predict
+from cache_v3 import run
+
+ROOT = Path(__file__).resolve().parent
+
+class V3Tests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.folder = Path(self.tmp.name)
+        self.csv = ROOT / "historical_latest_20.csv"
+
+    def test_cached_vs_direct_and_reuse(self):
+        direct = predict(load(self.csv))
+        first = run(self.csv, self.folder)
+        second = run(self.csv, self.folder)
+        self.assertEqual(first["prediction"], direct)
+        self.assertEqual(second["prediction"], direct)
+        self.assertEqual(first["cache"]["prediction"], "refreshed")
+        self.assertEqual(second["cache"], {"draws":"hit","features":"hit","prediction":"hit"})
+
+    def test_tampering_refreshes(self):
+        run(self.csv, self.folder)
+        p = self.folder / "prediction.json"
+        obj = json.loads(p.read_text(encoding="utf-8"))
+        obj["prediction"]["first"] = [1, 2, 3, 4, 5, 6]
+        p.write_text(json.dumps(obj), encoding="utf-8")
+        result = run(self.csv, self.folder)
+        self.assertEqual(result["cache"]["prediction"], "refreshed")
+        self.assertEqual(result["prediction"], predict(load(self.csv)))
+
+    def test_changed_history_refreshes_layers(self):
+        run(self.csv, self.folder)
+        rows = list(csv.DictReader(self.csv.open(encoding="utf-8")))
+        rows[-1]["second"] = "01" if rows[-1]["second"] != "01" else "02"
+        alternative = self.folder / "changed.csv"
+        with alternative.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=["draw_id","first","second"])
+            writer.writeheader()
+            writer.writerows(rows)
+        result = run(alternative, self.folder)
+        self.assertEqual(result["cache"], {"draws":"refreshed","features":"refreshed","prediction":"refreshed"})
+        self.assertEqual(result["prediction"], predict(load(alternative)))
+
+    def test_modified_prediction_model_version_refreshes(self):
+        run(self.csv, self.folder)
+        p = self.folder / "prediction.json"
+        obj = json.loads(p.read_text(encoding="utf-8"))
+        obj["model_version"] = "old"
+        p.write_text(json.dumps(obj), encoding="utf-8")
+        self.assertEqual(run(self.csv, self.folder)["cache"]["prediction"], "refreshed")
+
+if __name__ == "__main__":
+    unittest.main()
