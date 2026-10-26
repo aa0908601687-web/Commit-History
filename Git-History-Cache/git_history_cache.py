@@ -186,7 +186,11 @@ def main():
     obj, status, fetched = refresh(args.repo, args.cache, args.repository, args.ref)
     charts(obj, args.report_dir)
     # This report records one lookup; it is not a long-term hit rate.
+    total_commits = obj['summary']['commit_count']
+    reused_commits = total_commits - fetched
     metrics = dict(lookups=1, hits=int(status == 'hit'),
+                   total_commits=total_commits, reused_commits=reused_commits,
+                   commit_reuse_percent=round(100 * reused_commits / total_commits, 2) if total_commits else None,
                    misses=int(status != 'hit'), status=status,
                    scope='one Git history cache lookup in this run',
                    new_commits_read=fetched, head_sha=obj['head_sha'])
