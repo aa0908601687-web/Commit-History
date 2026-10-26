@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/wp-os-full-history.yml'
       - 'WP-OS-Git-MAX/backfill_official_history.py'
+      - 'WP-OS-Git-MAX/test_evidence_audit.py'
   workflow_dispatch:
 permissions:
   contents: write
