@@ -52,3 +52,13 @@ The model does not claim an advantage over random selection. A fair first-zone j
 - Selection and feature caches continue to use only the last 5/10 draws; weights and model version are unchanged.
 - `historical_latest_10.csv` is maintained for compatibility with existing snapshots.
 - `historical_archive.csv` retains the complete verified archive for walk-forward evaluation.
+
+## Scion-style three-layer cache V3
+
+This project uses a **Scion-style** cache layout; it is not Anthropic's internal Scion implementation.
+
+1. **Node layer:** `.cache/wp-os-v3` inside the current GitHub Actions runner.
+2. **Regional layer:** GitHub Actions cache restores validated feature and prediction objects across workflow runs.
+3. **Authoritative layer:** repository CSV files and Python source are the source of truth.
+
+The cache key includes the draw CSV and cache/model source files. Each cached object also carries its own schema/model identity and SHA-256 digest. A missing, stale, malformed, or modified object is recomputed, and the workflow compares cached output with direct computation before publishing artifacts. This architecture improves reuse and integrity; it does not improve lottery odds or imply Anthropic compatibility.
