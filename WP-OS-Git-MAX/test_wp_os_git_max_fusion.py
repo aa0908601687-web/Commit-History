@@ -1,6 +1,6 @@
 import unittest
 
-from wp_os_git_max_fusion import predict
+from wp_os_git_max_fusion import backtest, predict
 
 
 class FusionModelTest(unittest.TestCase):
@@ -36,6 +36,15 @@ class FusionModelTest(unittest.TestCase):
         self.assertIn("control_10_20", components)
         self.assertEqual(len(components["main_5_10"]["first"]), 6)
         self.assertEqual(len(components["control_10_20"]["first"]), 6)
+
+    def test_walk_forward_backtest_and_empty_rate(self):
+        result = backtest(self.draws)
+        self.assertEqual(result["tested"], 5)
+        self.assertEqual(sum(result["first_zone_hits"].values()), 5)
+        empty = backtest(self.draws[:20])
+        self.assertEqual(empty["tested"], 0)
+        self.assertEqual(empty["first_zone_3plus_rate"], 0.0)
+        self.assertEqual(empty["second_zone_hit_rate"], 0.0)
 
 
 if __name__ == "__main__":
