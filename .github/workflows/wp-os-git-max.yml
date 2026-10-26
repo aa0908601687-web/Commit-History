@@ -43,6 +43,29 @@ jobs:
         run: |
           python WP-OS-Git-MAX/cache_and_hit_validation.py --csv WP-OS-Git-MAX/historical_latest_10.csv --feature-cache /tmp/wp-os-feature-cache.json > /dev/null
           python -m json.tool /tmp/wp-os-feature-cache.json > /dev/null
+      - name: V3 result cache and cached/direct consistency checks
+        run: |
+          python WP-OS-Git-MAX/three_layer_cache_v3.py --csv WP-OS-Git-MAX/historical_latest_20.csv --feature-cache /tmp/wp-os-feature-cache.json --prediction-cache /tmp/wp-os-v3-prediction-cache.json --verify > /tmp/wp-os-v3-run-1.json
+          python WP-OS-Git-MAX/three_layer_cache_v3.py --csv WP-OS-Git-MAX/historical_latest_20.csv --feature-cache /tmp/wp-os-feature-cache.json --prediction-cache /tmp/wp-os-v3-prediction-cache.json --verify > /tmp/wp-os-v3-run-2.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          first=json.loads(Path('/tmp/wp-os-v3-run-1.json').read_text())
+          second=json.loads(Path('/tmp/wp-os-v3-run-2.json').read_text())
+          assert second["feature_cache"] == second["prediction_cache"] == "hit"
+          assert first["prediction"] == second["prediction"]
+          assert second["consistency_verified"]
+          print("V3 repeated-run hit, result integrity and parity: passed")
+          PY
+      - name: Upload V3 verified result cache
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-os-v3-result-cache-${{ github.run_id }}
+          path: |
+            /tmp/wp-os-v3-prediction-cache.json
+            /tmp/wp-os-v3-run-2.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Upload analysis cache artifact
         uses: actions/upload-artifact@v4
         with:
