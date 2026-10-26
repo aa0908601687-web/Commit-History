@@ -66,12 +66,25 @@ def predict(draws):
 def backtest(draws):
     hits = Counter()
     second_hits = 0
+    per_draw = []
     for end in range(20, len(draws)):
         prediction = predict(draws[:end])
         actual = draws[end]
         matched = len(set(prediction["first"]) & set(actual["first"]))
+        second_hit = prediction["second"] == actual["second"]
         hits[matched] += 1
-        second_hits += prediction["second"] == actual["second"]
+        second_hits += second_hit
+        per_draw.append({
+            "target_draw": actual["draw_id"],
+            "through_draw": draws[end - 1]["draw_id"],
+            "predicted_first": prediction["first"],
+            "predicted_second": prediction["second"],
+            "actual_first": list(actual["first"]),
+            "actual_second": actual["second"],
+            "first_zone_hits": matched,
+            "second_zone_hit": int(second_hit),
+            "jackpot_hit": int(matched == 6 and second_hit),
+        })
     tested = max(0, len(draws) - 20)
     rate = lambda value: value / tested if tested else 0.0
     return {
@@ -82,7 +95,8 @@ def backtest(draws):
         "first_zone_3plus_rate": rate(sum(hits[n] for n in range(3, 7))),
         "second_zone_hits": second_hits,
         "second_zone_hit_rate": rate(second_hits),
-        "method": "Walk-forward; each target uses only prior 10/20 draws",
+        "per_draw": per_draw,
+        "method": "Walk-forward; each target uses only prior 10/20 draws; one prediction per target draw",
     }
 
 
