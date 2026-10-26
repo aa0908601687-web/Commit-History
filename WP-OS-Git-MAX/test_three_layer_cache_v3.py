@@ -94,6 +94,16 @@ class ThreeLayerCacheV3Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "At least ten prior draws"):
             self.run_v3()
 
+    def test_cli_script_entrypoint(self):
+        import runpy
+        import sys
+        argv = ["three_layer_cache_v3.py", "--csv", str(self.csv), "--feature-cache",
+                str(self.feature), "--prediction-cache", str(self.prediction), "--verify"]
+        buffer = StringIO()
+        with mock.patch.object(sys, "argv", argv), redirect_stdout(buffer):
+            runpy.run_path(str(ROOT / "three_layer_cache_v3.py"), run_name="__main__")
+        self.assertTrue(json.loads(buffer.getvalue())["consistency_verified"])
+
     def test_cli_main_outputs_json(self):
         args = ["cache_v3", "--csv", str(self.csv), "--feature-cache",
                 str(self.feature), "--prediction-cache", str(self.prediction), "--verify"]
