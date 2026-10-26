@@ -77,7 +77,7 @@ def parse_annual_zip(year, payload):
                     continue
                 if line[game_i].strip() != "威力彩":
                     continue
-                period = line[period_i].strip()
+                period = line[period_i].strip()\n                if period.isdigit() and len(period) == 8:\n                    period = period.zfill(9)
                 first = sorted(int(line[i].strip()) for i in number_i)
                 # The official common schema stores the second-zone number
                 # immediately after the six first-zone numbers.
