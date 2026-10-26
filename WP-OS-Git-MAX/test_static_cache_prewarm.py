@@ -84,7 +84,10 @@ class StaticPrewarmTests(unittest.TestCase):
             with mock.patch("sys.argv", ["static_cache_prewarm.py", "--cache", str(path), "--profile", "prediction/main_5_10"]), \
                  redirect_stdout(StringIO()) as output:
                 m.main()
-            self.assertEqual(json.loads(output.getvalue())["kind"], "prediction")
+            self.assertEqual(
+                json.loads(output.getvalue()),
+                m.load_verified(path)["responses"]["prediction/main_5_10"],
+            )
 
     def test_cli_requires_csv_and_profile(self):
         with tempfile.TemporaryDirectory() as directory:
