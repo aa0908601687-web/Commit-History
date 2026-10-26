@@ -4,6 +4,10 @@ on:
     paths:
       - 'WP-OS-Git-MAX/**'
       - '.github/workflows/wp-os-git-max.yml'
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/**'
+      - '.github/workflows/wp-os-git-max.yml'
   workflow_dispatch:
   schedule:
     # Taiwan time Monday and Thursday at 22:00 (UTC+8).
@@ -51,6 +55,42 @@ jobs:
         with:
           name: wp-os-prediction-${{ github.run_id }}
           path: /tmp/wp-os-prediction.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: V3 end-to-end cache and selection parity
+        run: |
+          python WP-OS-Git-MAX/cache_v3_pipeline.py --csv WP-OS-Git-MAX/historical_latest_10.csv --cache /tmp/wp-os-cache-v3.json --prediction /tmp/wp-os-prediction-v3.json > /tmp/wp-os-v3-status.json
+          python WP-OS-Git-MAX/cache_v3_pipeline.py --csv WP-OS-Git-MAX/historical_latest_10.csv --cache /tmp/wp-os-cache-v3.json > /tmp/wp-os-v3-reuse.json
+          python - <<'PY'
+          import json
+          a=json.load(open('/tmp/wp-os-v3-status.json',encoding='utf-8'))
+          b=json.load(open('/tmp/wp-os-v3-reuse.json',encoding='utf-8'))
+          assert a['cache_status']=='refreshed' and b['cache_status']=='hit'
+          assert a['prediction']==b['prediction']
+          PY
+      - name: V3 research snapshot for next sequential draw
+        run: |
+          python - <<'PY'
+          import csv, subprocess, sys
+          p='WP-OS-Git-MAX/historical_latest_10.csv'
+          with open(p,encoding='utf-8-sig',newline='') as fp:
+              rows=list(csv.DictReader(fp))
+          target=str(int(rows[-1]['draw_id'])+1)
+          subprocess.run([sys.executable,'WP-OS-Git-MAX/cache_v3_pipeline.py',
+              '--csv',p,'--cache','/tmp/wp-os-cache-v3.json',
+              '--snapshot','/tmp/wp-os-v3-snapshot.json','--target-draw',target],check=True)
+          print('Snapshot requires external timestamp verification before pre-draw claims:',target)
+          PY
+      - name: Upload V3 verified cache and prediction
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-os-v3-${{ github.run_id }}
+          path: |
+            /tmp/wp-os-cache-v3.json
+            /tmp/wp-os-prediction-v3.json
+            /tmp/wp-os-v3-status.json
+            /tmp/wp-os-v3-reuse.json
+            /tmp/wp-os-v3-snapshot.json
           if-no-files-found: error
           retention-days: 30
       - name: Historical backtest when more than ten draws exist
