@@ -113,5 +113,5 @@ def main():  # pragma: no cover - exercised by workflow CLI smoke tests
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()
