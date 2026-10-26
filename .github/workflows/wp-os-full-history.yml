@@ -21,48 +21,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Discover official annual download interface
+      - name: Probe official annual download API
         shell: bash
         run: |
           python - <<'PY' | tee official-download-discovery.log
-          import re
-          from urllib.parse import urljoin
           from urllib.request import Request, urlopen
-          page = "https://www.taiwanlottery.com/lotto/history/result_download/"
-          headers = {"User-Agent": "Mozilla/5.0", "Accept": "text/html,application/javascript"}
-          def get(url):
-              with urlopen(Request(url, headers=headers), timeout=30) as response:
-                  return response.read().decode("utf-8", "replace")
-          html = get(page)
-          assets = {
-              urljoin(page, value)
-              for value in re.findall(r'''(?:src|href)=["']([^"']+\.js(?:\?[^"']*)?)["']''', html)
-          }
-          candidates = set()
-          patterns = (
-              r'''["']([^"']*(?:result[_-]?download|download|export)[^"']*)["']''',
-              r'''["']([^"']*TLCAPIWeB[^"']*)["']''',
-          )
-          for url in sorted(assets):
-              try:
-                  body = get(url)
-              except Exception as exc:
-                  print("ASSET_ERROR", url, repr(exc))
-                  continue
-              for pattern in patterns:
-                  for value in re.findall(pattern, body, re.I):
-                      if len(value) <= 500:
-                          candidates.add(value)
-          print("PAGE", page)
-          print("ASSETS", len(assets))
-          for value in sorted(candidates):
-              print("CANDIDATE", value)
-          print("CANDIDATE_COUNT", len(candidates))
-          if candidates:
-              summary = " | ".join(sorted(candidates))[:7000].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-              print(f"::notice title=Official annual download candidates::{summary}")
-          else:
-              print("::warning title=Official annual download discovery::No candidate endpoint found")
+          url = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/ResultDownload"
+          request = Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+          try:
+              with urlopen(request, timeout=30) as response:
+                  body = response.read().decode("utf-8", "replace")
+                  print("STATUS", response.status)
+                  print("CONTENT_TYPE", response.headers.get("content-type"))
+                  print("BODY", body[:12000])
+                  summary = body[:7000].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+                  print(f"::notice title=Official ResultDownload response::{summary}")
+          except Exception as exc:
+              print(f"::error title=Official ResultDownload probe failed::{type(exc).__name__}: {exc}")
+              raise
           PY
       - name: Retrieve and verify all official SuperLotto638 months
         shell: bash
