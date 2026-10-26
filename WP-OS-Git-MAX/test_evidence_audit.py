@@ -14,6 +14,7 @@ class EvidenceAuditTests(unittest.TestCase):
         self.assertGreaterEqual(meta["count"],25)
         d=load(p)
         out=walkforward(d,100)
+        self.assertEqual(walkforward(d)["tested"],len(d)-10)
         self.assertEqual(out["tested"],len(d)-10)
         self.assertEqual(sum(out["first_zone_hit_distribution"].values()),out["tested"])
         self.assertEqual(len(out["observations"]),out["tested"])
