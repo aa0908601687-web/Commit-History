@@ -167,7 +167,7 @@ class MoreUpdaterBranches(unittest.TestCase):
             header="draw_id,first,second\n"
             data=header+"".join(f"{a},01 02 03 04 05 06,01\n" for a,_,_ in records)
             p.write_text(data);h.write_text(data)
-            with patch.object(updater,"DATA",p),patch.object(updater,"HISTORY",h),patch.object(updater,"fetch",return_value=records),patch.object(sys,"argv",["updater","--month","2026-10"]),contextlib.redirect_stdout(io.StringIO()) as output:
+            with patch.object(updater,"DATA",p),patch.object(updater,"HISTORY",h),patch.object(updater,"LATEST20",Path(d)/"latest20.csv"),patch.object(updater,"fetch",return_value=records),patch.object(sys,"argv",["updater","--month","2026-10"]),contextlib.redirect_stdout(io.StringIO()) as output:
                 updater.main()
             self.assertIn("No changes",output.getvalue())
             self.assertEqual(p.read_text(),data)
@@ -176,7 +176,7 @@ class MoreUpdaterBranches(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"latest.csv";h=Path(d)/"archive.csv"
             p.write_text("draw_id,first,second\n");h.write_text("draw_id,first,second\n")
-            with patch.object(updater,"DATA",p),patch.object(updater,"HISTORY",h),patch.object(updater,"fetch",return_value=[("115000001",[1,2,3,4,5,6],1)]),patch.object(sys,"argv",["updater","--month","2026-10"]):
+            with patch.object(updater,"DATA",p),patch.object(updater,"HISTORY",h),patch.object(updater,"LATEST20",Path(d)/"latest20.csv"),patch.object(updater,"fetch",return_value=[("115000001",[1,2,3,4,5,6],1)]),patch.object(sys,"argv",["updater","--month","2026-10"]):
                 with self.assertRaisesRegex(ValueError,"Insufficient"):
                     updater.main()
 

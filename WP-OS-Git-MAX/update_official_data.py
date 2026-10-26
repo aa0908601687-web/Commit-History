@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "historical_latest_10.csv"
+LATEST20 = ROOT / "historical_latest_20.csv"
 HISTORY = ROOT / "historical_archive.csv"
 URL = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/SuperLotto638Result"
 
@@ -79,7 +80,9 @@ def main():
         by_period[row[0]] = row
     merged = sorted(by_period.values(), key=lambda row: int(row[0]))
     # Preserve all verified records for walk-forward evaluation.
-    # Keep the most recent 10 draws for the 5/10-feature model.
+    # Retain 20 draws for storage; the model still uses only its last 5/10.
+    last20 = merged[-20:]
+    # Keep the legacy ten-draw file for existing snapshots and clients.
     last10 = merged[-10:]
     if len(last10) < 10 or int(last10[-1][0]) < int(old[-1][0] if old else "0"):
         raise ValueError("Insufficient or stale API data; refusing update")
@@ -89,6 +92,13 @@ def main():
     for draw_id, first, second in merged:
         archive_writer.writerow([draw_id, " ".join(f"{n:02d}" for n in first), f"{second:02d}"])
     HISTORY.write_text(archive_buffer.getvalue(), encoding="utf-8")
+    latest_buffer = io.StringIO(newline="")
+    latest_writer = csv.writer(latest_buffer, lineterminator="\n")
+    latest_writer.writerow(["draw_id", "first", "second"])
+    for draw_id, first, second in last20:
+        latest_writer.writerow([draw_id, " ".join(f"{n:02d}" for n in first), f"{second:02d}"])
+    LATEST20.write_text(latest_buffer.getvalue(), encoding="utf-8")
+    print(f"Stored {len(last20)} draws in {LATEST20.name}; selection windows remain 5/10")
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer, lineterminator="\n")
     writer.writerow(["draw_id", "first", "second"])

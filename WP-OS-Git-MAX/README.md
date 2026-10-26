@@ -46,3 +46,9 @@ The model does not claim an advantage over random selection. A fair first-zone j
 - Secondary dated report: https://www.cna.com.tw/news/ahel/202610220397.aspx .
 - The repository's `historical_latest_10.csv` and `historical_archive.csv` both retain the same latest draw. No upcoming draw is added before its result is published.
 - **Verification scope:** only draw 115000085 was externally cross-checked in this update; the prior nine draws were not independently rechecked. Existing tests and Actions were not executed by this documentation-only update; prior README claims about workflow runs are historical, not fresh run attestations. Automated bot push success remains unproven unless a bot-authored data commit is observed.
+
+## Storage policy — 2026-10-26
+- `historical_latest_20.csv` retains the most recent 20 available verified draws and is the workflow input.
+- Selection and feature caches continue to use only the last 5/10 draws; weights and model version are unchanged.
+- `historical_latest_10.csv` is maintained for compatibility with existing snapshots.
+- `historical_archive.csv` retains the complete verified archive for walk-forward evaluation.

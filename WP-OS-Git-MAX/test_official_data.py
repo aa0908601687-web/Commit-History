@@ -20,14 +20,16 @@ class OfficialDataTests(unittest.TestCase):
             data = Path(directory) / "latest.csv"
             history = Path(directory) / "archive.csv"
             header = "draw_id,first,second\n"
-            history.write_text(header + "".join(f"{115000001+i},01 02 03 04 05 06,01\n" for i in range(11)))
-            data.write_text(header + "".join(f"{115000001+i},01 02 03 04 05 06,01\n" for i in range(1,11)))
-            with patch.object(module, "DATA", data), patch.object(module, "HISTORY", history), patch.object(module, "fetch", return_value=[("115000012", [1,2,3,4,5,6], 1)]), patch("sys.argv", ["updater"]):
+            history.write_text(header + "".join(f"{115000001+i},01 02 03 04 05 06,01\n" for i in range(25)))
+            data.write_text(header + "".join(f"{115000001+i},01 02 03 04 05 06,01\n" for i in range(15,25)))
+            with patch.object(module, "DATA", data), patch.object(module, "HISTORY", history), patch.object(module, "LATEST20", Path(directory) / "latest20.csv"), patch.object(module, "fetch", return_value=[("115000026", [1,2,3,4,5,6], 1)]), patch("sys.argv", ["updater"]):
                 module.main()
-                self.assertEqual(len(module.existing(history)), 12)
+                self.assertEqual(len(module.existing(history)), 26)
                 self.assertEqual(len(module.existing(data)), 10)
+                self.assertEqual(len(module.existing(module.LATEST20)), 20)
+                self.assertEqual(module.existing(module.LATEST20), module.existing(history)[-20:])
                 before = (data.read_bytes(), history.read_bytes())
-                with patch.object(module, "fetch", return_value=[("115000012", [1,2,3,4,5,7], 1)]):
+                with patch.object(module, "fetch", return_value=[("115000026", [1,2,3,4,5,7], 1)]):
                     with self.assertRaises(ValueError):
                         module.main()
                 self.assertEqual(before, (data.read_bytes(), history.read_bytes()))
