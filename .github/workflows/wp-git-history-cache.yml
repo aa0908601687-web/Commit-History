@@ -1,6 +1,7 @@
 name: WP-OS Git history cache
 on:
   push:
+    branches-ignore: [wp-cache-metrics]
   pull_request:
   workflow_dispatch:
   schedule:
@@ -19,6 +20,8 @@ jobs:
           python-version: '3.11'
       - name: Test cache behavior
         run: python -m unittest discover -s Git-History-Cache -p 'test_git_history_cache.py' -v
+      - name: Test cumulative metrics
+        run: python -m unittest discover -s Git-History-Cache -p 'test_cache_totals.py' -v
       - name: Restore prior history cache
         uses: actions/cache@v4
         with:
@@ -35,7 +38,34 @@ jobs:
       - name: Upload history cache and charts
         uses: actions/upload-artifact@v4
         with:
-          name: wp-git-history-${{ github.run_id }}
+          name: wp-git-history-${{ github.run_id }}-${{ github.run_attempt }}
           path: git-history-report/
+          if-no-files-found: error
+          retention-days: 30
+  cumulative-metrics:
+    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs: cache-and-report
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test cumulative metrics
+        run: python -m unittest discover -s Git-History-Cache -p 'test_cache_totals.py' -v
+      - uses: actions/download-artifact@v4
+        with:
+          name: wp-git-history-${{ github.run_id }}-${{ github.run_attempt }}
+          path: git-history-report
+      - name: Record and summarize lookup
+        env:
+          GH_METRICS_TOKEN: ${{ github.token }}
+        run: python Git-History-Cache/cache_totals.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wp-cache-totals-${{ github.run_id }}-${{ github.run_attempt }}
+          path: git-history-report/cache_totals.json
           if-no-files-found: error
           retention-days: 30
