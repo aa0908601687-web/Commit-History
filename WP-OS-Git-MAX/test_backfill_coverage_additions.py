@@ -147,5 +147,61 @@ class BackfillCoverageAdditions(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Annual/live conflict"):
                     self.module.main()
 
+
+    def test_main_successful_atomic_backfill_and_manifest(self):
+        import contextlib
+        import json
+        from io import StringIO
+        first = [(f"{i:09d}", [1, 2, 3, 4, 5, 6], 1) for i in range(1, 1501)]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(self.module, "ROOT", root), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[]), \
+                 mock.patch.object(self.module, "annual_download", return_value=("fixture://2026", b"fake")), \
+                 mock.patch.object(self.module, "parse_annual_zip", return_value=first), \
+                 mock.patch.object(self.module, "fetch", return_value=[]), \
+                 mock.patch.object(self.module.time, "sleep"), \
+                 contextlib.redirect_stdout(StringIO()) as output:
+                self.module.main()
+            archive = root / "historical_archive.csv"
+            self.assertTrue(archive.exists())
+            self.assertEqual((root / "historical_latest_20.csv").read_bytes(), archive.read_bytes())
+            self.assertEqual(len((root / "historical_latest_10.csv").read_text().splitlines()), 11)
+            manifest = json.loads((root / "history_backfill_manifest.json").read_text())
+            self.assertEqual(manifest["draw_count"], 1500)
+            self.assertEqual(json.loads(output.getvalue())["draw_count"], 1500)
+
+    def test_main_existing_history_conflict_keeps_files_unchanged(self):
+        first = [(f"{i:09d}", [1, 2, 3, 4, 5, 6], 1) for i in range(1, 1501)]
+        old = ("000000001", [1, 2, 3, 4, 5, 7], 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "historical_archive.csv").write_text("unchanged")
+            with mock.patch.object(self.module, "ROOT", root), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[old]), \
+                 mock.patch.object(self.module, "annual_download", return_value=("fixture://2026", b"fake")), \
+                 mock.patch.object(self.module, "parse_annual_zip", return_value=first), \
+                 mock.patch.object(self.module, "fetch", return_value=[]), \
+                 mock.patch.object(self.module.time, "sleep"):
+                with self.assertRaisesRegex(ValueError, "not independently confirmed"):
+                    self.module.main()
+            self.assertEqual((root / "historical_archive.csv").read_text(), "unchanged")
+
+    def test_main_annual_conflict_on_duplicate_years(self):
+        first = ("000000001", [1, 2, 3, 4, 5, 6], 1)
+        other = ("000000001", [1, 2, 3, 4, 5, 7], 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(self.module, "ROOT", Path(tmp)), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2025), \
+                 mock.patch.object(self.module, "existing", return_value=[]), \
+                 mock.patch.object(self.module, "annual_download", return_value=("fixture", b"fake")), \
+                 mock.patch.object(self.module, "parse_annual_zip", side_effect=[[first], [other]]), \
+                 mock.patch.object(self.module.time, "sleep"):
+                with self.assertRaisesRegex(ValueError, "Conflicting official draw"):
+                    self.module.main()
+
+
 if __name__ == "__main__":
     unittest.main()
