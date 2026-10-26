@@ -21,24 +21,23 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Probe official annual download API
+      - name: Inspect official annual download parameters
         shell: bash
         run: |
           python - <<'PY' | tee official-download-discovery.log
           from urllib.request import Request, urlopen
-          url = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/ResultDownload"
-          request = Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
-          try:
-              with urlopen(request, timeout=30) as response:
-                  body = response.read().decode("utf-8", "replace")
-                  print("STATUS", response.status)
-                  print("CONTENT_TYPE", response.headers.get("content-type"))
-                  print("BODY", body[:12000])
-                  summary = body[:7000].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-                  print(f"::notice title=Official ResultDownload response::{summary}")
-          except Exception as exc:
-              print(f"::error title=Official ResultDownload probe failed::{type(exc).__name__}: {exc}")
-              raise
+          url = "https://www.taiwanlottery.com/_nuxt/result_download.1_0_8_7.js"
+          request = Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/javascript"})
+          with urlopen(request, timeout=30) as response:
+              body = response.read().decode("utf-8", "replace")
+          needle = "/Lottery/ResultDownload"
+          pos = body.find(needle)
+          if pos < 0:
+              raise RuntimeError("ResultDownload endpoint not found in official route component")
+          context = body[max(0, pos - 5000):pos + 5000]
+          print(context)
+          summary = context[:7000].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::notice title=Official ResultDownload parameter context::{summary}")
           PY
       - name: Retrieve and verify all official SuperLotto638 months
         shell: bash
