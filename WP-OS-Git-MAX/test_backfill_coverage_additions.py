@@ -81,30 +81,30 @@ class BackfillCoverageAdditions(unittest.TestCase):
 
     def test_parse_skips_invalid_headers_and_rows(self):
         header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區"
-        data = ("ignore me\\n" + header + "\\n"
-                "威力彩,097000001,01,02\\n"
-                "大樂透,097000001,01,02,03,04,05,06,02\\n"
-                "威力彩,097000001,01,02,03,04,05,06,02\\n")
+        data = ("ignore me\n" + header + "\n"
+                "威力彩,097000001,01,02\n"
+                "大樂透,097000001,01,02,03,04,05,06,02\n"
+                "威力彩,097000001,01,02,03,04,05,06,02\n")
         self.assertEqual(len(self.module.parse_annual_zip(2008, self.zipped(data))), 1)
 
     def test_invalid_draw_id_rejected(self):
-        header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\\n"
+        header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\n"
         with self.assertRaisesRegex(ValueError, "Invalid official period"):
-            self.module.parse_annual_zip(2008, self.zipped(header + "威力彩,BAD,1,2,3,4,5,6,2\\n"))
+            self.module.parse_annual_zip(2008, self.zipped(header + "威力彩,BAD,1,2,3,4,5,6,2\n"))
 
     def test_conflicting_annual_duplicate_rejected(self):
-        header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\\n"
-        data = header + ("威力彩,097000001,1,2,3,4,5,6,2\\n"
-                         "威力彩,097000001,1,2,3,4,5,7,2\\n")
+        header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\n"
+        data = header + ("威力彩,097000001,1,2,3,4,5,6,2\n"
+                         "威力彩,097000001,1,2,3,4,5,7,2\n")
         with self.assertRaisesRegex(ValueError, "Conflicting official annual"):
             self.module.parse_annual_zip(2008, self.zipped(data))
 
     def test_main_rejects_annual_retrieval_failures_without_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(self.module, "ROOT", Path(tmp)), \\
-                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \\
-                 mock.patch.object(self.module, "existing", return_value=[]), \\
-                 mock.patch.object(self.module, "annual_download", side_effect=OSError("offline")), \\
+            with mock.patch.object(self.module, "ROOT", Path(tmp)), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[]), \
+                 mock.patch.object(self.module, "annual_download", side_effect=OSError("offline")), \
                  mock.patch.object(self.module.time, "sleep") as sleeper:
                 with self.assertRaisesRegex(RuntimeError, "inaccessible"):
                     self.module.main()
@@ -114,21 +114,21 @@ class BackfillCoverageAdditions(unittest.TestCase):
     def test_main_rejects_live_api_and_insufficient_history(self):
         one = ("115000001", [1, 2, 3, 4, 5, 6], 1)
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(self.module, "ROOT", Path(tmp)), \\
-                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \\
-                 mock.patch.object(self.module, "existing", return_value=[]), \\
-                 mock.patch.object(self.module, "annual_download", return_value=("official", b"data")), \\
-                 mock.patch.object(self.module, "parse_annual_zip", return_value=[one]), \\
-                 mock.patch.object(self.module.time, "sleep"), \\
+            with mock.patch.object(self.module, "ROOT", Path(tmp)), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[]), \
+                 mock.patch.object(self.module, "annual_download", return_value=("official", b"data")), \
+                 mock.patch.object(self.module, "parse_annual_zip", return_value=[one]), \
+                 mock.patch.object(self.module.time, "sleep"), \
                  mock.patch.object(self.module, "fetch", side_effect=OSError("offline")):
                 with self.assertRaisesRegex(RuntimeError, "current month"):
                     self.module.main()
-            with mock.patch.object(self.module, "ROOT", Path(tmp)), \\
-                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \\
-                 mock.patch.object(self.module, "existing", return_value=[]), \\
-                 mock.patch.object(self.module, "annual_download", return_value=("official", b"data")), \\
-                 mock.patch.object(self.module, "parse_annual_zip", return_value=[one]), \\
-                 mock.patch.object(self.module.time, "sleep"), \\
+            with mock.patch.object(self.module, "ROOT", Path(tmp)), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[]), \
+                 mock.patch.object(self.module, "annual_download", return_value=("official", b"data")), \
+                 mock.patch.object(self.module, "parse_annual_zip", return_value=[one]), \
+                 mock.patch.object(self.module.time, "sleep"), \
                  mock.patch.object(self.module, "fetch", return_value=[]):
                 with self.assertRaisesRegex(RuntimeError, "incomplete"):
                     self.module.main()
@@ -138,12 +138,12 @@ class BackfillCoverageAdditions(unittest.TestCase):
         one = ("115000001", [1, 2, 3, 4, 5, 6], 1)
         two = ("115000001", [1, 2, 3, 4, 5, 7], 1)
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(self.module, "ROOT", Path(tmp)), \\
-                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \\
-                 mock.patch.object(self.module, "existing", return_value=[]), \\
-                 mock.patch.object(self.module, "annual_download", return_value=("official", b"data")), \\
-                 mock.patch.object(self.module, "parse_annual_zip", return_value=[one]), \\
-                 mock.patch.object(self.module.time, "sleep"), \\
+            with mock.patch.object(self.module, "ROOT", Path(tmp)), \
+                 mock.patch.object(self.module, "FIRST_YEAR", 2026), \
+                 mock.patch.object(self.module, "existing", return_value=[]), \
+                 mock.patch.object(self.module, "annual_download", return_value=("official", b"data")), \
+                 mock.patch.object(self.module, "parse_annual_zip", return_value=[one]), \
+                 mock.patch.object(self.module.time, "sleep"), \
                  mock.patch.object(self.module, "fetch", return_value=[two]):
                 with self.assertRaisesRegex(ValueError, "Annual/live conflict"):
                     self.module.main()
