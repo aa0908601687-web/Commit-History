@@ -1,0 +1,46 @@
+name: WP-OS independent evidence audit
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/**'
+      - '.github/workflows/wp-evidence-audit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'WP-OS-Git-MAX/**'
+      - '.github/workflows/wp-evidence-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate 3 independent evidence capabilities
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_evidence_audit.py' -v
+      - name: Audit history and run up to 100 out-of-sample draws
+        run: |
+          python WP-OS-Git-MAX/evidence_audit.py --csv WP-OS-Git-MAX/historical_archive.csv --backtest-count 100 --output evidence-report.json > /dev/null
+          python - <<'PY'
+          import json
+          r=json.load(open('evidence-report.json',encoding='utf-8'))
+          assert r['history']['count']>=11
+          assert r['walkforward']['tested']==min(100,r['validation']['available_backtest_targets'])
+          print('Stored draws:',r['history']['count'])
+          print('Backtest targets:',r['walkforward']['tested'])
+          print('100-target benchmark available:',r['validation']['full_requested_backtest'])
+          print('Pre-draw forecast ledger:',r['prospective_ledger']['status'])
+          PY
+      - name: Upload evidence report
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-evidence-report-${{ github.run_id }}
+          path: evidence-report.json
+          retention-days: 30
+          if-no-files-found: error
