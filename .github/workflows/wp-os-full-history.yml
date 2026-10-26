@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - '.github/workflows/wp-os-full-history.yml'
+      - 'WP-OS-Git-MAX/backfill_official_history.py'
   workflow_dispatch:
 permissions:
   contents: write
