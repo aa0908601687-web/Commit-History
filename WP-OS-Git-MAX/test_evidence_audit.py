@@ -47,4 +47,57 @@ class EvidenceAuditTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"ordering"):verify_forecast_ledger(str(p),d)
             write([{**good,"prediction_sha256":""}])
             with self.assertRaisesRegex(ValueError,"Missing"):verify_forecast_ledger(str(p),d)
+
+    def test_history_errors_and_empty_ledger(self):
+        from evidence_audit import audit_history
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/"history.csv"
+            p.write_text("draw_id,first,second\n",encoding="utf-8")
+            with self.assertRaisesRegex(ValueError,"Empty"): audit_history(p)
+            d=load(ROOT/"historical_archive.csv")
+            r1=d[0]
+            r2=d[1]
+            p.write_text("draw_id,first,second\n"
+                +f"{r2['draw_id']},{' '.join(map(str,r2['first']))},{r2['second']}\n"
+                +f"{r1['draw_id']},{' '.join(map(str,r1['first']))},{r1['second']}\n",encoding="utf-8")
+            with self.assertRaises(ValueError): audit_history(p)
+            ledger=Path(td)/"forecast.csv"
+            ledger.write_text("target_draw,through_draw,first,second,prediction_sha256\n",encoding="utf-8")
+            self.assertEqual(verify_forecast_ledger(ledger,d)["matched"],0)
+            ledger.write_text("other,bad\nfoo,bar\n",encoding="utf-8")
+            with self.assertRaisesRegex(ValueError,"missing"): verify_forecast_ledger(ledger,d)
+
+    def test_cli_and_ledger_unmatched(self):
+        import contextlib
+        import io
+        import json
+        import sys
+        from unittest.mock import patch
+        import evidence_audit
+        d=load(ROOT/"historical_archive.csv")
+        with tempfile.TemporaryDirectory() as td:
+            ledger=Path(td)/"ledger.csv"
+            with ledger.open("w",newline="",encoding="utf-8") as fp:
+                w=csv.DictWriter(fp,fieldnames=["target_draw","through_draw","first","second","prediction_sha256"])
+                w.writeheader()
+                w.writerow({"target_draw":"999999999","through_draw":d[-1]["draw_id"],"first":"01 02 03 04 05 06","second":"1","prediction_sha256":"abc"})
+            self.assertEqual(verify_forecast_ledger(ledger,d)["matched"],0)
+            out=Path(td)/"report.json"
+            with patch.object(sys,"argv",["evidence_audit.py","--csv",str(ROOT/"historical_archive.csv"),"--backtest-count","100","--ledger",str(ledger),"--output",str(out)]):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    evidence_audit.main()
+            report=json.loads(out.read_text(encoding="utf-8"))
+            self.assertEqual(report["walkforward"]["tested"],15)
+            self.assertFalse(report["validation"]["full_requested_backtest"])
+            with patch.object(sys,"argv",["evidence_audit.py","--csv",str(ROOT/"historical_archive.csv"),"--backtest-count","5"]):
+                with contextlib.redirect_stdout(io.StringIO()) as capture:
+                    evidence_audit.main()
+            self.assertEqual(json.loads(capture.getvalue())["walkforward"]["tested"],5)
+            short=Path(td)/"short.csv"
+            short.write_text((ROOT/"historical_archive.csv").read_text(encoding="utf-8").splitlines()[0]+"\n"
+                +"\n".join((ROOT/"historical_archive.csv").read_text(encoding="utf-8").splitlines()[1:6])+"\n",encoding="utf-8")
+            with patch.object(sys,"argv",["evidence_audit.py","--csv",str(short)]):
+                with contextlib.redirect_stdout(io.StringIO()) as capture:
+                    evidence_audit.main()
+            self.assertEqual(json.loads(capture.getvalue())["walkforward"]["status"],"insufficient_history")
 if __name__=="__main__":unittest.main()
