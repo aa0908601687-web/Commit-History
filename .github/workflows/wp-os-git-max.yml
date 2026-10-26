@@ -61,7 +61,23 @@ jobs:
           with open(p, encoding='utf-8-sig', newline='') as f:
               n = sum(1 for _ in csv.DictReader(f))
           if n > 10:
-              subprocess.run([sys.executable, 'WP-OS-Git-MAX/wp_os_git_max.py', '--csv', p, '--backtest'], check=True)
+              import tempfile
+              # Fix evaluation to the most recent 15 target draws, with 10 prior draws.
+              with open(p, encoding='utf-8-sig', newline='') as fp:
+                  reader = csv.DictReader(fp)
+                  history = list(reader)[-25:]
+                  fieldnames = reader.fieldnames
+              with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', newline='', encoding='utf-8', delete=False) as tmp:
+                  writer = csv.DictWriter(tmp, fieldnames=fieldnames)
+                  writer.writeheader()
+                  writer.writerows(history)
+                  recent = tmp.name
+              try:
+                  print(f'Backtest targets: {max(0, len(history)-10)} (maximum 15); features use previous 5/10 draws')
+                  subprocess.run([sys.executable, 'WP-OS-Git-MAX/wp_os_git_max.py', '--csv', recent, '--backtest'], check=True)
+              finally:
+                  import os
+                  os.unlink(recent)
           else:
               print(f'Skipped: only {n} historical draws; 11+ required for backtest')
           PY
