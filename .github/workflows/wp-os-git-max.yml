@@ -52,6 +52,7 @@ jobs:
       - name: Generate independent 10/20-draw control comparison
         run: |
           python WP-OS-Git-MAX/wp_os_git_max_10_20.py --csv WP-OS-Git-MAX/historical_latest_20.csv > /tmp/wp-os-control-10-20.json
+          python WP-OS-Git-MAX/wp_os_git_max_10_20.py --csv WP-OS-Git-MAX/historical_archive.csv --backtest > /tmp/wp-os-control-10-20-backtest.json
           python - <<'PY'
           import json
           from pathlib import Path
@@ -144,6 +145,7 @@ jobs:
           name: wp-os-control-10-20-${{ github.run_id }}
           path: |
             /tmp/wp-os-control-10-20.json
+            /tmp/wp-os-control-10-20-backtest.json
             /tmp/wp-os-main-vs-control.json
           if-no-files-found: error
           retention-days: 30
