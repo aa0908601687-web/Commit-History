@@ -135,14 +135,14 @@ def main():
             except Exception as exc:
                 err = exc
                 if attempt != 3:
-                    time.sleep(2 ** attempt)
+                    time.sleep((5, 10, 20)[attempt])
         else:
             raise RuntimeError(f"Official annual archive {year} inaccessible: {err}. No data changed.")
         for row in year_rows:
             if row[0] in official and official[row[0]] != row:
                 raise ValueError(f"Conflicting official draw {row[0]}")
             official[row[0]] = row
-        sources.append({"year": year, "path": path, "draws": len(year_rows)})
+        sources.append({"year": year, "path": path, "draws": len(year_rows)})\n        time.sleep(2)
 
     # Annual files update monthly. Add the live current-month endpoint so the
     # archive also contains draws after the latest annual-file refresh.
