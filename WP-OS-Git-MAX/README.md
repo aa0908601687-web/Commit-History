@@ -81,3 +81,8 @@ The fusion needs at least 20 completed draws. Walk-forward evaluation starts wit
 ## V3 cached control and fusion results
 
 The independent 10/20 control and equal-weight 5/10 + 10/20 fusion are now connected to the Scion-style three-layer cache V3. Their cache identities include the latest 20-draw history digest, cache schema, and model version. Every workflow performs a second cached run and compares each cached prediction with a fresh direct computation before publishing it. Any changed data, model source, malformed JSON, digest mismatch, or cutoff mismatch causes automatic recomputation.
+
+
+## V3 full-history backtest cache
+
+The complete `historical_archive.csv` now has a versioned full-history backtest cache covering the main 5/10, control 10/20, and equal-weight fusion models. Its identity includes the complete ordered archive SHA-256, first and latest draw IDs, draw count, schema version, and all three model versions. A changed archive, changed model version, malformed cache, missing model result, or digest mismatch forces a complete walk-forward recomputation. The second workflow pass must report a cache hit and identical backtest payload before publication.
