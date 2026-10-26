@@ -4,6 +4,10 @@ on:
     paths:
       - 'WP-OS-Git-MAX/**'
       - '.github/workflows/wp-os-git-max.yml'
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/**'
+      - '.github/workflows/wp-os-git-max.yml'
   workflow_dispatch:
   schedule:
     # Taiwan time Monday and Thursday at 22:00 (UTC+8).
