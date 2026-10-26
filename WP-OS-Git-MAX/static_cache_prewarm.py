@@ -103,5 +103,5 @@ def main():
     print(json.dumps(get_cache_only(cache, args.profile), ensure_ascii=False, indent=2))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - exercised by workflow CLI smoke test
     main()
