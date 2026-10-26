@@ -15,11 +15,13 @@ class EvidenceAuditTests(unittest.TestCase):
         d=load(p)
         out=walkforward(d,100)
         self.assertEqual(walkforward(d)["tested"],len(d)-10)
-        self.assertEqual(out["tested"],len(d)-10)
+        expected=min(100,len(d)-10)
+        self.assertEqual(out["tested"],expected)
         self.assertEqual(sum(out["first_zone_hit_distribution"].values()),out["tested"])
         self.assertEqual(len(out["observations"]),out["tested"])
-        self.assertEqual(out["observations"][0]["through_draw"],d[9]["draw_id"])
-        self.assertEqual(out["observations"][0]["target_draw"],d[10]["draw_id"])
+        start=len(d)-expected
+        self.assertEqual(out["observations"][0]["through_draw"],d[start-1]["draw_id"])
+        self.assertEqual(out["observations"][0]["target_draw"],d[start]["draw_id"])
 
     def test_invalid_lengths(self):
         d=load(ROOT/"historical_archive.csv")
@@ -88,8 +90,8 @@ class EvidenceAuditTests(unittest.TestCase):
                 with contextlib.redirect_stdout(io.StringIO()):
                     evidence_audit.main()
             report=json.loads(out.read_text(encoding="utf-8"))
-            self.assertEqual(report["walkforward"]["tested"],15)
-            self.assertFalse(report["validation"]["full_requested_backtest"])
+            self.assertEqual(report["walkforward"]["tested"],min(100,len(d)-10))
+            self.assertEqual(report["validation"]["full_requested_backtest"],len(d)-10>=100)
             with patch.object(sys,"argv",["evidence_audit.py","--csv",str(ROOT/"historical_archive.csv"),"--backtest-count","5"]):
                 with contextlib.redirect_stdout(io.StringIO()) as capture:
                     evidence_audit.main()
@@ -134,5 +136,5 @@ class EvidenceAuditTests(unittest.TestCase):
         with patch.object(sys,"argv",["evidence_audit.py","--csv",str(ROOT/"historical_archive.csv"),"--backtest-count","100"]):
             with contextlib.redirect_stdout(io.StringIO()) as captured:
                 runpy.run_path(str(ROOT/"evidence_audit.py"),run_name="__main__")
-        self.assertIn('"tested": 15',captured.getvalue())
+        self.assertIn(f'"tested": {min(100,len(d)-10)}',captured.getvalue())
 if __name__=="__main__":unittest.main()
