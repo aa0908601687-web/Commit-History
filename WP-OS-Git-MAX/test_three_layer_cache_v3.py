@@ -90,7 +90,7 @@ class ThreeLayerCacheV3Tests(unittest.TestCase):
                 v3.run(self.csv, self.feature, self.prediction, verify=True)
 
     def test_short_history_is_rejected(self):
-        self.csv.write_text("\\n".join(self.csv.read_text().splitlines()[:10]) + "\\n")
+        self.csv.write_text(chr(10).join(self.csv.read_text().splitlines()[:10]) + chr(10))
         with self.assertRaisesRegex(ValueError, "At least ten prior draws"):
             self.run_v3()
 
