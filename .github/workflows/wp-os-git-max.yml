@@ -53,6 +53,28 @@ jobs:
           path: /tmp/wp-os-prediction.json
           if-no-files-found: error
           retention-days: 30
+      - name: V3 end-to-end cache and selection parity
+        run: |
+          python WP-OS-Git-MAX/cache_v3_pipeline.py --csv WP-OS-Git-MAX/historical_latest_10.csv --cache /tmp/wp-os-cache-v3.json --prediction /tmp/wp-os-prediction-v3.json > /tmp/wp-os-v3-status.json
+          python WP-OS-Git-MAX/cache_v3_pipeline.py --csv WP-OS-Git-MAX/historical_latest_10.csv --cache /tmp/wp-os-cache-v3.json > /tmp/wp-os-v3-reuse.json
+          python - <<'PY'
+          import json
+          a=json.load(open('/tmp/wp-os-v3-status.json',encoding='utf-8'))
+          b=json.load(open('/tmp/wp-os-v3-reuse.json',encoding='utf-8'))
+          assert a['cache_status']=='refreshed' and b['cache_status']=='hit'
+          assert a['prediction']==b['prediction']
+          PY
+      - name: Upload V3 verified cache and prediction
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-os-v3-${{ github.run_id }}
+          path: |
+            /tmp/wp-os-cache-v3.json
+            /tmp/wp-os-prediction-v3.json
+            /tmp/wp-os-v3-status.json
+            /tmp/wp-os-v3-reuse.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Historical backtest when more than ten draws exist
         run: |
           python - <<'PY'
