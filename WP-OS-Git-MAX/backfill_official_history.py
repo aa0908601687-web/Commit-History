@@ -142,7 +142,8 @@ def main():
             if row[0] in official and official[row[0]] != row:
                 raise ValueError(f"Conflicting official draw {row[0]}")
             official[row[0]] = row
-        sources.append({"year": year, "path": path, "draws": len(year_rows)})\n        time.sleep(2)
+        sources.append({"year": year, "path": path, "draws": len(year_rows)})
+        time.sleep(2)
 
     # Annual files update monthly. Add the live current-month endpoint so the
     # archive also contains draws after the latest annual-file refresh.
