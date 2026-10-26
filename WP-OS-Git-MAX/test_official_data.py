@@ -26,8 +26,8 @@ class OfficialDataTests(unittest.TestCase):
                 module.main()
                 self.assertEqual(len(module.existing(history)), 26)
                 self.assertEqual(len(module.existing(data)), 10)
-                self.assertEqual(len(module.existing(module.LATEST20)), 20)
-                self.assertEqual(module.existing(module.LATEST20), module.existing(history)[-20:])
+                self.assertEqual(len(module.existing(module.LATEST20)), 26)
+                self.assertEqual(module.existing(module.LATEST20), module.existing(history))
                 before = (data.read_bytes(), history.read_bytes())
                 with patch.object(module, "fetch", return_value=[("115000026", [1,2,3,4,5,7], 1)]):
                     with self.assertRaises(ValueError):
