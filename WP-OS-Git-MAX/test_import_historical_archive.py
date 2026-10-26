@@ -1,5 +1,10 @@
 """Historical importer tests: merge, dry-run, conflict, validation."""
 import csv
+import json
+import io
+import contextlib
+import runpy
+from unittest.mock import patch
 import sys
 import tempfile
 import unittest
@@ -45,6 +50,37 @@ class ImportHistoryTests(unittest.TestCase):
         self.source.write_text("draw_id,first,second\n115000002,01 02 03 04 05 39,01\n")
         with self.assertRaisesRegex(ValueError, "Invalid draw"):
             prepare(self.archive, self.source)
+
+    def test_new_archive_and_cli_dry_run(self):
+        missing = self.folder / "new.csv"
+        data, report = prepare(missing, self.source)
+        self.assertEqual(report["total"], 1)
+        self.assertEqual(report["previous_count"], 0)
+        self.assertFalse(missing.exists())
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["import_historical_archive.py", "--source", str(self.source),
+                                         "--archive", str(self.archive)]):
+            with contextlib.redirect_stdout(output):
+                main()
+        self.assertFalse(json.loads(output.getvalue())["wrote"])
+        self.assertEqual(len(self.archive.read_text().splitlines()), 2)
+
+    def test_cli_write_updates_test_archive(self):
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["import_historical_archive.py", "--source", str(self.source),
+                                         "--archive", str(self.archive), "--write"]):
+            with contextlib.redirect_stdout(output):
+                main()
+        self.assertTrue(json.loads(output.getvalue())["wrote"])
+        self.assertEqual(len(self.archive.read_text().splitlines()), 3)
+
+    def test_script_entrypoint(self):
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["import_historical_archive.py", "--source", str(self.source),
+                                         "--archive", str(self.archive)]):
+            with contextlib.redirect_stdout(output):
+                runpy.run_path(str(Path(__file__).resolve().parent / "import_historical_archive.py"), run_name="__main__")
+        self.assertFalse(json.loads(output.getvalue())["wrote"])
 
 if __name__ == "__main__":
     unittest.main()
