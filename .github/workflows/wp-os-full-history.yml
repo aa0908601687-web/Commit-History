@@ -21,20 +21,37 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Probe official 2008 annual download
+      - name: Inspect official 2008 ZIP schema
         shell: bash
         run: |
           python - <<'PY' | tee official-download-discovery.log
-          from urllib.parse import urlencode
+          import io, zipfile
           from urllib.request import Request, urlopen
-          base = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/ResultDownload"
-          url = base + "?" + urlencode({"year": 2008})
-          request = Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
-          with urlopen(request, timeout=30) as response:
-              body = response.read().decode("utf-8", "replace")
-          print(body)
-          summary = body[:7000].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          print(f"::notice title=Official 2008 ResultDownload response::{summary}")
+          url = "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2008.zip"
+          with urlopen(Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=60) as response:
+              payload = response.read()
+          with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+              print("FILES", archive.namelist())
+              chunks = []
+              for name in archive.namelist():
+                  if name.endswith("/"):
+                      continue
+                  raw = archive.read(name)
+                  decoded = None
+                  encoding = None
+                  for candidate in ("utf-8-sig", "cp950", "big5", "utf-16"):
+                      try:
+                          decoded = raw.decode(candidate)
+                          encoding = candidate
+                          break
+                      except UnicodeDecodeError:
+                          pass
+                  preview = (decoded or repr(raw[:500]))[:6000]
+                  item = f"FILE={name} ENCODING={encoding}\n{preview}"
+                  print(item)
+                  chunks.append(item)
+              summary = "\n---\n".join(chunks)[:7000].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::notice title=Official 2008 ZIP schema::{summary}")
           PY
       - name: Retrieve and verify all official SuperLotto638 months
         shell: bash
