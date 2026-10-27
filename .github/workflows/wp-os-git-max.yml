@@ -49,6 +49,31 @@ jobs:
         run: |
           python WP-OS-Git-MAX/wp_os_git_max.py --csv WP-OS-Git-MAX/historical_latest_10.csv > /tmp/wp-os-prediction.json
           python -m json.tool /tmp/wp-os-prediction.json > /dev/null
+      - name: Run modular selection pipeline and validate component parity
+        run: |
+          python WP-OS-Git-MAX/modular_selection_pipeline.py --csv WP-OS-Git-MAX/historical_latest_20.csv --output /tmp/wp-os-modular-pipeline.json
+          python -m json.tool /tmp/wp-os-modular-pipeline.json > /dev/null
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from sys import path
+          path.insert(0, 'WP-OS-Git-MAX')
+          from wp_os_git_max import load, predict as main_predict
+          from wp_os_git_max_10_20 import predict as control_predict
+          from wp_os_git_max_fusion import predict as fusion_predict
+          draws = load('WP-OS-Git-MAX/historical_latest_20.csv')
+          actual = json.loads(Path('/tmp/wp-os-modular-pipeline.json').read_text())
+          for name, fn in [('main_5_10',main_predict),('control_10_20',control_predict),('fusion_5_10_20',fusion_predict)]:
+              assert actual['predictions'][name] == json.loads(json.dumps(fn(draws))), name
+          print('Modular predictions match standalone models')
+          PY
+      - name: Upload modular selection pipeline output
+        uses: actions/upload-artifact@v6
+        with:
+          name: wp-os-modular-pipeline-${{ github.run_id }}
+          path: /tmp/wp-os-modular-pipeline.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Generate independent 10/20-draw control comparison
         run: |
           python WP-OS-Git-MAX/wp_os_git_max_10_20.py --csv WP-OS-Git-MAX/historical_latest_20.csv > /tmp/wp-os-control-10-20.json
