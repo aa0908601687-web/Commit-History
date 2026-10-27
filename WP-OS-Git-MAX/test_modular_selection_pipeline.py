@@ -3,7 +3,7 @@ import copy
 import unittest
 from unittest.mock import patch
 
-from modular_selection_pipeline import run
+from modular_selection_pipeline import CHECK_NAMES, _feature_checks, run
 
 
 class ModularPipelineTests(unittest.TestCase):
@@ -21,6 +21,33 @@ class ModularPipelineTests(unittest.TestCase):
         self.assertEqual(result["through_draw"], self.draws[-1]["draw_id"])
         for item in result["predictions"].values():
             self.assertEqual(item["through_draw"], result["through_draw"])
+
+    def test_feature_checks_are_reported_with_zero_score_weight(self):
+        result = run(self.draws)
+        self.assertEqual(result["feature_checks"]["mode"], "report_only")
+        self.assertEqual(result["feature_checks"]["score_weight"], 0.0)
+        for model in result["feature_checks"]["models"].values():
+            self.assertEqual(set(model["checks"]), set(CHECK_NAMES))
+            self.assertTrue(all(item["enabled"] for item in model["checks"].values()))
+            self.assertEqual(model["accepted"],
+                             all(item["passed"] for item in model["checks"].values()))
+
+    def test_checks_can_be_disabled(self):
+        result = run(self.draws, enabled_checks=["sum_range"])
+        for model in result["feature_checks"]["models"].values():
+            self.assertTrue(model["checks"]["sum_range"]["enabled"])
+            self.assertFalse(model["checks"]["odd_even_ratio"]["enabled"])
+            self.assertFalse(model["checks"]["hot_cold_balance"]["enabled"])
+
+    def test_unknown_check_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Unknown feature checks"):
+            _feature_checks([1, 2, 3, 4, 5, 6], self.draws, ["unknown"])
+
+    def test_enforcement_fails_closed(self):
+        with patch("modular_selection_pipeline._feature_checks",
+                   return_value={"accepted": False, "checks": {}}):
+            with self.assertRaisesRegex(ValueError, "Feature checks rejected"):
+                run(self.draws, enforce=True)
 
     def test_repeatable_and_no_input_mutation(self):
         before = copy.deepcopy(self.draws)
@@ -40,7 +67,6 @@ class ModularPipelineTests(unittest.TestCase):
         with patch("modular_selection_pipeline.control_predict", wrong):
             with self.assertRaisesRegex(ValueError, "Cutoff mismatch"):
                 run(self.draws)
-
 
     def test_invalid_predictions_rejected(self):
         from wp_os_git_max_10_20 import predict as original
