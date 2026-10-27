@@ -2,6 +2,7 @@
 """Unified orchestration and configurable feature checks for Power Lottery models."""
 import argparse
 import hashlib
+import itertools
 import json
 from collections import Counter
 from pathlib import Path
@@ -63,6 +64,42 @@ def _feature_checks(numbers, draws, enabled_checks=None):
     return {"accepted": all(applicable), "checks": values}
 
 
+def _adjust_candidate(prediction, draws, enabled_checks=None):
+    """Choose the highest-scoring compliant six-number set from the top ten."""
+    original = list(prediction["first"])
+    original_check = _feature_checks(original, draws, enabled_checks)
+    if original_check["accepted"]:
+        return {
+            "first": original,
+            "changed": False,
+            "source": "original_prediction",
+            "feature_validation": original_check,
+        }
+
+    scores = dict(prediction["top_first_scores"])
+    pool = sorted(scores, key=lambda number: (-scores[number], number))[:10]
+    candidates = []
+    for combination in itertools.combinations(pool, 6):
+        validation = _feature_checks(combination, draws, enabled_checks)
+        if validation["accepted"]:
+            candidates.append((sum(scores[number] for number in combination),
+                               tuple(sorted(combination)), validation))
+    if not candidates:
+        return {
+            "first": original,
+            "changed": False,
+            "source": "no_compliant_top10_candidate",
+            "feature_validation": original_check,
+        }
+    _, selected, validation = sorted(candidates, key=lambda item: (-item[0], item[1]))[0]
+    return {
+        "first": list(selected),
+        "changed": list(selected) != original,
+        "source": "highest_score_compliant_top10",
+        "feature_validation": validation,
+    }
+
+
 def run(draws, enabled_checks=None, enforce=False):
     if len(draws) < 20:
         raise ValueError("Modular pipeline requires at least 20 completed draws")
@@ -74,6 +111,7 @@ def run(draws, enabled_checks=None, enforce=False):
     }
     cutoff = draws[-1]["draw_id"]
     feature_validation = {}
+    adjusted_predictions = {}
     for name, prediction in predictions.items():
         if prediction["through_draw"] != cutoff:
             raise ValueError("Cutoff mismatch: " + name)
@@ -83,6 +121,11 @@ def run(draws, enabled_checks=None, enforce=False):
                 or not isinstance(second, int) or not 1 <= second <= 8):
             raise ValueError("Invalid prediction: " + name)
         feature_validation[name] = _feature_checks(first, draws, enabled_checks)
+        adjusted = _adjust_candidate(prediction, draws, enabled_checks)
+        adjusted_predictions[name] = {
+            **adjusted,
+            "second": second,
+        }
         if enforce and not feature_validation[name]["accepted"]:
             raise ValueError("Feature checks rejected prediction: " + name)
 
@@ -91,6 +134,7 @@ def run(draws, enabled_checks=None, enforce=False):
         "through_draw": cutoff,
         "source_draws": len(draws),
         "predictions": predictions,
+        "adjusted_predictions": adjusted_predictions,
         "feature_checks": {
             "mode": "enforce" if enforce else "report_only",
             "score_weight": 0.0,
