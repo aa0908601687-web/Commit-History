@@ -62,5 +62,5 @@ def main():  # pragma: no cover - exercised by Actions CLI parity check
         print(encoded, end="")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()
