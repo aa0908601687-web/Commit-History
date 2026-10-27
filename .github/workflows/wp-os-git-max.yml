@@ -166,7 +166,7 @@ jobs:
         with:
           name: wp-os-v3-result-cache-${{ github.run_id }}
           path: |
-            /tmp/wp-os-v3-prediction-cache.json
+            .cache/wp-os-v3/wp-os-v3-prediction-cache.json
             /tmp/wp-os-v3-run-2.json
             /tmp/wp-os-v3-cache-status.json
             /tmp/wp-os-v3-research-run-2.json
