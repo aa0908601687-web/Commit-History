@@ -3,7 +3,7 @@ import copy
 import unittest
 from unittest.mock import patch
 
-from modular_selection_pipeline import CHECK_NAMES, _feature_checks, run
+from modular_selection_pipeline import CHECK_NAMES, _adjust_candidate, _feature_checks, run
 
 
 class ModularPipelineTests(unittest.TestCase):
@@ -38,6 +38,24 @@ class ModularPipelineTests(unittest.TestCase):
             self.assertTrue(model["checks"]["sum_range"]["enabled"])
             self.assertFalse(model["checks"]["odd_even_ratio"]["enabled"])
             self.assertFalse(model["checks"]["hot_cold_balance"]["enabled"])
+
+    def test_adjusted_predictions_pass_enabled_checks(self):
+        result = run(self.draws)
+        self.assertEqual(set(result["adjusted_predictions"]), set(result["predictions"]))
+        for adjusted in result["adjusted_predictions"].values():
+            self.assertEqual(len(adjusted["first"]), 6)
+            self.assertTrue(adjusted["feature_validation"]["accepted"])
+
+    def test_compliant_original_is_not_changed(self):
+        prediction = {
+            "first": [4, 9, 14, 19, 24, 29],
+            "top_first_scores": [(number, 1.0 / number) for number in range(1, 11)],
+        }
+        with patch("modular_selection_pipeline._feature_checks",
+                   return_value={"accepted": True, "checks": {}}):
+            adjusted = _adjust_candidate(prediction, self.draws)
+        self.assertFalse(adjusted["changed"])
+        self.assertEqual(adjusted["source"], "original_prediction")
 
     def test_unknown_check_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Unknown feature checks"):
