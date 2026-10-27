@@ -64,7 +64,7 @@ jobs:
           draws = load('WP-OS-Git-MAX/historical_latest_20.csv')
           actual = json.loads(Path('/tmp/wp-os-modular-pipeline.json').read_text())
           for name, fn in [('main_5_10',main_predict),('control_10_20',control_predict),('fusion_5_10_20',fusion_predict)]:
-              assert actual['predictions'][name] == fn(draws), name
+              assert actual['predictions'][name] == json.loads(json.dumps(fn(draws))), name
           print('Modular predictions match standalone models')
           PY
       - name: Upload modular selection pipeline output
