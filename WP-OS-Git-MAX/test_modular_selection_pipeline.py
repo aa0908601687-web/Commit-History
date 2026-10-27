@@ -42,5 +42,26 @@ class ModularPipelineTests(unittest.TestCase):
                 run(self.draws)
 
 
+    def test_invalid_predictions_rejected(self):
+        from wp_os_git_max_10_20 import predict as original
+        changes = [
+            {"first": [1, 2]},
+            {"first": [1, 1, 2, 3, 4, 5]},
+            {"first": [1, 2, 3, 4, 5, 39]},
+            {"first": ["1", 2, 3, 4, 5, 6]},
+            {"second": 0},
+            {"second": "1"},
+        ]
+        for change in changes:
+            with self.subTest(change=change):
+                def malformed(draws):
+                    payload = original(draws)
+                    payload.update(change)
+                    return payload
+                with patch("modular_selection_pipeline.control_predict", malformed):
+                    with self.assertRaisesRegex(ValueError, "Invalid prediction"):
+                        run(self.draws)
+
+
 if __name__ == "__main__":
     unittest.main()
