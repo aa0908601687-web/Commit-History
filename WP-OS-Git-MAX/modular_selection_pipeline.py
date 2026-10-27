@@ -49,7 +49,7 @@ def run(draws):
     return report
 
 
-def main():
+def main():  # pragma: no cover - exercised by Actions CLI parity check
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True)
     parser.add_argument("--output", help="Optional output JSON path")
