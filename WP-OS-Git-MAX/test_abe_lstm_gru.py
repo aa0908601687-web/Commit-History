@@ -35,10 +35,11 @@ class NeuralResearchTests(unittest.TestCase):
 
     def test_mocked_neural_fusion_outputs_valid_ticket(self):
         data = history(60)
-        fake = {"LSTM": [0.4] * 46, "GRU": [0.6] * 46}
+        fake = {"LSTM": [0.4] * 46, "GRU": [0.6] * 46, "Transformer": [0.5] * 46}
         with patch.object(mod, "train_neural", return_value=(fake, 40)):
             prediction = mod.predict(data)
         self.assertEqual(prediction["neural_status"], "trained")
+        self.assertAlmostEqual(prediction["neural_weight"], 0.30)
         self.assertEqual(len(set(prediction["first"])), 6)
         self.assertTrue(all(1 <= n <= 38 for n in prediction["first"]))
         self.assertTrue(1 <= prediction["second"] <= 8)
