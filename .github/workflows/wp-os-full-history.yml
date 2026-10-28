@@ -5,6 +5,7 @@ on:
       - '.github/workflows/wp-os-full-history.yml'
       - 'WP-OS-Git-MAX/backfill_official_history.py'
       - 'WP-OS-Git-MAX/test_evidence_audit.py'
+      - 'WP-OS-Git-MAX/test_backfill_coverage_additions.py'
   workflow_dispatch:
 permissions:
   contents: write
