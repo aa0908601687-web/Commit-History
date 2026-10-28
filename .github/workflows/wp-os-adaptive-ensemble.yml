@@ -1,0 +1,55 @@
+name: WP-OS Adaptive Bayesian Ensemble MAX
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'WP-OS-Git-MAX/adaptive_bayesian_ensemble_max.py'
+      - 'WP-OS-Git-MAX/test_adaptive_bayesian_ensemble_max.py'
+      - '.github/workflows/wp-os-adaptive-ensemble.yml'
+permissions:
+  contents: read
+jobs:
+  adaptive-ensemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test adaptive research model
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_adaptive_bayesian_ensemble_max.py' -v
+      - name: Independent fourth-model prediction and backtest
+        shell: bash
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          import pathlib
+          import subprocess
+          import sys
+          source = pathlib.Path('WP-OS-Git-MAX/historical_archive.csv')
+          if not source.exists():
+              print('No historical archive; prediction skipped')
+              sys.exit(0)
+          with source.open(encoding='utf-8-sig', newline='') as f:
+              n = sum(1 for _ in csv.DictReader(f))
+          print('Completed draws:', n)
+          if n < 20:
+              print('Fourth model requires at least 20 prior draws; skipped')
+              sys.exit(0)
+          cmd = [sys.executable, 'WP-OS-Git-MAX/adaptive_bayesian_ensemble_max.py', '--csv', str(source)]
+          with open('/tmp/wp-os-adaptive-prediction.json','w',encoding='utf-8') as out:
+              subprocess.run(cmd,check=True,stdout=out)
+          if n > 20:
+              with open('/tmp/wp-os-adaptive-backtest.json','w',encoding='utf-8') as out:
+                  subprocess.run(cmd+['--backtest'],check=True,stdout=out)
+          PY
+      - name: Upload optional fourth-model reports
+        uses: actions/upload-artifact@v6
+        with:
+          name: wp-os-adaptive-ensemble-${{ github.run_id }}
+          path: |
+            /tmp/wp-os-adaptive-prediction.json
+            /tmp/wp-os-adaptive-backtest.json
+          if-no-files-found: warn
+          retention-days: 30
