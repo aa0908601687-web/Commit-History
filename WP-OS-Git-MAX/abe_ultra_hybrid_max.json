@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "name": "ABE Ultra Hybrid MAX",
+  "status": "research_configuration_only",
+  "data_window_draws": 20,
+  "zones": {"first": {"choose": 6, "range": [1, 38]}, "second": {"choose": 1, "range": [1, 8]}},
+  "fusion_mode": "adaptive_bayesian_with_conservative_fallback",
+  "initial_weights": {
+    "abe_bayesian": 0.60,
+    "lstm": 0.10,
+    "gru": 0.10,
+    "chronos_2": 0.10,
+    "t0_gamma": 0.10
+  },
+  "components": {
+    "abe_bayesian": "existing_standalone_implementation_not_yet_connected_to_fusion",
+    "lstm": "not_implemented",
+    "gru": "not_implemented",
+    "chronos_2": "not_implemented",
+    "t0_gamma": "not_implemented"
+  },
+  "standalone_transformer_model": false,
+  "rules": [
+    "Never describe an unavailable model as executed.",
+    "Do not renormalize missing-model weights and call it the full five-model ensemble.",
+    "Only use completed draws preceding each prediction and separate first and second zone.",
+    "Adjust weights using strictly earlier prequential results, with shrinkage to initial weights.",
+    "If 20-draw features are insufficient to fit a neural model, skip it and report that fact.",
+    "Compare with matched random baselines before making predictive claims.",
+    "No evidence that this configuration improves fair lottery odds."
+  ]
+}
