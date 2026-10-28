@@ -29,14 +29,12 @@ jobs:
           import sys
           source = pathlib.Path('WP-OS-Git-MAX/historical_archive.csv')
           if not source.exists():
-              print('No historical archive; prediction skipped')
-              sys.exit(0)
+              raise SystemExit('E2E FAILED: historical_archive.csv is missing')
           with source.open(encoding='utf-8-sig', newline='') as f:
               n = sum(1 for _ in csv.DictReader(f))
           print('Completed draws:', n)
           if n < 20:
-              print('Fourth model requires at least 20 prior draws; skipped')
-              sys.exit(0)
+              raise SystemExit('E2E FAILED: fewer than 20 completed draws')
           cmd = [sys.executable, 'WP-OS-Git-MAX/adaptive_bayesian_ensemble_max.py', '--csv', str(source)]
           with open('/tmp/wp-os-adaptive-prediction.json','w',encoding='utf-8') as out:
               subprocess.run(cmd,check=True,stdout=out)
@@ -44,6 +42,8 @@ jobs:
               with open('/tmp/wp-os-adaptive-backtest.json','w',encoding='utf-8') as out:
                   subprocess.run(cmd+['--backtest'],check=True,stdout=out)
           PY
+      - name: Verify full ABE five-model integration
+        run: python WP-OS-Git-MAX/abe_five_model_gate.py
       - name: Upload optional fourth-model reports
         uses: actions/upload-artifact@v6
         with:
@@ -51,5 +51,5 @@ jobs:
           path: |
             /tmp/wp-os-adaptive-prediction.json
             /tmp/wp-os-adaptive-backtest.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
