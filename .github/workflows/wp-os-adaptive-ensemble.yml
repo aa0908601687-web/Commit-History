@@ -19,6 +19,7 @@ on:
       - 'WP-OS-Git-MAX/test_abe_e2e.py'
       - 'WP-OS-Git-MAX/abe_model_connectivity.py'
       - 'WP-OS-Git-MAX/abe_train_lstm_gru.py'
+      - 'WP-OS-Git-MAX/abe_partial_neural_bridge.py'
       - 'WP-OS-Git-MAX/test_abe_model_connectivity.py'
       - 'WP-OS-Git-MAX/historical_latest_20.csv'
       - 'WP-OS-Git-MAX/test_abe_ultra_hybrid_runtime.py'
@@ -54,6 +55,20 @@ jobs:
           assert output['five_model_fusion_executed'] is False
           assert output['training_samples'] > 0
           print('Local trained LSTM/GRU scores verified (NOT a complete five-model fusion)')
+          PY
+      - name: Connect trained LSTM and GRU to ABE partial fusion
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.train_lstm_gru }}
+        run: |
+          python WP-OS-Git-MAX/abe_partial_neural_bridge.py --csv WP-OS-Git-MAX/historical_archive.csv --trained-scores /tmp/wp-os-abe-lstm-gru-scores.json --output /tmp/wp-os-abe-partial-neural.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('/tmp/wp-os-abe-partial-neural.json').read_text(encoding='utf-8'))
+          assert result['execution_mode']=='abe_lstm_gru_partial_with_uniform_reserve'
+          assert result['full_five_model_fusion_executed'] is False
+          assert set(result['not_executed']) == {'chronos_2','t0_gamma'}
+          assert len(result['first']) == 6 and 1 <= result['second'] <= 8
+          print('Partially trained ABE+LSTM+GRU fusion output checked')
           PY
       - name: Test adaptive research model
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_adaptive_bayesian_ensemble_max.py' -v
@@ -243,5 +258,6 @@ jobs:
             /tmp/wp-os-abe-model-registry.json
             /tmp/wp-os-abe-external-fusion.json
             /tmp/wp-os-abe-lstm-gru-scores.json
+            /tmp/wp-os-abe-partial-neural.json
           if-no-files-found: warn
           retention-days: 30
