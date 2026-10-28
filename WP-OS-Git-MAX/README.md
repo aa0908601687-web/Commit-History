@@ -86,3 +86,12 @@ The independent 10/20 control and equal-weight 5/10 + 10/20 fusion are now conne
 ## V3 full-history backtest cache
 
 The complete `historical_archive.csv` now has a versioned full-history backtest cache covering the main 5/10, control 10/20, and equal-weight fusion models. Its identity includes the complete ordered archive SHA-256, first and latest draw IDs, draw count, schema version, and all three model versions. A changed archive, changed model version, malformed cache, missing model result, or digest mismatch forces a complete walk-forward recomputation. The second workflow pass must report a cache hit and identical backtest payload before publication.
+
+
+## Open-source provenance and geographic scope
+
+- **Lottery jurisdiction:** This research prototype targets Taiwan's Power Lottery (威力彩). Its geographic scope does **not** establish the nationality or location of the software authors.
+- **Repository implementation:** WP-OS Git MAX is an independently maintained research prototype; this documentation does not claim that external upstream lottery projects' source code was merged into the prediction engine.
+- **Related public reference projects:** [ky921d/mk](https://github.com/ky921d/mk) and [stu01509/TaiwanLotteryCrawler](https://github.com/stu01509/TaiwanLotteryCrawler) are Taiwan-lottery-oriented public repositories. Their maintainers' nationalities have **not** been independently verified, and references to them should not be interpreted as a confirmed code dependency or an upstream integration.
+- **Platform and tools:** GitHub/GitHub Actions provide repository hosting and workflow automation; Python is a programming language. Neither determines the nationality of the project's developer.
+- **Verification boundary:** This section documents provenance distinctions only, not live API connectivity, installed upstream packages, official lottery affiliation, or improved prediction accuracy.
