@@ -35,11 +35,12 @@ def infer_chronos(rows):
     inputs = torch.tensor(rows, dtype=torch.float32)
     quantiles, means = pipeline.predict_quantiles(inputs, prediction_length=1,
                                                    quantile_levels=[0.5])
-    # Implementation may return one tensor for a batched 2D array.
-    predictions = torch.as_tensor(means[0]).reshape(-1) if len(means) == 1 else torch.stack([
-        torch.as_tensor(item).reshape(-1)[0] for item in means])
+    predictions = torch.as_tensor(means).detach().cpu()
+    # Only accept exactly one next-step scalar per one of the 46 series.
+    # Never flatten arbitrary horizons or quantile dimensions accidentally.
     if predictions.numel() != 46:
-        raise ValueError("Chronos-2 forecast must contain 46 channels")
+        raise ValueError("Chronos-2 forecast must contain exactly 46 one-step values")
+    predictions = predictions.reshape(46)
     return score_map(predictions.tolist())
 
 def infer_t0(rows):
