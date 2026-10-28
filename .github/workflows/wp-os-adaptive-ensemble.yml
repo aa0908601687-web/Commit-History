@@ -155,6 +155,7 @@ jobs:
           source=json.loads(Path('/tmp/wp-os-abe-four-real-scores.json').read_text(encoding='utf-8'))
           assert source['through_draw'] == cutoff == a['through_draw'], 'Cutoff mismatch'
           assert set(source['models']) == {'lstm','gru','chronos_2','t0_gamma'}
+          assert source['input_provenance'] == {'lstm_gru': 'trained_local_lstm_gru_only', 'foundation': 'real_pretrained_inference'}, 'Real model provenance missing'
           assert a['external_score_tables_validated']
           assert a['five_model_scores_fused']
           assert a['full_five_model_fusion_executed'] is False
@@ -163,6 +164,10 @@ jobs:
           assert 1 <= a['second'] <= 8
           print('Four real model tables connected and output validated at cutoff',cutoff)
           print('Actual run provenance is in job logs; statistical advantage not established')
+          with open(__import__('os').environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write('### Real-model end-to-end validation\\n')
+              summary.write(f'- Cutoff: `{cutoff}`\\n- LSTM + GRU: trained locally\\n- Chronos-2 + t0-gamma: pretrained inference outputs merged\\n- Four score tables: validated and fused with ABE\\n')
+              summary.write('- This is a runtime smoke test, NOT an out-of-sample accuracy validation.\\n')
           PY
       - name: Report whether full neural validation was requested
         if: ${{ always() }}
