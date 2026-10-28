@@ -124,7 +124,24 @@ def chronos2_scores(draws):
     return values.tolist()
 
 
-def predict(draws, use_neural=True, epochs=12, seed=20261028, use_chronos2=False):
+
+def t0_gamma_scores(draws):
+    """Zero-shot median 1-step forecast from 20 completed draws, 46 indicator rows."""
+    try:
+        import numpy as np
+        from t0 import T0Forecaster
+    except ImportError as exc:
+        raise RuntimeError('Install "tfc-t0[torch]>=0.6.0" and numpy for --t0-gamma') from exc
+    context = np.asarray([vector(d) for d in draws[-LOOKBACK:]], dtype="float32").T
+    model = T0Forecaster.from_pretrained("theforecastingcompany/t0-gamma").eval()
+    forecast = model.predict(context, horizon=1, quantile_levels=[0.5])
+    values = np.asarray(forecast.median, dtype="float32").reshape(-1)
+    if values.shape != (FEATURES,) or not np.isfinite(values).all():
+        raise ValueError("t0-gamma returned invalid scores")
+    return values.tolist()
+
+
+def predict(draws, use_neural=True, epochs=12, seed=20261028, use_chronos2=False, use_t0_gamma=False):
     if len(draws) < LOOKBACK:
         raise ValueError("At least 20 completed draws required")
     baseline = abe.predict(draws)
@@ -173,6 +190,33 @@ def predict(draws, use_neural=True, epochs=12, seed=20261028, use_chronos2=False
         output["model"] += " + Chronos-2"
     else:
         output["chronos2_weight"] = 0.0
+    if use_t0_gamma:
+        t0 = t0_gamma_scores(draws)
+        # Rebuild fusion from the underlying score tables, not from rounded picks.
+        basic = abe_scores(draws)
+        trained = output["neural_status"] == "trained"
+        chronos_available = output["chronos2_status"] == "inferred"
+        for zone, offset, upper, count in (("first", 0, 38, 6), ("second", 38, 8, 1)):
+            components = [basic[zone]]
+            if trained:
+                for key in ("LSTM", "GRU", "Transformer"):
+                    components.append(normalize(neural[key][offset:offset + upper]))
+            if chronos_available:
+                components.append(normalize(c_scores[offset:offset + upper]))
+            components.append(normalize(t0[offset:offset + upper]))
+            n_aux = len(components) - 1
+            # Each enabled auxiliary model scores 10%; ABE gets the remainder.
+            fused = [(1 - .10 * n_aux) * components[0][i] +
+                     .10 * sum(component[i] for component in components[1:])
+                     for i in range(upper)]
+            picks = sorted(range(1, upper + 1), key=lambda n: (-fused[n-1], n))[:count]
+            output[zone] = sorted(picks) if zone == "first" else picks[0]
+        output["t0_gamma_status"] = "inferred"
+        output["t0_gamma_weight"] = 0.10
+        output["model"] += " + t0-gamma"
+    else:
+        output["t0_gamma_status"] = "not_requested"
+        output["t0_gamma_weight"] = 0.0
     output["config"] = {"lookback": LOOKBACK, "min_neural_training_examples": MIN_TRAIN_EXAMPLES,
                         "epochs": epochs, "seed": seed, "neural_weight": NEURAL_WEIGHT}
     output.pop("sha256", None)
@@ -187,11 +231,12 @@ def main():
     p.add_argument("--epochs", type=int, default=12)
     p.add_argument("--seed", type=int, default=20261028)
     p.add_argument("--chronos2", action="store_true")
+    p.add_argument("--t0-gamma", action="store_true", help="Enable optional pretrained t0-gamma")
     args = p.parse_args()
     if not 1 <= args.epochs <= 100:
         p.error("--epochs must be from 1 to 100")
     draws = abe.base.load(args.csv)
-    print(json.dumps(predict(draws, not args.no_neural, args.epochs, args.seed, args.chronos2),
+    print(json.dumps(predict(draws, not args.no_neural, args.epochs, args.seed, args.chronos2, args.t0_gamma),
                      ensure_ascii=False, indent=2))
 
 
