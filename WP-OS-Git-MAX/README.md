@@ -95,3 +95,14 @@ The complete `historical_archive.csv` now has a versioned full-history backtest 
 - **Related public reference projects:** [ky921d/mk](https://github.com/ky921d/mk) and [stu01509/TaiwanLotteryCrawler](https://github.com/stu01509/TaiwanLotteryCrawler) are Taiwan-lottery-oriented public repositories. Their maintainers' nationalities have **not** been independently verified, and references to them should not be interpreted as a confirmed code dependency or an upstream integration.
 - **Platform and tools:** GitHub/GitHub Actions provide repository hosting and workflow automation; Python is a programming language. Neither determines the nationality of the project's developer.
 - **Verification boundary:** This section documents provenance distinctions only, not live API connectivity, installed upstream packages, official lottery affiliation, or improved prediction accuracy.
+
+
+## Fourth independent research model — Adaptive Bayesian Ensemble MAX (2026-10-28)
+
+This **optional fourth model** does not replace the existing 5/10 main model, 10/20 control, or fixed 50:50 fusion, and is not wired into the existing V3 cache. It has its own workflow, tests, predictions and optional backtest artifacts.
+
+- Source: [adaptive_bayesian_ensemble_max.py](adaptive_bayesian_ensemble_max.py). Command: `python WP-OS-Git-MAX/adaptive_bayesian_ensemble_max.py --csv WP-OS-Git-MAX/historical_archive.csv`. Use `--backtest` for sequential historical evaluation.
+- Requires at least 20 completed prior draws. The 5/10 and 10/20 score tables are combined with separate zone-specific adaptive weights.
+- Weight updates use *only earlier draws* and prequential Brier-like score losses. A conservative equal-weight prior, 10-observation warmup and shrinkage prevent abrupt weight shifts; weights are heuristics, not calibrated posterior probabilities. This is **not a full Bayesian posterior or trained stacking neural network**.
+- Workflow: [WP-OS Adaptive Bayesian Ensemble MAX](../.github/workflows/wp-os-adaptive-ensemble.yml) runs isolated tests and, when sufficient archive data exists, produces JSON output and a prequential backtest; absent data is explicitly reported as skipped.
+- Validated source integration, successful remote Actions executions, actual sample-out performance and predictive advantage must be checked separately. No statistical evidence is claimed here of improved lottery odds.
