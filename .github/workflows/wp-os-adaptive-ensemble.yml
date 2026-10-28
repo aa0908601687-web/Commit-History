@@ -34,6 +34,24 @@ jobs:
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_score_adapters.py' -v
       - name: End-to-end CSV, ABE fallback, synthetic four-model fusion
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_e2e.py' -v
+      - name: Execute 20-draw ABE hybrid CLI and validate JSON artifact
+        run: |
+          python WP-OS-Git-MAX/abe_ultra_hybrid_max.py --csv WP-OS-Git-MAX/historical_latest_20.csv > /tmp/wp-os-abe-20draw-e2e.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('/tmp/wp-os-abe-20draw-e2e.json').read_text(encoding='utf-8'))
+          assert report['execution_mode'] == 'abe_only_fallback'
+          assert report['full_five_model_fusion_executed'] is False
+          assert report['feature_window_draws'] == 20
+          assert report['source_draw_count'] == 20
+          assert len(report['first']) == len(set(report['first'])) == 6
+          assert all(1 <= n <= 38 for n in report['first'])
+          assert 1 <= report['second'] <= 8
+          assert len(report['full_input_sha256']) == 64
+          assert len(report['feature_window_sha256']) == 64
+          print('20-draw CLI end-to-end fallback passed; no neural inference claimed')
+          PY
       - name: Independent fourth-model prediction and backtest
         shell: bash
         run: |
@@ -94,5 +112,6 @@ jobs:
             /tmp/wp-os-adaptive-prediction.json
             /tmp/wp-os-adaptive-backtest.json
             /tmp/wp-os-abe-hybrid.json
+            /tmp/wp-os-abe-20draw-e2e.json
           if-no-files-found: warn
           retention-days: 30
