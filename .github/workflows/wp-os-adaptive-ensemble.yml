@@ -35,6 +35,41 @@ jobs:
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_score_adapters.py' -v
       - name: End-to-end CSV, ABE fallback, synthetic four-model fusion
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_e2e.py' -v
+      - name: Verify external score CLI connection with synthetic inputs
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from subprocess import run
+          from sys import executable
+          from csv import DictReader
+          source = Path('WP-OS-Git-MAX/historical_latest_20.csv')
+          with source.open(encoding='utf-8-sig', newline='') as stream:
+              cutoff = list(DictReader(stream))[-1]['draw_id']
+          # These are synthetic test scores, NOT outputs of four neural models.
+          names = ('lstm','gru','chronos_2','t0_gamma')
+          zones = {
+              'first': {str(i): 1.0 for i in range(1,39)},
+              'second': {str(i): 1.0 for i in range(1,9)}
+          }
+          test_scores = {'through_draw':cutoff,
+                         'models':{name:zones for name in names}}
+          Path('/tmp/wp-os-abe-synthetic-scores.json').write_text(
+              json.dumps(test_scores),encoding='utf-8')
+          cmd = [executable,'WP-OS-Git-MAX/abe_ultra_hybrid_max.py',
+                 '--csv',str(source),
+                 '--model-scores','/tmp/wp-os-abe-synthetic-scores.json']
+          with Path('/tmp/wp-os-abe-synthetic-fusion.json').open('w',encoding='utf-8') as out:
+              run(cmd,stdout=out,check=True)
+          result = json.loads(Path('/tmp/wp-os-abe-synthetic-fusion.json').read_text(encoding='utf-8'))
+          assert result['execution_mode'] == 'five_model_external_scores'
+          assert result['five_model_scores_fused'] is True
+          assert result['external_score_tables_validated'] is True
+          assert result['neural_inference_verified'] is False
+          assert result['full_five_model_fusion_executed'] is False
+          assert set(result['unavailable_models']) == set(names)
+          print('External scores CLI transport verified using synthetic inputs only')
+          PY
       - name: Execute 20-draw ABE hybrid CLI and validate JSON artifact
         run: |
           python WP-OS-Git-MAX/abe_ultra_hybrid_max.py --csv WP-OS-Git-MAX/historical_latest_20.csv > /tmp/wp-os-abe-20draw-e2e.json
@@ -136,5 +171,6 @@ jobs:
             /tmp/wp-os-adaptive-backtest.json
             /tmp/wp-os-abe-hybrid.json
             /tmp/wp-os-abe-20draw-e2e.json
+            /tmp/wp-os-abe-synthetic-fusion.json
           if-no-files-found: warn
           retention-days: 30
