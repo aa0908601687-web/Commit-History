@@ -23,6 +23,16 @@ class EvidenceAuditTests(unittest.TestCase):
         self.assertEqual(out["observations"][0]["through_draw"],d[start-1]["draw_id"])
         self.assertEqual(out["observations"][0]["target_draw"],d[start]["draw_id"])
 
+    def test_rolling_csv_snapshots_match_archive(self):
+        """The 10/20 draw snapshots must never contain the complete archive."""
+        archive=load(ROOT/"historical_archive.csv")
+        latest10=load(ROOT/"historical_latest_10.csv")
+        latest20=load(ROOT/"historical_latest_20.csv")
+        self.assertEqual(len(latest10),10)
+        self.assertEqual(len(latest20),20)
+        self.assertEqual(latest10,archive[-10:])
+        self.assertEqual(latest20,archive[-20:])
+
     def test_invalid_lengths(self):
         d=load(ROOT/"historical_archive.csv")
         with self.assertRaises(ValueError): walkforward(d[:10])
