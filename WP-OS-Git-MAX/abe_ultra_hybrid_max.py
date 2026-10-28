@@ -22,11 +22,27 @@ def run(draws):
         raise RuntimeError("ABE core unavailable")
     # Do not silently renormalize 60% into a falsely labeled five-model forecast.
     baseline = predict(draws)
+    # Hash the complete ordered input used by adaptive weight fitting and the
+    # latest feature window separately; neither hash proves pre-draw timing.
+    ordered_draws = [{"draw_id": str(d["draw_id"]), "first": list(d["first"]),
+                      "second": d["second"]} for d in draws]
+    full_input_sha256 = hashlib.sha256(json.dumps(
+        ordered_draws, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")).hexdigest()
+    feature_window_sha256 = hashlib.sha256(json.dumps(
+        ordered_draws[-config["data_window_draws"]:], ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")).hexdigest()
     result = {
         "system": config["name"],
         "execution_mode": "abe_only_fallback",
         "full_five_model_fusion_executed": False,
         "through_draw": baseline["through_draw"],
+        "source_draw_count": len(draws),
+        "feature_window_draws": config["data_window_draws"],
+        "full_input_sha256": full_input_sha256,
+        "feature_window_sha256": feature_window_sha256,
+        "input_hash_timestamp_proof": False,
         "first": baseline["first"],
         "second": baseline["second"],
         "initial_weights": config["initial_weights"],
