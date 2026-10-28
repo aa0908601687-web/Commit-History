@@ -10,6 +10,8 @@ on:
       - 'WP-OS-Git-MAX/abe_ultra_hybrid_max.py'
       - 'WP-OS-Git-MAX/abe_score_adapters.py'
       - 'WP-OS-Git-MAX/test_abe_score_adapters.py'
+      - 'WP-OS-Git-MAX/test_abe_e2e.py'
+      - 'WP-OS-Git-MAX/historical_latest_20.csv'
       - 'WP-OS-Git-MAX/test_abe_ultra_hybrid_runtime.py'
       - '.github/workflows/wp-os-adaptive-ensemble.yml'
 permissions:
@@ -30,6 +32,8 @@ jobs:
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_ultra_hybrid_runtime.py' -v
       - name: Validate external model adapter contract
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_score_adapters.py' -v
+      - name: End-to-end CSV, ABE fallback, synthetic four-model fusion
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_e2e.py' -v
       - name: Independent fourth-model prediction and backtest
         shell: bash
         run: |
