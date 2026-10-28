@@ -61,6 +61,23 @@ class NeuralResearchTests(unittest.TestCase):
         self.assertEqual(out["chronos2_status"], "inferred")
         self.assertAlmostEqual(out["chronos2_weight"], 0.10)
 
+    def test_t0_gamma_mock_fallback(self):
+        with patch.object(mod, "t0_gamma_scores", return_value=[0.5]*46):
+            prediction = mod.predict(history(20), use_t0_gamma=True)
+        self.assertEqual(prediction["t0_gamma_status"], "inferred")
+        self.assertEqual(prediction["neural_status"], "skipped_insufficient_history")
+        self.assertEqual(len(prediction["first"]), 6)
+
+    def test_six_component_mocked_fusion(self):
+        fake = {"LSTM":[0.5]*46,"GRU":[0.5]*46,"Transformer":[0.5]*46}
+        with patch.object(mod, "train_neural", return_value=(fake,40)):
+            with patch.object(mod,"chronos2_scores",return_value=[0.5]*46):
+                with patch.object(mod,"t0_gamma_scores",return_value=[0.5]*46):
+                    prediction = mod.predict(history(60),use_chronos2=True,use_t0_gamma=True)
+        self.assertEqual(prediction["chronos2_status"],"inferred")
+        self.assertEqual(prediction["t0_gamma_status"],"inferred")
+        self.assertEqual(len(set(prediction["first"])),6)
+
     def test_neural_sample_floor(self):
         with self.assertRaises(ValueError):
             mod.examples(history(59))
