@@ -88,20 +88,40 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check torch --index-url https://download.pytorch.org/whl/cpu
           python -m pip install --disable-pip-version-check chronos-forecasting "tfc-t0[torch]>=0.6.0"
+      - name: Prepare bounded consistent history for neural end-to-end run
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_neural }}
+        run: |
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+          source = Path('WP-OS-Git-MAX/historical_archive.csv')
+          with source.open(encoding='utf-8-sig',newline='') as stream:
+              rows=list(csv.DictReader(stream))
+          if len(rows)<25:
+              raise ValueError('At least 25 real historical draws required')
+          recent=rows[-70:]
+          destination=Path('/tmp/wp-os-abe-neural-input.csv')
+          with destination.open('w',encoding='utf-8',newline='') as out:
+              writer=csv.DictWriter(out,fieldnames=['draw_id','first','second'])
+              writer.writeheader()
+              writer.writerows(recent)
+          print('Bounded history:',len(recent),'ending',recent[-1]['draw_id'])
+          print('This is a runtime smoke test, not complete historical validation.')
+          PY
       - name: Real LSTM GRU Chronos-2 t0-gamma inference and ABE fusion
         id: real_five_model_e2e
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_neural }}
         run: |
-          python WP-OS-Git-MAX/abe_train_lstm_gru.py --csv WP-OS-Git-MAX/historical_archive.csv --output /tmp/wp-os-abe-real-rnn.json
-          python WP-OS-Git-MAX/abe_infer_foundation_models.py --csv WP-OS-Git-MAX/historical_archive.csv --output /tmp/wp-os-abe-real-foundation.json
+          python WP-OS-Git-MAX/abe_train_lstm_gru.py --csv /tmp/wp-os-abe-neural-input.csv --output /tmp/wp-os-abe-real-rnn.json
+          python WP-OS-Git-MAX/abe_infer_foundation_models.py --csv /tmp/wp-os-abe-neural-input.csv --output /tmp/wp-os-abe-real-foundation.json
           python WP-OS-Git-MAX/abe_merge_real_models.py --recurrent /tmp/wp-os-abe-real-rnn.json --foundation /tmp/wp-os-abe-real-foundation.json --output /tmp/wp-os-abe-four-real-scores.json
-          python WP-OS-Git-MAX/abe_ultra_hybrid_max.py --csv WP-OS-Git-MAX/historical_archive.csv --model-scores /tmp/wp-os-abe-four-real-scores.json > /tmp/wp-os-abe-real-fusion.json
+          python WP-OS-Git-MAX/abe_ultra_hybrid_max.py --csv /tmp/wp-os-abe-neural-input.csv --model-scores /tmp/wp-os-abe-four-real-scores.json > /tmp/wp-os-abe-real-fusion.json
           python - <<'PY'
           import json
           from pathlib import Path
           a=json.loads(Path('/tmp/wp-os-abe-real-fusion.json').read_text(encoding='utf-8'))
           from csv import DictReader
-          p=Path('WP-OS-Git-MAX/historical_archive.csv')
+          p=Path('/tmp/wp-os-abe-neural-input.csv')
           with p.open(encoding='utf-8-sig',newline='') as fh:
               cutoff=list(DictReader(fh))[-1]['draw_id']
           source=json.loads(Path('/tmp/wp-os-abe-four-real-scores.json').read_text(encoding='utf-8'))
