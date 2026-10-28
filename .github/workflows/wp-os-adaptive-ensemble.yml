@@ -52,6 +52,32 @@ jobs:
               with open('/tmp/wp-os-adaptive-backtest.json','w',encoding='utf-8') as out:
                   subprocess.run(cmd+['--backtest'],check=True,stdout=out)
           PY
+      - name: Run hybrid entry point and verify provenance
+        shell: bash
+        run: |
+          python - <<'PY'
+          import csv, json, pathlib, subprocess, sys
+          source = pathlib.Path('WP-OS-Git-MAX/historical_archive.csv')
+          if not source.exists():
+              print('No historical archive; hybrid report skipped')
+              sys.exit(0)
+          with source.open(encoding='utf-8-sig', newline='') as f:
+              count = sum(1 for _ in csv.DictReader(f))
+          if count < 20:
+              print('Fewer than 20 completed draws; hybrid report skipped')
+              sys.exit(0)
+          cmd = [sys.executable, 'WP-OS-Git-MAX/abe_ultra_hybrid_max.py', '--csv', str(source)]
+          with open('/tmp/wp-os-abe-hybrid.json', 'w', encoding='utf-8') as out:
+              subprocess.run(cmd, check=True, stdout=out)
+          report = json.loads(pathlib.Path('/tmp/wp-os-abe-hybrid.json').read_text(encoding='utf-8'))
+          assert report['execution_mode'] == 'abe_only_fallback'
+          assert report['full_five_model_fusion_executed'] is False
+          assert set(report['unavailable_models']) == {'lstm','gru','chronos_2','t0_gamma'}
+          assert len(report['first']) == 6 and len(set(report['first'])) == 6
+          assert all(1 <= x <= 38 for x in report['first'])
+          assert 1 <= report['second'] <= 8
+          print('Hybrid ABE-only fallback output validated:', report['through_draw'])
+          PY
       - name: Upload optional fourth-model reports
         uses: actions/upload-artifact@v6
         with:
@@ -59,5 +85,6 @@ jobs:
           path: |
             /tmp/wp-os-adaptive-prediction.json
             /tmp/wp-os-adaptive-backtest.json
+            /tmp/wp-os-abe-hybrid.json
           if-no-files-found: warn
           retention-days: 30
