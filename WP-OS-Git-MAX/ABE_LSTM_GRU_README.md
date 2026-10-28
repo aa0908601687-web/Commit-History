@@ -1,4 +1,4 @@
-# Optional ABE LSTM/GRU/Transformer/Chronos-2 extension
+# Optional ABE LSTM/GRU/Transformer/Chronos-2/t0-gamma extension
 
 This is **experimental**, not a proven lottery prediction improvement. The original `adaptive_bayesian_ensemble_max.py` and its workflow/caches remain unchanged.
 
@@ -19,12 +19,22 @@ This is **experimental**, not a proven lottery prediction improvement. The origi
 - Chronos-2 requires package installation and network access to download its pretrained weights on first use; failing dependencies are **not** silently reported as successful inference.
 - Chronos-2 and the other models are not proven to predict lottery outcomes; no real-data backtest or end-to-end model download has yet been verified.
 
+## t0-gamma optional inference
+
+- `theforecastingcompany/t0-gamma` is an open-weights pretrained transformer, used through `tfc-t0[torch]>=0.6.0`. Source: https://huggingface.co/theforecastingcompany/t0-gamma
+- `--t0-gamma` enables zero-shot inference on 46 one-hot indicator series, using the most recent 20 completed draws; 1-step median forecast. No lottery-specific fine tuning.
+- With all six models active: **ABE 50%, LSTM 10%, GRU 10%, Transformer 10%, Chronos-2 10%, t0-gamma 10%**.
+- If any optional model is not selected or neural training lacks enough examples, ABE receives its unused weight automatically. No changes to original ABE or pre-existing caches.
+- Initial model download and PyTorch CPU inference may be substantial; live download, inference, CI, and out-of-sample validation are still unverified.
+- Ordinary continuous-value time-series benchmark performance **does not** validate binary lottery indicator forecasting.
+
 ## Usage
 
 ```sh
 python -m pip install numpy tensorflow
 python -m pip install chronos-forecasting
-python WP-OS-Git-MAX/abe_lstm_gru.py --csv WP-OS-Git-MAX/historical_archive.csv --chronos2
+python -m pip install 'tfc-t0[torch]>=0.6.0'
+python WP-OS-Git-MAX/abe_lstm_gru.py --csv WP-OS-Git-MAX/historical_archive.csv --chronos2 --t0-gamma
 python WP-OS-Git-MAX/abe_lstm_gru.py --csv WP-OS-Git-MAX/historical_archive.csv --no-neural
 python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_lstm_gru.py' -v
 ```
