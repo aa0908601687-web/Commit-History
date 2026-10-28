@@ -42,6 +42,44 @@ jobs:
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_score_adapters.py' -v
       - name: End-to-end CSV, ABE fallback, synthetic four-model fusion
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_e2e.py' -v
+      - name: Detect external model score secret availability
+        env:
+          ABE_MODEL_SCORES_JSON: ${{ secrets.ABE_MODEL_SCORES_JSON }}
+        run: |
+          if [ -n "$ABE_MODEL_SCORES_JSON" ]; then
+            echo "HAS_ABE_SCORES=true" >> "$GITHUB_ENV"
+            echo "External score input provided (contents hidden)"
+          else
+            echo "HAS_ABE_SCORES=false" >> "$GITHUB_ENV"
+            echo "No external scores supplied: only fallback/synthetic wiring tested"
+          fi
+      - name: Connect supplied external model scores to ABE fusion
+        if: ${{ env.HAS_ABE_SCORES == 'true' }}
+        env:
+          ABE_MODEL_SCORES_JSON: ${{ secrets.ABE_MODEL_SCORES_JSON }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, subprocess, sys
+          from csv import DictReader
+          source = pathlib.Path('WP-OS-Git-MAX/historical_latest_20.csv')
+          with source.open(encoding='utf-8-sig', newline='') as f:
+              cutoff = list(DictReader(f))[-1]['draw_id']
+          raw = os.environ['ABE_MODEL_SCORES_JSON']
+          data = json.loads(raw)
+          if data.get('through_draw') != cutoff:
+              raise ValueError('Secret model scores do not match latest bundled draw cutoff')
+          path = pathlib.Path('/tmp/wp-os-abe-external-scores.json')
+          path.write_text(raw, encoding='utf-8')
+          cmd = [sys.executable, 'WP-OS-Git-MAX/abe_ultra_hybrid_max.py',
+                 '--csv', str(source), '--model-scores', str(path)]
+          with pathlib.Path('/tmp/wp-os-abe-external-fusion.json').open('w',encoding='utf-8') as out:
+              subprocess.run(cmd,stdout=out,check=True)
+          report = json.loads(pathlib.Path('/tmp/wp-os-abe-external-fusion.json').read_text(encoding='utf-8'))
+          assert report['five_model_scores_fused']
+          assert report['external_score_tables_validated']
+          assert not report['neural_inference_verified']
+          print('External scores connected; inference provenance remains unverified')
+          PY
       - name: Verify external score CLI connection with synthetic inputs
         run: |
           python - <<'PY'
@@ -180,5 +218,6 @@ jobs:
             /tmp/wp-os-abe-20draw-e2e.json
             /tmp/wp-os-abe-synthetic-fusion.json
             /tmp/wp-os-abe-model-registry.json
+            /tmp/wp-os-abe-external-fusion.json
           if-no-files-found: warn
           retention-days: 30
