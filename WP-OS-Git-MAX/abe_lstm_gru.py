@@ -9,6 +9,7 @@ import hashlib
 import importlib.util
 import json
 import math
+from triple_hash_integrity import triple_hash
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -205,6 +206,7 @@ def predict(draws, use_neural=True, epochs=12, seed=20261028, use_chronos2=False
                         "epochs": epochs, "seed": seed, "neural_weight": NEURAL_WEIGHT}
     output.pop("sha256", None)
     output["sha256"] = hashlib.sha256(json.dumps(output, sort_keys=True).encode()).hexdigest()
+    output["integrity"] = triple_hash(output)  # Hashes the unchanged legacy payload.
     return output
 
 
