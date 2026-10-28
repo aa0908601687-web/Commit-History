@@ -19,6 +19,7 @@ permissions:
 jobs:
   adaptive-ensemble:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -82,8 +83,23 @@ jobs:
           with open('/tmp/wp-os-adaptive-prediction.json','w',encoding='utf-8') as out:
               subprocess.run(cmd,check=True,stdout=out)
           if n > 20:
+              # Bound the outer evaluation horizon. Each prediction may still fit
+              # adaptive weights using all prior available archive rows.
+              import tempfile
+              with source.open(encoding='utf-8-sig', newline='') as f:
+                  rows = list(csv.DictReader(f))
+              # A 20-draw warmup plus at most 50 evaluation targets.
+              # Earlier archive history is intentionally excluded from this
+              # bounded smoke test; this is NOT a full-history backtest.
+              recent = rows[-70:]
+              with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', encoding='utf-8', newline='', delete=False) as f:
+                  writer = csv.DictWriter(f, fieldnames=['draw_id','first','second'])
+                  writer.writeheader()
+                  writer.writerows(recent)
+                  bounded_path = f.name
               with open('/tmp/wp-os-adaptive-backtest.json','w',encoding='utf-8') as out:
-                  subprocess.run(cmd+['--backtest'],check=True,stdout=out)
+                  subprocess.run([*cmd[:3], bounded_path, '--backtest'], check=True, stdout=out)
+              print('Bounded last-70-row backtest smoke test; not full history')
           PY
       - name: Run hybrid entry point and verify provenance
         shell: bash
