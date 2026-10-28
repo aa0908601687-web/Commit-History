@@ -113,6 +113,31 @@ jobs:
             /tmp/wp-os-fusion-backtest.json
           if-no-files-found: error
           retention-days: 30
+      - name: Run evidence-gated selection and verify same draw cutoff
+        run: |
+          python WP-OS-Git-MAX/evidence_gated_selection.py --csv WP-OS-Git-MAX/historical_archive.csv --holdout 200 > /tmp/wp-os-evidence-gated.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          modular=json.loads(Path('/tmp/wp-os-modular-pipeline.json').read_text(encoding='utf-8'))
+          evidence=json.loads(Path('/tmp/wp-os-evidence-gated.json').read_text(encoding='utf-8'))
+          assert evidence['candidate']['through_draw'] == modular['through_draw']
+          assert evidence['history']['through_draw'] == modular['through_draw']
+          assert set(evidence['history']['models']) == set(modular['predictions'])
+          assert evidence['gate']['status'] == 'no_prospective_evidence'
+          assert evidence['candidate']['method'] == 'seeded_uniform_fallback'
+          assert len(set(evidence['candidate']['first'])) == 6
+          assert all(1 <= n <= 38 for n in evidence['candidate']['first'])
+          assert 1 <= evidence['candidate']['second'] <= 8
+          print('Evidence gate and three-model cutoff parity: passed')
+          PY
+      - name: Upload evidence-gated selection report
+        uses: actions/upload-artifact@v6
+        with:
+          name: wp-os-evidence-gated-${{ github.run_id }}
+          path: /tmp/wp-os-evidence-gated.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Generate validated 5/10-draw feature cache
         run: |
           python WP-OS-Git-MAX/cache_and_hit_validation.py --csv WP-OS-Git-MAX/historical_latest_10.csv --feature-cache .cache/wp-os-v3/wp-os-feature-cache.json > /dev/null
