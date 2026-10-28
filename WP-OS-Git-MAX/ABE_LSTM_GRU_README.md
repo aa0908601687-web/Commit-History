@@ -1,12 +1,13 @@
-# Optional ABE LSTM/GRU extension
+# Optional ABE LSTM/GRU/Transformer extension
 
 This is **experimental**, not a proven lottery prediction improvement. The original `adaptive_bayesian_ensemble_max.py` and its workflow/caches remain unchanged.
 
 - Uses the latest **20 completed draws** as each neural input sequence (38 first-zone indicators and 8 second-zone indicators).
 - Needs **at least 60 completed draws**: 20 for the first input and at least 40 next-draw training examples. If fewer are available, return the existing ABE prediction unchanged and clearly mark the neural portion as skipped.
-- Trains one small LSTM and one GRU independently for each invocation; each receives only records already published before the target draw. Outputs are normalized by lottery zone.
-- Research-only score blend: existing ABE 80%, LSTM 10%, GRU 10%. These are **heuristic scoring weights**, not measured accuracy or optimal probabilities.
+- Trains one small LSTM, one GRU and one attention-based Transformer independently for each invocation; each receives only records already published before the target draw. Outputs are normalized by lottery zone.
+- Research-only score blend: existing ABE 70%, LSTM 10%, GRU 10%, Transformer 10%. These are **heuristic scoring weights**, not measured accuracy or optimal probabilities.
 - Does not claim that 20 observations can train a neural network reliably. Training uses older observations to construct examples, while each input window uses only 20 draws.
+- Transformer uses a two-head self-attention block, residual normalization and pooling; this is a small research architecture, not a pretrained time-series foundation model.
 - No changes to production workflows or existing ABE caches. Neural dependencies and runtime remain opt-in.
 
 ## Usage
