@@ -63,7 +63,8 @@ def run(draws, model_scores_path=None):
         picks = fuse(abe_maps, external, config["initial_weights"])
         result["first"], result["second"] = picks["first"], picks["second"]
         result["execution_mode"] = "five_model_external_scores"
-        result["full_five_model_fusion_executed"] = True
+        result["full_five_model_fusion_executed"] = False
+        result["five_model_scores_fused"] = True
         result["unavailable_models"] = []
         result["note"] = ("Four external score tables provided and validated; "
                           "neural runtime execution and provenance are NOT verified.")
