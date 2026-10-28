@@ -44,6 +44,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Verify checked-in history and 20-draw feature window
+        run: |
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+          folder=Path('WP-OS-Git-MAX')
+          def read(name):
+              with (folder/name).open(encoding='utf-8-sig',newline='') as f:
+                  return list(csv.DictReader(f))
+          all_rows=read('historical_archive.csv')
+          recent=read('historical_latest_20.csv')
+          assert len(all_rows)>=20 and len(recent)==20, 'Expected valid 20-draw feature window'
+          assert recent==all_rows[-20:], 'Feature-window CSV differs from full archive tail'
+          ids=[r['draw_id'] for r in all_rows]
+          assert len(ids)==len(set(ids)), 'Duplicate draw IDs in archive'
+          print('Archive/20-draw alignment checked:',len(all_rows),'draws through',ids[-1])
+          print('Repository data freshness relative to official draws NOT verified')
+          PY
       - name: Compile all ABE model bridge modules
         run: |
           python -m py_compile \
