@@ -44,6 +44,23 @@ class NeuralResearchTests(unittest.TestCase):
         self.assertTrue(all(1 <= n <= 38 for n in prediction["first"]))
         self.assertTrue(1 <= prediction["second"] <= 8)
 
+    def test_chronos2_mock_without_neural_training(self):
+        data = history(20)
+        with patch.object(mod, "chronos2_scores", return_value=[0.5] * 46):
+            output = mod.predict(data, use_chronos2=True)
+        self.assertEqual(output["chronos2_status"], "inferred")
+        self.assertEqual(output["neural_status"], "skipped_insufficient_history")
+        self.assertEqual(len(output["first"]), 6)
+        self.assertTrue(1 <= output["second"] <= 8)
+
+    def test_chronos2_mock_with_all_neural_models(self):
+        fake = {"LSTM": [0.4]*46, "GRU": [0.6]*46, "Transformer": [0.5]*46}
+        with patch.object(mod, "train_neural", return_value=(fake, 40)):
+            with patch.object(mod, "chronos2_scores", return_value=[0.3]*46):
+                out = mod.predict(history(60), use_chronos2=True)
+        self.assertEqual(out["chronos2_status"], "inferred")
+        self.assertAlmostEqual(out["chronos2_weight"], 0.10)
+
     def test_neural_sample_floor(self):
         with self.assertRaises(ValueError):
             mod.examples(history(59))
