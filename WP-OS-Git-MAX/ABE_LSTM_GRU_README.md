@@ -1,4 +1,4 @@
-# Optional ABE LSTM/GRU/Transformer extension
+# Optional ABE LSTM/GRU/Transformer/Chronos-2 extension
 
 This is **experimental**, not a proven lottery prediction improvement. The original `adaptive_bayesian_ensemble_max.py` and its workflow/caches remain unchanged.
 
@@ -10,11 +10,21 @@ This is **experimental**, not a proven lottery prediction improvement. The origi
 - Transformer uses a two-head self-attention block, residual normalization and pooling; this is a small research architecture, not a pretrained time-series foundation model.
 - No changes to production workflows or existing ABE caches. Neural dependencies and runtime remain opt-in.
 
+## Chronos-2 optional inference
+
+- Confirmed upstream model: `amazon/chronos-2` from the `chronos-forecasting` package.
+- When `--chronos2` is enabled, it takes exactly the last 20 completed draws, encoded as 46 binary time series (38 first-zone indicators + 8 second-zone indicators), transposed to `(46,20)`, and generates one-step-ahead zero-shot median forecasts. No model fine-tuning.
+- With >=60 prior draws and trained LSTM/GRU/Transformer, **provisional** fusion is ABE 60%, LSTM 10%, GRU 10%, Transformer 10%, Chronos-2 10%.
+- With only 20–59 completed draws, neural training is skipped; Chronos-2 is optional and ABE 90% / Chronos-2 10%. Without `--chronos2`, the previous ABE + 3-model configuration is unchanged.
+- Chronos-2 requires package installation and network access to download its pretrained weights on first use; failing dependencies are **not** silently reported as successful inference.
+- Chronos-2 and the other models are not proven to predict lottery outcomes; no real-data backtest or end-to-end model download has yet been verified.
+
 ## Usage
 
 ```sh
 python -m pip install numpy tensorflow
-python WP-OS-Git-MAX/abe_lstm_gru.py --csv WP-OS-Git-MAX/historical_archive.csv
+python -m pip install chronos-forecasting
+python WP-OS-Git-MAX/abe_lstm_gru.py --csv WP-OS-Git-MAX/historical_archive.csv --chronos2
 python WP-OS-Git-MAX/abe_lstm_gru.py --csv WP-OS-Git-MAX/historical_archive.csv --no-neural
 python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_lstm_gru.py' -v
 ```
