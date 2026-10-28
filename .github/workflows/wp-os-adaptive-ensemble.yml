@@ -28,6 +28,7 @@ on:
       - 'WP-OS-Git-MAX/abe_infer_foundation_models.py'
       - 'WP-OS-Git-MAX/abe_merge_real_models.py'
       - 'WP-OS-Git-MAX/test_abe_merge_real_models.py'
+      - 'WP-OS-Git-MAX/test_abe_foundation_contract.py'
       - 'WP-OS-Git-MAX/test_abe_model_connectivity.py'
       - 'WP-OS-Git-MAX/historical_latest_20.csv'
       - 'WP-OS-Git-MAX/test_abe_ultra_hybrid_runtime.py'
@@ -78,6 +79,8 @@ jobs:
           assert len(result['first']) == 6 and 1 <= result['second'] <= 8
           print('Partially trained ABE+LSTM+GRU fusion output checked')
           PY
+      - name: Validate foundation model input and output contracts
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_foundation_contract.py' -v
       - name: Test strict real-model merge contract (no model downloads)
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_merge_real_models.py' -v
       - name: Install runtimes for opt-in full neural inference
