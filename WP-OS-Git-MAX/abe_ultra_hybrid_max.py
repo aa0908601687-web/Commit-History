@@ -65,7 +65,9 @@ def run(draws, model_scores_path=None):
         result["execution_mode"] = "five_model_external_scores"
         result["full_five_model_fusion_executed"] = False
         result["five_model_scores_fused"] = True
-        result["unavailable_models"] = []
+        result["unavailable_models"] = unavailable
+        result["external_score_tables_validated"] = True
+        result["neural_inference_verified"] = False
         result["note"] = ("Four external score tables provided and validated; "
                           "neural runtime execution and provenance are NOT verified.")
         result["model_scores_sha256"] = hashlib.sha256(
