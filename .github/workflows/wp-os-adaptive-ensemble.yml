@@ -11,6 +11,8 @@ on:
       - 'WP-OS-Git-MAX/abe_score_adapters.py'
       - 'WP-OS-Git-MAX/test_abe_score_adapters.py'
       - 'WP-OS-Git-MAX/test_abe_e2e.py'
+      - 'WP-OS-Git-MAX/abe_model_connectivity.py'
+      - 'WP-OS-Git-MAX/test_abe_model_connectivity.py'
       - 'WP-OS-Git-MAX/historical_latest_20.csv'
       - 'WP-OS-Git-MAX/test_abe_ultra_hybrid_runtime.py'
       - '.github/workflows/wp-os-adaptive-ensemble.yml'
@@ -25,6 +27,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Test model registry connectivity probe without network
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_model_connectivity.py' -v
+      - name: Live Chronos-2 and t0-gamma registry connection test
+        continue-on-error: true
+        run: python WP-OS-Git-MAX/abe_model_connectivity.py --output /tmp/wp-os-abe-model-registry.json
       - name: Test adaptive research model
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_adaptive_bayesian_ensemble_max.py' -v
       - name: Validate proposed five-model configuration (not model inference)
@@ -172,5 +179,6 @@ jobs:
             /tmp/wp-os-abe-hybrid.json
             /tmp/wp-os-abe-20draw-e2e.json
             /tmp/wp-os-abe-synthetic-fusion.json
+            /tmp/wp-os-abe-model-registry.json
           if-no-files-found: warn
           retention-days: 30
