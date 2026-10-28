@@ -7,6 +7,8 @@ on:
       - 'WP-OS-Git-MAX/test_adaptive_bayesian_ensemble_max.py'
       - 'WP-OS-Git-MAX/abe_ultra_hybrid_max.json'
       - 'WP-OS-Git-MAX/test_abe_ultra_hybrid_config.py'
+      - 'WP-OS-Git-MAX/abe_ultra_hybrid_max.py'
+      - 'WP-OS-Git-MAX/test_abe_ultra_hybrid_runtime.py'
       - '.github/workflows/wp-os-adaptive-ensemble.yml'
 permissions:
   contents: read
@@ -22,6 +24,8 @@ jobs:
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_adaptive_bayesian_ensemble_max.py' -v
       - name: Validate proposed five-model configuration (not model inference)
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_ultra_hybrid_config.py' -v
+      - name: Test executable ABE-only fallback and provenance
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_abe_ultra_hybrid_runtime.py' -v
       - name: Independent fourth-model prediction and backtest
         shell: bash
         run: |
