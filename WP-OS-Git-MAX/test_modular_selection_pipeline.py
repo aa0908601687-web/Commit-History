@@ -57,6 +57,33 @@ class ModularPipelineTests(unittest.TestCase):
         self.assertFalse(adjusted["changed"])
         self.assertEqual(adjusted["source"], "original_prediction")
 
+    def test_adjustment_selects_compliant_candidate(self):
+        prediction = {
+            "first": [1, 2, 3, 4, 5, 6],
+            "top_first_scores": [(n, float(11 - n)) for n in range(1, 11)],
+        }
+        calls = {"count": 0}
+        def check(numbers, draws, enabled_checks=None):
+            calls["count"] += 1
+            return {"accepted": calls["count"] > 1, "checks": {}}
+        with patch("modular_selection_pipeline._feature_checks", side_effect=check):
+            adjusted = _adjust_candidate(prediction, self.draws)
+        self.assertEqual(adjusted["source"], "highest_score_compliant_top10")
+        self.assertTrue(adjusted["feature_validation"]["accepted"])
+        self.assertEqual(len(adjusted["first"]), 6)
+
+    def test_adjustment_no_compliant_top10_candidate(self):
+        prediction = {
+            "first": [1, 2, 3, 4, 5, 6],
+            "top_first_scores": [(n, float(11 - n)) for n in range(1, 11)],
+        }
+        with patch("modular_selection_pipeline._feature_checks",
+                   return_value={"accepted": False, "checks": {}}):
+            adjusted = _adjust_candidate(prediction, self.draws)
+        self.assertEqual(adjusted["source"], "no_compliant_top10_candidate")
+        self.assertEqual(adjusted["first"], prediction["first"])
+        self.assertFalse(adjusted["changed"])
+
     def test_unknown_check_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Unknown feature checks"):
             _feature_checks([1, 2, 3, 4, 5, 6], self.draws, ["unknown"])
