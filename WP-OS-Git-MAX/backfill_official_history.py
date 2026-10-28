@@ -174,9 +174,8 @@ def main():
     payload = render(full)
     paths = {
         ROOT / "historical_archive.csv": payload,
-        # Compatibility file remains cumulative; model features still read
-        # only the dedicated ten-draw snapshot.
-        ROOT / "historical_latest_20.csv": payload,
+        # Keep the rolling 20-draw snapshot distinct from the full archive.
+        ROOT / "historical_latest_20.csv": render(full[-20:]),
         ROOT / "historical_latest_10.csv": render(full[-10:]),
     }
     for path, data in paths.items():
