@@ -1,6 +1,12 @@
 name: WP-OS Adaptive Bayesian Ensemble MAX
 on:
   workflow_dispatch:
+    inputs:
+      train_lstm_gru:
+        description: 'Train local LSTM/GRU with PyTorch (research only)'
+        required: false
+        type: boolean
+        default: false
   push:
     paths:
       - 'WP-OS-Git-MAX/adaptive_bayesian_ensemble_max.py'
@@ -12,6 +18,7 @@ on:
       - 'WP-OS-Git-MAX/test_abe_score_adapters.py'
       - 'WP-OS-Git-MAX/test_abe_e2e.py'
       - 'WP-OS-Git-MAX/abe_model_connectivity.py'
+      - 'WP-OS-Git-MAX/abe_train_lstm_gru.py'
       - 'WP-OS-Git-MAX/test_abe_model_connectivity.py'
       - 'WP-OS-Git-MAX/historical_latest_20.csv'
       - 'WP-OS-Git-MAX/test_abe_ultra_hybrid_runtime.py'
@@ -32,6 +39,22 @@ jobs:
       - name: Live Chronos-2 and t0-gamma registry connection test
         continue-on-error: true
         run: python WP-OS-Git-MAX/abe_model_connectivity.py --output /tmp/wp-os-abe-model-registry.json
+      - name: Install PyTorch when local neural training requested
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.train_lstm_gru }}
+        run: python -m pip install --disable-pip-version-check torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Train real LSTM and GRU (partial ensemble only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.train_lstm_gru }}
+        run: |
+          python WP-OS-Git-MAX/abe_train_lstm_gru.py --csv WP-OS-Git-MAX/historical_archive.csv --epochs 5 --output /tmp/wp-os-abe-lstm-gru-scores.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          output = json.loads(Path('/tmp/wp-os-abe-lstm-gru-scores.json').read_text(encoding='utf-8'))
+          assert set(output['models']) == {'lstm','gru'}
+          assert output['five_model_fusion_executed'] is False
+          assert output['training_samples'] > 0
+          print('Local trained LSTM/GRU scores verified (NOT a complete five-model fusion)')
+          PY
       - name: Test adaptive research model
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_adaptive_bayesian_ensemble_max.py' -v
       - name: Validate proposed five-model configuration (not model inference)
@@ -219,5 +242,6 @@ jobs:
             /tmp/wp-os-abe-synthetic-fusion.json
             /tmp/wp-os-abe-model-registry.json
             /tmp/wp-os-abe-external-fusion.json
+            /tmp/wp-os-abe-lstm-gru-scores.json
           if-no-files-found: warn
           retention-days: 30
