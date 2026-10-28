@@ -300,6 +300,10 @@ jobs:
             echo "Saved draw count:"
             python -c "import csv; print(sum(1 for _ in csv.DictReader(open('WP-OS-Git-MAX/historical_latest_20.csv', encoding='utf-8-sig'))))"
           fi
+      - name: Validate latest CSV snapshots before commit
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_evidence_audit.py'
       - name: Commit verified changed data
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
