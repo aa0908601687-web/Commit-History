@@ -22,6 +22,18 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(result["first"], [1, 2, 3, 4, 5, 6])
         self.assertEqual(result["second"], 1)
 
+    def test_reject_invalid_fusion_weights(self):
+        m = validate_scores(self.fixture(), "115000086")
+        abe = {zone: {n: 1/count for n in range(1, count + 1)}
+               for zone, count in (("first", 38), ("second", 8))}
+        for bad in (
+            {"abe_bayesian": -.4, **{name: .35 for name in NAMES}},
+            {"abe_bayesian": float("nan"), **{name: .1 for name in NAMES}},
+            {"abe_bayesian": float("inf"), **{name: .1 for name in NAMES}},
+        ):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                fuse(abe, m, bad)
+
     def test_reject_stale(self):
         with self.assertRaises(ValueError):
             validate_scores(self.fixture(), "115000087")
