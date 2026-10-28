@@ -107,7 +107,24 @@ def train_neural(draws, epochs=12, seed=20261028):
     return predictions, len(xs)
 
 
-def predict(draws, use_neural=True, epochs=12, seed=20261028):
+
+def chronos2_scores(draws):
+    """Pretrained Chronos-2 zero-shot prediction of 46 indicator series."""
+    try:
+        import numpy as np
+        from chronos import BaseChronosPipeline
+    except ImportError as exc:
+        raise RuntimeError("Install chronos-forecasting, numpy and torch") from exc
+    history = np.asarray([vector(d) for d in draws[-LOOKBACK:]], dtype="float32").T
+    pipeline = BaseChronosPipeline.from_pretrained("amazon/chronos-2", device_map="cpu")
+    _, means = pipeline.predict_quantiles([history], prediction_length=1, quantile_levels=[0.5])
+    values = np.asarray(means[0], dtype="float32").reshape(-1)
+    if values.shape != (FEATURES,) or not np.isfinite(values).all():
+        raise ValueError("Chronos-2 returned invalid values")
+    return values.tolist()
+
+
+def predict(draws, use_neural=True, epochs=12, seed=20261028, use_chronos2=False):
     if len(draws) < LOOKBACK:
         raise ValueError("At least 20 completed draws required")
     baseline = abe.predict(draws)
@@ -116,6 +133,7 @@ def predict(draws, use_neural=True, epochs=12, seed=20261028):
     output["neural_status"] = "not_requested"
     output["neural_training_examples"] = 0
     output["neural_weight"] = 0.0
+    output["chronos2_status"] = "not_requested"
     if use_neural:
         if len(draws) < LOOKBACK + MIN_TRAIN_EXAMPLES:
             output["neural_status"] = "skipped_insufficient_history"
@@ -133,6 +151,28 @@ def predict(draws, use_neural=True, epochs=12, seed=20261028):
             output["neural_status"] = "trained"
             output["neural_training_examples"] = count
             output["neural_weight"] = NEURAL_WEIGHT
+
+    if use_chronos2:
+        c_scores = chronos2_scores(draws)
+        a_scores = abe_scores(draws)
+        trained = output["neural_status"] == "trained"
+        for zone, offset, upper, count in (("first", 0, 38, 6), ("second", 38, 8, 1)):
+            c = normalize(c_scores[offset:offset + upper])
+            if trained:
+                l = normalize(neural["LSTM"][offset:offset + upper])
+                g = normalize(neural["GRU"][offset:offset + upper])
+                t = normalize(neural["Transformer"][offset:offset + upper])
+                fused = [0.60*a + 0.10*(x+y+z+q)
+                         for a,x,y,z,q in zip(a_scores[zone],l,g,t,c)]
+            else:
+                fused = [0.90*a + 0.10*q for a,q in zip(a_scores[zone],c)]
+            picks = sorted(range(1,upper+1),key=lambda n:(-fused[n-1],n))[:count]
+            output[zone] = sorted(picks) if zone == "first" else picks[0]
+        output["chronos2_status"] = "inferred"
+        output["chronos2_weight"] = 0.10
+        output["model"] += " + Chronos-2"
+    else:
+        output["chronos2_weight"] = 0.0
     output["config"] = {"lookback": LOOKBACK, "min_neural_training_examples": MIN_TRAIN_EXAMPLES,
                         "epochs": epochs, "seed": seed, "neural_weight": NEURAL_WEIGHT}
     output.pop("sha256", None)
@@ -146,11 +186,12 @@ def main():
     p.add_argument("--no-neural", action="store_true", help="Run unmodified ABE output only")
     p.add_argument("--epochs", type=int, default=12)
     p.add_argument("--seed", type=int, default=20261028)
+    p.add_argument("--chronos2", action="store_true")
     args = p.parse_args()
     if not 1 <= args.epochs <= 100:
         p.error("--epochs must be from 1 to 100")
     draws = abe.base.load(args.csv)
-    print(json.dumps(predict(draws, not args.no_neural, args.epochs, args.seed),
+    print(json.dumps(predict(draws, not args.no_neural, args.epochs, args.seed, args.chronos2),
                      ensure_ascii=False, indent=2))
 
 
