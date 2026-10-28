@@ -35,6 +35,33 @@ class EvidenceGateTests(unittest.TestCase):
                                   self.draws[-2]["draw_id"]])
         self.assertEqual(sum(report["models"]["mock"]["hits_0_to_6"]), 2)
 
+    def test_cli_entry_point(self):
+        import contextlib
+        import csv
+        import io
+        import json
+        import runpy
+        import sys
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "draws.csv"
+            with path.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.writer(stream)
+                writer.writerow(["draw_id", "first", "second"])
+                for d in self.draws:
+                    writer.writerow([d["draw_id"],
+                                     " ".join(map(str, d["first"])), d["second"]])
+            output = io.StringIO()
+            with patch.object(sys, "argv", ["evidence_gated_selection.py",
+                                            "--csv", str(path), "--holdout", "2"]):
+                with contextlib.redirect_stdout(output):
+                    runpy.run_module("evidence_gated_selection", run_name="__main__")
+            parsed = json.loads(output.getvalue())
+            self.assertEqual(parsed["history"]["periods"], 2)
+            self.assertEqual(parsed["gate"]["status"], "no_prospective_evidence")
+
     def test_retrospective_never_claims_verified_advantage(self):
         result = gate.run(self.draws, holdout=2)
         self.assertIsNone(result["gate"]["selected_model"])
