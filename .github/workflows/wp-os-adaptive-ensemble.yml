@@ -50,6 +50,13 @@ jobs:
           assert 1 <= report['second'] <= 8
           assert len(report['full_input_sha256']) == 64
           assert len(report['feature_window_sha256']) == 64
+          import hashlib
+          expected = report.pop('sha256')
+          actual = hashlib.sha256(json.dumps(report, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
+          assert expected == actual, 'ABE report SHA-256 mismatch'
+          assert report['full_input_sha256'] == report['feature_window_sha256'], '20-draw digest mismatch'
+          assert report['input_hash_timestamp_proof'] is False
+          assert not report.get('five_model_scores_fused', False)
           print('20-draw CLI end-to-end fallback passed; no neural inference claimed')
           PY
       - name: Independent fourth-model prediction and backtest
