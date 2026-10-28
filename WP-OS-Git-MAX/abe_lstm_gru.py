@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Optional LSTM+GRU+Transformer research extension for ABE. No claimed lottery edge.
+"""Optional LSTM+GRU research extension for ABE. No claimed lottery edge.
 
 Requires TensorFlow only when neural training is requested. The original ABE
 model is unchanged. All neural training examples precede the forecast draw.
@@ -19,7 +19,7 @@ spec.loader.exec_module(abe)
 LOOKBACK = 20
 MIN_TRAIN_EXAMPLES = 40
 FEATURES = 46
-NEURAL_WEIGHT = 0.30  # Research-only fixed cap; unvalidated.
+NEURAL_WEIGHT = 0.20  # Research-only fixed cap; unvalidated.
 
 
 def vector(draw):
@@ -78,27 +78,13 @@ def train_neural(draws, epochs=12, seed=20261028):
     Y = np.asarray(ys, dtype="float32")
     next_x = np.asarray([[vector(d) for d in draws[-LOOKBACK:]]], dtype="float32")
     predictions = {}
-    for kind in ("LSTM", "GRU", "Transformer"):
-        if kind == "Transformer":
-            inputs = tf.keras.Input(shape=(LOOKBACK, FEATURES))
-            projected = tf.keras.layers.Dense(32)(inputs)
-            attended = tf.keras.layers.MultiHeadAttention(
-                num_heads=2, key_dim=16, dropout=0.1)(projected, projected)
-            hidden = tf.keras.layers.LayerNormalization()(
-                tf.keras.layers.Add()([projected, attended]))
-            feedforward = tf.keras.layers.Dense(32, activation="relu")(hidden)
-            hidden = tf.keras.layers.LayerNormalization()(
-                tf.keras.layers.Add()([hidden, feedforward]))
-            pooled = tf.keras.layers.GlobalAveragePooling1D()(hidden)
-            outputs = tf.keras.layers.Dense(FEATURES, activation="sigmoid")(pooled)
-            model = tf.keras.Model(inputs=inputs, outputs=outputs)
-        else:
-            layer = tf.keras.layers.LSTM if kind == "LSTM" else tf.keras.layers.GRU
-            model = tf.keras.Sequential([
-                tf.keras.layers.Input(shape=(LOOKBACK, FEATURES)),
-                layer(16),
-                tf.keras.layers.Dense(FEATURES, activation="sigmoid"),
-            ])
+    for kind in ("LSTM", "GRU"):
+        layer = tf.keras.layers.LSTM if kind == "LSTM" else tf.keras.layers.GRU
+        model = tf.keras.Sequential([
+            tf.keras.layers.Input(shape=(LOOKBACK, FEATURES)),
+            layer(16),
+            tf.keras.layers.Dense(FEATURES, activation="sigmoid"),
+        ])
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
                       loss="binary_crossentropy")
         model.fit(X, Y, batch_size=min(16, len(X)), epochs=epochs, verbose=0,
@@ -146,7 +132,7 @@ def predict(draws, use_neural=True, epochs=12, seed=20261028, use_chronos2=False
         raise ValueError("At least 20 completed draws required")
     baseline = abe.predict(draws)
     output = dict(baseline)
-    output["model"] = "ABE + LSTM + GRU + Transformer research extension"
+    output["model"] = "ABE + LSTM + GRU research extension"
     output["neural_status"] = "not_requested"
     output["neural_training_examples"] = 0
     output["neural_weight"] = 0.0
@@ -160,9 +146,8 @@ def predict(draws, use_neural=True, epochs=12, seed=20261028, use_chronos2=False
             for zone, offset, upper, select in (("first", 0, 38, 6), ("second", 38, 8, 1)):
                 l = normalize(neural["LSTM"][offset:offset + upper])
                 g = normalize(neural["GRU"][offset:offset + upper])
-                t = normalize(neural["Transformer"][offset:offset + upper])
-                fused = [(1 - NEURAL_WEIGHT) * a + NEURAL_WEIGHT * (x + y + z) / 3
-                         for a, x, y, z in zip(baseline_scores[zone], l, g, t)]
+                fused = [(1 - NEURAL_WEIGHT) * a + NEURAL_WEIGHT * (x + y) / 2
+                         for a, x, y in zip(baseline_scores[zone], l, g)]
                 selected = sorted(range(1, upper + 1), key=lambda n: (-fused[n - 1], n))[:select]
                 output[zone] = sorted(selected) if zone == "first" else selected[0]
             output["neural_status"] = "trained"
@@ -178,9 +163,8 @@ def predict(draws, use_neural=True, epochs=12, seed=20261028, use_chronos2=False
             if trained:
                 l = normalize(neural["LSTM"][offset:offset + upper])
                 g = normalize(neural["GRU"][offset:offset + upper])
-                t = normalize(neural["Transformer"][offset:offset + upper])
-                fused = [0.60*a + 0.10*(x+y+z+q)
-                         for a,x,y,z,q in zip(a_scores[zone],l,g,t,c)]
+                fused = [0.70*a + 0.10*(x+y+q)
+                         for a,x,y,q in zip(a_scores[zone],l,g,c)]
             else:
                 fused = [0.90*a + 0.10*q for a,q in zip(a_scores[zone],c)]
             picks = sorted(range(1,upper+1),key=lambda n:(-fused[n-1],n))[:count]
@@ -199,7 +183,7 @@ def predict(draws, use_neural=True, epochs=12, seed=20261028, use_chronos2=False
         for zone, offset, upper, count in (("first", 0, 38, 6), ("second", 38, 8, 1)):
             components = [basic[zone]]
             if trained:
-                for key in ("LSTM", "GRU", "Transformer"):
+                for key in ("LSTM", "GRU"):
                     components.append(normalize(neural[key][offset:offset + upper]))
             if chronos_available:
                 components.append(normalize(c_scores[offset:offset + upper]))
