@@ -47,8 +47,13 @@ def read_scores(path, cutoff):
 
 def fuse(abe_scores, other_scores, weights):
     """Fuse normalized ABE zone score maps with four validated adapters."""
-    if set(weights) != {"abe_bayesian", *NAMES} or abs(sum(weights.values()) - 1) > 1e-9:
-        raise ValueError("Invalid weights")
+    if not isinstance(weights, dict) or set(weights) != {"abe_bayesian", *NAMES}:
+        raise ValueError("Invalid weight keys")
+    if any(isinstance(w, bool) or not isinstance(w, (int, float))
+           or not math.isfinite(w) or w < 0 for w in weights.values()):
+        raise ValueError("Weights must be finite and nonnegative")
+    if abs(math.fsum(weights.values()) - 1.0) > 1e-9:
+        raise ValueError("Weights must sum to one")
     result = {}
     for zone, upper in (("first", 38), ("second", 8)):
         maps = {"abe_bayesian": abe_scores[zone],
