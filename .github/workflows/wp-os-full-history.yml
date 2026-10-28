@@ -93,7 +93,7 @@ jobs:
           if-no-files-found: error
       - name: Commit verified archive only on success
         run: |
-          if ! git diff --quiet -- WP-OS-Git-MAX/historical_archive.csv WP-OS-Git-MAX/historical_latest_20.csv WP-OS-Git-MAX/historical_latest_10.csv; then
+          if ! git diff --quiet -- WP-OS-Git-MAX/historical_archive.csv WP-OS-Git-MAX/historical_latest_20.csv WP-OS-Git-MAX/historical_latest_10.csv WP-OS-Git-MAX/history_backfill_manifest.json; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add WP-OS-Git-MAX/historical_archive.csv WP-OS-Git-MAX/historical_latest_20.csv WP-OS-Git-MAX/historical_latest_10.csv WP-OS-Git-MAX/history_backfill_manifest.json
