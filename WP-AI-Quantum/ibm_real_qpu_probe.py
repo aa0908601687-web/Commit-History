@@ -8,16 +8,18 @@ def save(path,record):
 
 def run_probe(output,service=None,backend_name=None,shots=128):
     if not 1 <= shots <= 4096: raise ValueError("shots must be 1..4096")
-    from qiskit import QuantumCircuit, transpile
-    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
     if service is None:
         token=os.environ.get("IBM_QUANTUM_API_TOKEN")
         instance=os.environ.get("IBM_QUANTUM_INSTANCE")
         if not token or not instance:
             raise RuntimeError("IBM credentials missing; no hardware submission")
+    from qiskit import QuantumCircuit, transpile
+    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
+    if service is None:
         service=QiskitRuntimeService(channel="ibm_quantum_platform",token=token,instance=instance)
     backend=service.backend(backend_name) if backend_name else service.least_busy(operational=True,simulator=False,min_num_qubits=2)
-    if getattr(backend,"simulator",False) or getattr(backend.configuration(),"simulator",False):
+    configuration = backend.configuration() if callable(getattr(backend,"configuration",None)) else None
+    if getattr(backend,"simulator",False) or getattr(configuration,"simulator",False):
         raise RuntimeError("Simulator rejected")
     if getattr(backend,"num_qubits",0)<2: raise RuntimeError("At least 2 physical qubits required")
     qc=QuantumCircuit(2,2)
