@@ -34,7 +34,7 @@ jobs:
           assert r['selection_valid'] is True
           assert r['real_qpu_verified'] is False
           assert r['qpu_influenced_selection'] is False
-          print('Offline checks passed; QPU job count: ZERO')
+          print('Offline checks passed; this workflow did not invoke QPU submission code')
           PY
       - name: Upload offline-only evidence
         if: always()
