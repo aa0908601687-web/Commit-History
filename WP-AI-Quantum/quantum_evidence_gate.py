@@ -4,6 +4,8 @@ import argparse,json
 from pathlib import Path
 
 def gate(selection,provider):
+    if selection.get("selection_valid") is not True:
+        raise ValueError("Independent lottery selection invalid")
     if selection.get("status")!="receipt_contract_verified":
         raise ValueError("Receipt contract not validated")
     if selection.get("real_qpu_verified") is not False or selection.get("qpu_influenced_selection") is not False:
