@@ -23,6 +23,12 @@ class TestProvider(unittest.TestCase):
     def test_reject_mismatch(self):
         self.receipt["counts"]={"00":8}
         with self.assertRaises(ValueError):verify(self.receipt,Service())
+    def test_reject_misleading_status(self):
+        class MisleadingJob(Job):
+            def status(self): return "NOT_DONE"
+        class MisleadingService(Service):
+            def job(self,job_id): return MisleadingJob()
+        with self.assertRaises(RuntimeError):verify(self.receipt,MisleadingService())
     def test_reject_incomplete(self):
         self.receipt["status"]="submitted"
         with self.assertRaises(ValueError):verify(self.receipt,Service())
