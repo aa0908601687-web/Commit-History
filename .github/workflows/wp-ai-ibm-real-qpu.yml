@@ -30,7 +30,8 @@ jobs:
           python -m py_compile WP-AI-Quantum/ibm_real_qpu_probe.py
           python -m unittest discover -s WP-AI-Quantum -p 'test_ibm_real_qpu_probe.py' -v
           python -m unittest discover -s WP-AI-Quantum -p 'test_ibm_provider_verify.py' -v
-          python -m unittest discover -s WP-AI-Quantum -p 'test_quantum_evidence_gate.py' -v
+          python -m unittest discover -s WP-AI-Quantum -p 'test_*.py' -v
+          python WP-AI-Quantum/quantum_e2e_validation.py --csv WP-OS-Git-MAX/historical_latest_20.csv > selection_preflight.json
       - name: Run actual IBM hardware (never simulator)
         env:
           IBM_QUANTUM_API_TOKEN: ${{ secrets.IBM_QUANTUM_API_TOKEN }}
@@ -74,6 +75,7 @@ jobs:
         with:
           name: ibm-real-qpu-verification
           path: |
+            selection_preflight.json
             qpu_report.json
             e2e_report.json
             provider_verified.json
