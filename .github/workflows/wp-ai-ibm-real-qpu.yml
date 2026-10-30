@@ -53,7 +53,20 @@ jobs:
         env:
           IBM_QUANTUM_API_TOKEN: ${{ secrets.IBM_QUANTUM_API_TOKEN }}
           IBM_QUANTUM_INSTANCE: ${{ secrets.IBM_QUANTUM_INSTANCE }}
-        run: python WP-AI-Quantum/ibm_provider_verify.py --receipt qpu_report.json --output provider_verified.json
+        run: |
+          python WP-AI-Quantum/ibm_provider_verify.py --receipt qpu_report.json --output provider_verified.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('provider_verified.json').read_text())
+          assert p['provider_provenance_independently_verified'] is True
+          assert p['quantum_lottery_optimization_executed'] is False
+          with open(__import__('os').environ['GITHUB_STEP_SUMMARY'],'a') as f:
+              f.write('IBM provider re-query verified QPU job: '+p['job_id']+' on '+p['backend']+'\
+')
+              f.write('This probe is not a quantum lottery optimization.\
+')
+          PY
       - name: Publish hardware verification record
         if: always()
         uses: actions/upload-artifact@v4
