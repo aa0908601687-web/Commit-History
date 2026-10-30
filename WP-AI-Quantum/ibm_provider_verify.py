@@ -7,8 +7,8 @@ def verify(receipt,service):
     if receipt.get("status")!="completed" or not receipt.get("job_id"):
         raise ValueError("Receipt does not describe a completed job")
     job=service.job(receipt["job_id"])
-    status=str(job.status()).lower()
-    if "done" not in status and "completed" not in status:
+    status=str(job.status()).strip().upper().split(".")[-1]
+    if status not in {"DONE", "COMPLETED"}:
         raise RuntimeError("IBM job is not complete: "+status)
     backend=job.backend()
     name=str(backend.name)
