@@ -1,4 +1,4 @@
-name: WP AI Quantum IBM Real QPU Probe
+name: WP AI Quantum IBM Real QPU Probe (Disabled Pending Zero-Cost Proof)
 on:
   workflow_dispatch:
     inputs:
@@ -16,7 +16,8 @@ permissions:
   contents: read
 jobs:
   real-qpu-probe:
-    if: ${{ inputs.authorize_qpu_cost == true }}
+    # Zero-cost only policy: fail closed. Manual authorization cannot prove zero billing.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
