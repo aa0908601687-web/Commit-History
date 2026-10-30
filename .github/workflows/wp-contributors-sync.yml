@@ -1,130 +1,196 @@
 name: WP-OS commit and contributor sync
+
 on:
   push:
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *' # 08:00 Asia/Taipei
+
 permissions:
   contents: read
+
 concurrency:
   group: wp-contributors-audit
   cancel-in-progress: false
+
 jobs:
   audit:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - name: Fetch commits and build contributor report
+      - name: Check out complete Git history
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Build contributor report from local Git history
         env:
-          GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           python - <<'PY'
-          import collections, csv, datetime, html, json, os, pathlib, urllib.request
-          repo = os.environ['GH_REPO']
-          token = os.environ['GH_TOKEN']
-          commits = {}
-          for page in range(1, 101):
-              url = f'https://api.github.com/repos/{repo}/commits?per_page=100&page={page}'
-              req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json', 'User-Agent': 'wp-os-audit'})
-              with urllib.request.urlopen(req, timeout=30) as resp:
-                  batch = json.load(resp)
-              if not isinstance(batch, list):
-                  raise ValueError('Unexpected commit API payload')
-              for item in batch:
-                  commits[item['sha']] = item
-              if len(batch) < 100:
-                  break
-          else:
-              raise RuntimeError('More than 100 pages: refusing to publish incomplete figures')
+          import collections
+          import csv
+          import datetime
+          import html
+          import json
+          import os
+          import pathlib
+          import subprocess
+
+          def git(*args):
+              return subprocess.check_output(
+                  ['git', *args], text=True, encoding='utf-8', errors='replace'
+              ).strip()
+
+          shas = [line for line in git('rev-list', '--all').splitlines() if line]
           counts = collections.Counter()
           days = collections.Counter()
-          for item in commits.values():
-              linked = item.get('author')
-              raw = item.get('commit', {}).get('author') or {}
-              identity = linked.get('login') if linked else 'Unlinked author: ' + (raw.get('name') or 'Unknown')
-              counts[identity] += 1
-              day = (raw.get('date') or '')[:10]
-              if day: days[day] += 1
-          total = len(commits)
-          contributors = [{'author': name, 'commits': count, 'percent': round(100*count/total, 4)} for name, count in counts.most_common()] if total else []
-          out = pathlib.Path('contributor-report')
-          out.mkdir(exist_ok=True)
-          payload = {'repository': repo, 'commit_count': total, 'unique_sha_count': total, 'contributors': contributors, 'daily_commit_counts': dict(sorted(days.items())), 'attribution_note': 'Linked GitHub login where available, otherwise raw Git author name; this cannot verify a real person or manual versus bot action.', 'generated_utc': datetime.datetime.now(datetime.timezone.utc).isoformat()}
-          (out/'report.json').write_text(json.dumps(payload, indent=2, ensure_ascii=False)+'\n', encoding='utf-8')
-          with (out/'contributors.csv').open('w', newline='', encoding='utf-8') as f:
-              writer = csv.writer(f)
-              writer.writerow(['author','commits','percent'])
-              writer.writerows((x['author'],x['commits'],x['percent']) for x in contributors)
-          width = 840
-          height = max(170, 105 + 45*len(contributors))
-          parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">', '<rect width="100%" height="100%" fill="white"/>', '<text x="22" y="35" font-size="21" font-family="sans-serif">Commit contributors (GitHub author attribution)</text>']
-          for i, row in enumerate(contributors):
-              y = 65 + i*45
-              label = html.escape(row['author'])
-              bar = 400 * row['commits'] / total if total else 0
-              parts += [f'<text x="22" y="{y+17}" font-size="13" font-family="sans-serif">{label}</text>',f'<rect x="360" y="{y}" width="{bar:.2f}" height="23" fill="#4479a8"/>',f'<text x="{370+bar:.2f}" y="{y+17}" font-size="13" font-family="sans-serif">{row["commits"]} ({row["percent"]:.2f}%)</text>']
-          parts.append('</svg>')
-          (out/'contributors.svg').write_text('\n'.join(parts)+'\n', encoding='utf-8')
-          # Count actual additions/deletions, not merely the number of commits.
-          # The commit endpoint's stats include non-code and generated files as well.
           change_by_author = collections.defaultdict(lambda: [0, 0])
           change_by_day = collections.defaultdict(lambda: [0, 0])
-          for item in commits.values():
-              sha = item['sha']
-              url = f'https://api.github.com/repos/{repo}/commits/{sha}'
-              req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json', 'User-Agent': 'wp-os-audit'})
-              with urllib.request.urlopen(req, timeout=30) as resp:
-                  detail = json.load(resp)
-              stats = detail.get('stats')
-              if not isinstance(stats, dict) or 'additions' not in stats or 'deletions' not in stats:
-                  raise ValueError(f'Missing code change stats for {sha}')
-              linked = item.get('author')
-              raw = item.get('commit', {}).get('author') or {}
-              identity = linked.get('login') if linked else 'Unlinked author: ' + (raw.get('name') or 'Unknown')
-              day = (raw.get('date') or '')[:10]
-              adds, dels = int(stats['additions']), int(stats['deletions'])
-              change_by_author[identity][0] += adds
-              change_by_author[identity][1] += dels
+
+          for sha in shas:
+              fields = git('show', '-s', '--format=%an%x1f%ae%x1f%aI', sha).split('\x1f')
+              if len(fields) != 3:
+                  raise ValueError(f'Unexpected author metadata for {sha}')
+              name, email, authored_at = fields
+              identity = f'{name} <{email}>'
+              day = authored_at[:10]
+              counts[identity] += 1
               if day:
-                  change_by_day[day][0] += adds
-                  change_by_day[day][1] += dels
-          with (out/'code_changes_by_author.csv').open('w', newline='', encoding='utf-8') as f:
+                  days[day] += 1
+
+              numstat = git('show', '--numstat', '--format=', '--no-renames', sha)
+              for line in numstat.splitlines():
+                  parts = line.split('\t', 2)
+                  if len(parts) != 3:
+                      continue
+                  added, deleted, _path = parts
+                  if added == '-' or deleted == '-':
+                      continue
+                  adds, dels = int(added), int(deleted)
+                  change_by_author[identity][0] += adds
+                  change_by_author[identity][1] += dels
+                  if day:
+                      change_by_day[day][0] += adds
+                      change_by_day[day][1] += dels
+
+          total = len(shas)
+          contributors = [
+              {'author': name, 'commits': count, 'percent': round(100 * count / total, 4)}
+              for name, count in counts.most_common()
+          ] if total else []
+
+          out = pathlib.Path('contributor-report')
+          out.mkdir(exist_ok=True)
+          payload = {
+              'repository': os.environ['GH_REPO'],
+              'commit_count': total,
+              'unique_sha_count': total,
+              'contributors': contributors,
+              'daily_commit_counts': dict(sorted(days.items())),
+              'attribution_note': (
+                  'Local Git author name and email. This does not verify a real person, '
+                  'a linked GitHub login, or manual versus bot action.'
+              ),
+              'generated_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+          }
+          (out / 'report.json').write_text(
+              json.dumps(payload, indent=2, ensure_ascii=False) + '\n', encoding='utf-8'
+          )
+
+          with (out / 'contributors.csv').open('w', newline='', encoding='utf-8') as f:
+              writer = csv.writer(f)
+              writer.writerow(['author', 'commits', 'percent'])
+              writer.writerows((x['author'], x['commits'], x['percent']) for x in contributors)
+
+          width = 900
+          height = max(170, 105 + 45 * len(contributors))
+          parts = [
+              f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+              '<rect width="100%" height="100%" fill="white"/>',
+              '<text x="22" y="35" font-size="21" font-family="sans-serif">Commit contributors (local Git attribution)</text>',
+          ]
+          for i, row in enumerate(contributors):
+              y = 65 + i * 45
+              label = html.escape(row['author'])
+              bar = 400 * row['commits'] / total if total else 0
+              parts += [
+                  f'<text x="22" y="{y+17}" font-size="13" font-family="sans-serif">{label}</text>',
+                  f'<rect x="390" y="{y}" width="{bar:.2f}" height="23" fill="#4479a8"/>',
+                  f'<text x="{400+bar:.2f}" y="{y+17}" font-size="13" font-family="sans-serif">{row["commits"]} ({row["percent"]:.2f}%)</text>',
+              ]
+          parts.append('</svg>')
+          (out / 'contributors.svg').write_text('\n'.join(parts) + '\n', encoding='utf-8')
+
+          with (out / 'code_changes_by_author.csv').open('w', newline='', encoding='utf-8') as f:
               writer = csv.writer(f)
               writer.writerow(['author', 'additions', 'deletions'])
-              writer.writerows((name, *counts) for name, counts in sorted(change_by_author.items()))
-          with (out/'code_changes_by_day.csv').open('w', newline='', encoding='utf-8') as f:
+              writer.writerows((name, *values) for name, values in sorted(change_by_author.items()))
+
+          with (out / 'code_changes_by_day.csv').open('w', newline='', encoding='utf-8') as f:
               writer = csv.writer(f)
               writer.writerow(['date_utc', 'additions', 'deletions'])
-              writer.writerows((day, *counts) for day, counts in sorted(change_by_day.items()))
+              writer.writerows((day, *values) for day, values in sorted(change_by_day.items()))
+
           rows = sorted(change_by_author.items())
           maximum = max((max(values) for _, values in rows), default=1) or 1
           height = max(170, 95 + len(rows) * 66)
-          parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="900" height="{height}" viewBox="0 0 900 {height}">',
-                   '<rect width="100%" height="100%" fill="white"/>',
-                   '<text x="18" y="30" font-family="sans-serif" font-size="20">Git commit additions (+) and deletions (-)</text>']
+          parts = [
+              f'<svg xmlns="http://www.w3.org/2000/svg" width="950" height="{height}" viewBox="0 0 950 {height}">',
+              '<rect width="100%" height="100%" fill="white"/>',
+              '<text x="18" y="30" font-family="sans-serif" font-size="20">Git additions (+) and deletions (-)</text>',
+          ]
           for i, (name, values) in enumerate(rows):
               y = 57 + i * 66
-              parts.append(f'<text x="18" y="{y+12}" font-family="sans-serif" font-size="13">{html.escape(name)}</text>')
-              for j, (value, color, label) in enumerate(((values[0], '#229e62', '+'), (values[1], '#c94d4d', '-'))):
+              parts.append(
+                  f'<text x="18" y="{y+12}" font-family="sans-serif" font-size="13">{html.escape(name)}</text>'
+              )
+              for j, (value, color, label) in enumerate(
+                  ((values[0], '#229e62', '+'), (values[1], '#c94d4d', '-'))
+              ):
                   yy = y + j * 23
                   bar = 430 * value / maximum
-                  parts.append(f'<rect x="325" y="{yy}" width="{bar:.2f}" height="17" fill="{color}"/>')
-                  parts.append(f'<text x="{335+bar:.2f}" y="{yy+14}" font-family="sans-serif" font-size="12">{label}{value}</text>')
+                  parts.append(f'<rect x="390" y="{yy}" width="{bar:.2f}" height="17" fill="{color}"/>')
+                  parts.append(
+                      f'<text x="{400+bar:.2f}" y="{yy+14}" font-family="sans-serif" font-size="12">{label}{value}</text>'
+                  )
           parts.append('</svg>')
-          (out/'code_changes.svg').write_text('\n'.join(parts)+'\n', encoding='utf-8')
-          (out/'code_changes.json').write_text(json.dumps({
-              'repository': repo, 'commit_count': total,
+          (out / 'code_changes.svg').write_text('\n'.join(parts) + '\n', encoding='utf-8')
+
+          code_payload = {
+              'repository': os.environ['GH_REPO'],
+              'commit_count': total,
               'additions': sum(v[0] for v in change_by_author.values()),
               'deletions': sum(v[1] for v in change_by_author.values()),
-              'by_author': {k: {'additions': v[0], 'deletions': v[1]} for k, v in change_by_author.items()},
-              'by_day_utc': {k: {'additions': v[0], 'deletions': v[1]} for k, v in sorted(change_by_day.items())},
-              'note': 'GitHub commit stats; not limited to source-code file extensions. Commit authorship is not verified identity.'
-          }, indent=2, ensure_ascii=False)+'\n', encoding='utf-8')
-          print('Change totals:', sum(v[0] for v in change_by_author.values()), 'additions,',
-                sum(v[1] for v in change_by_author.values()), 'deletions')
-          print(f'Unique commits: {total}; attributed contributor labels: {len(contributors)}; sum of counts: {sum(counts.values())}')
+              'by_author': {
+                  k: {'additions': v[0], 'deletions': v[1]}
+                  for k, v in change_by_author.items()
+              },
+              'by_day_utc': {
+                  k: {'additions': v[0], 'deletions': v[1]}
+                  for k, v in sorted(change_by_day.items())
+              },
+              'note': (
+                  'Local Git numstat; binary files are excluded and totals are not '
+                  'limited to source-code extensions.'
+              ),
+          }
+          (out / 'code_changes.json').write_text(
+              json.dumps(code_payload, indent=2, ensure_ascii=False) + '\n', encoding='utf-8'
+          )
+
+          assert len(set(shas)) == total
           assert sum(counts.values()) == total
+          print(f'Unique commits: {total}; contributor labels: {len(contributors)}')
+          print(
+              'Change totals:',
+              code_payload['additions'],
+              'additions,',
+              code_payload['deletions'],
+              'deletions',
+          )
           PY
+
       - name: Upload contributor chart and counts
         uses: actions/upload-artifact@v6
         with:
