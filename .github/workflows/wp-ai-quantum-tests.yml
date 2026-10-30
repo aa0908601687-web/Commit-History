@@ -1,0 +1,35 @@
+name: WP AI Quantum Independent Tests
+on:
+  push:
+    branches:
+      - feature/wp-ai-quantum-independent
+    paths:
+      - 'WP-AI-Quantum/**'
+      - '.github/workflows/wp-ai-quantum-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quantum-independent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Unit tests
+        run: python -m unittest discover -s WP-AI-Quantum -p 'test_wp_quantum_max.py' -v
+      - name: Execute independent model with archive tail
+        run: |
+          python WP-AI-Quantum/wp_quantum_max.py --csv WP-OS-Git-MAX/historical_latest_20.csv > /tmp/result.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/result.json'))
+          assert len(d['first'])==len(set(d['first']))==6
+          assert all(1<=n<=38 for n in d['first'])
+          assert 1<=d['second']<=8
+          assert d['abe_used'] is False
+          assert d['neural_models_executed'] is False
+          assert d['quantum_hardware_used'] is False
+          print('Validated independent no-ABE result through:',d['through_draw'])
+          PY
