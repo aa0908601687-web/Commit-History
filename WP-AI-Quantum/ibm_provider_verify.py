@@ -17,7 +17,12 @@ def verify(receipt,service):
         raise RuntimeError("IBM job was not on a real QPU")
     if name!=receipt["backend"]: raise ValueError("Backend mismatch")
     counts=job.result()[0].data.c.get_counts()
-    if counts!=receipt["counts"] or sum(counts.values())!=receipt["shots"]:
+    shots=receipt.get("shots")
+    if type(shots) is not int or not 1<=shots<=4096:
+        raise ValueError("Invalid requested shot count")
+    if (not isinstance(counts,dict) or not counts or
+        any(k not in {"00","01","10","11"} or type(v) is not int or v<0 for k,v in counts.items()) or
+        counts!=receipt["counts"] or sum(counts.values())!=shots):
         raise ValueError("Provider measurement mismatch")
     return {"provider_provenance_independently_verified":True,
             "job_id":receipt["job_id"],"backend":name,
