@@ -62,10 +62,8 @@ jobs:
           assert p['provider_provenance_independently_verified'] is True
           assert p['quantum_lottery_optimization_executed'] is False
           with open(__import__('os').environ['GITHUB_STEP_SUMMARY'],'a') as f:
-              f.write('IBM provider re-query verified QPU job: '+p['job_id']+' on '+p['backend']+'\
-')
-              f.write('This probe is not a quantum lottery optimization.\
-')
+              f.write('IBM provider re-query verified QPU job: '+p['job_id']+' on '+p['backend']+chr(10))
+              f.write('This probe is not a quantum lottery optimization.'+chr(10))
           PY
       - name: Publish hardware verification record
         if: always()
