@@ -15,6 +15,9 @@ class EvidenceGateTests(unittest.TestCase):
     def test_unverified_provider_rejected(self):
         self.provider["provider_provenance_independently_verified"]=False
         with self.assertRaises(ValueError):gate(self.selection,self.provider)
+    def test_reject_invalid_selection(self):
+        self.selection["selection_valid"]=False
+        with self.assertRaises(ValueError):gate(self.selection,self.provider)
     def test_not_a_lottery_qpu_prediction(self):
         self.provider["quantum_lottery_optimization_executed"]=True
         with self.assertRaises(ValueError):gate(self.selection,self.provider)
