@@ -30,6 +30,7 @@ jobs:
           python -m py_compile WP-AI-Quantum/ibm_real_qpu_probe.py
           python -m unittest discover -s WP-AI-Quantum -p 'test_ibm_real_qpu_probe.py' -v
           python -m unittest discover -s WP-AI-Quantum -p 'test_ibm_provider_verify.py' -v
+          python -m unittest discover -s WP-AI-Quantum -p 'test_quantum_evidence_gate.py' -v
       - name: Run actual IBM hardware (never simulator)
         env:
           IBM_QUANTUM_API_TOKEN: ${{ secrets.IBM_QUANTUM_API_TOKEN }}
@@ -65,6 +66,8 @@ jobs:
               f.write('IBM provider re-query verified QPU job: '+p['job_id']+' on '+p['backend']+chr(10))
               f.write('This probe is not a quantum lottery optimization.'+chr(10))
           PY
+      - name: Cross-check final QPU evidence before success
+        run: python WP-AI-Quantum/quantum_evidence_gate.py --selection e2e_report.json --provider provider_verified.json --output hardware_evidence.json
       - name: Publish hardware verification record
         if: always()
         uses: actions/upload-artifact@v4
@@ -74,4 +77,5 @@ jobs:
             qpu_report.json
             e2e_report.json
             provider_verified.json
+            hardware_evidence.json
           if-no-files-found: ignore
