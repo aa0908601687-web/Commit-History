@@ -22,5 +22,6 @@ class TestE2E(unittest.TestCase):
             "job_id":"SYNTHETIC-TEST","backend":"test","shots":8,"counts":{"00":4,"11":4}}))
         r=validate(self.csv,self.receipt)
         self.assertFalse(r["provider_provenance_independently_verified"])
+        self.assertFalse(r["real_qpu_verified"])
         self.assertFalse(r["qpu_influenced_selection"])
 if __name__=="__main__":unittest.main()
