@@ -29,6 +29,9 @@ class TestProvider(unittest.TestCase):
         class MisleadingService(Service):
             def job(self,job_id): return MisleadingJob()
         with self.assertRaises(RuntimeError):verify(self.receipt,MisleadingService())
+    def test_reject_invalid_shots(self):
+        self.receipt["shots"]=True
+        with self.assertRaises(ValueError):verify(self.receipt,Service())
     def test_reject_incomplete(self):
         self.receipt["status"]="submitted"
         with self.assertRaises(ValueError):verify(self.receipt,Service())
