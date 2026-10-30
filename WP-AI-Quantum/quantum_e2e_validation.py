@@ -19,9 +19,9 @@ def validate(csv_path,receipt_path=None):
             or sum(receipt["counts"].values())!=receipt.get("shots")
             or not all(k in {"00","01","10","11"} and isinstance(v,int) and v>=0 for k,v in receipt["counts"].items())):
             raise ValueError("Incomplete or invalid QPU receipt; real hardware not verified")
-        summary.update(real_qpu_verified=True,status="receipt_contract_verified",
+        summary.update(real_qpu_verified=False,status="receipt_contract_verified",
                        qpu_job_id=receipt["job_id"],backend=receipt["backend"])
-        # The local receipt is not independent cryptographic proof of hardware execution.
+        # A self-reported receipt is not independent provider evidence.
         summary["provider_provenance_independently_verified"]=False
     return summary
 
