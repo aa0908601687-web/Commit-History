@@ -1,0 +1,53 @@
+name: Superintelligence TensorFlow AutoML research
+
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/superintelligence_automl_research.py'
+      - 'WP-OS-Git-MAX/test_superintelligence_automl_research.py'
+      - '.github/workflows/superintelligence-automl-research.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-automl:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Test data bridge without ML dependencies
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_superintelligence_automl_research.py' -v
+      - name: Install real TensorFlow and Keras Tuner
+        run: python -m pip install --disable-pip-version-check 'tensorflow-cpu>=2.17,<2.21' 'keras-tuner>=1.4,<2'
+      - name: Execute isolated 5/10 feature AutoML bridge
+        env:
+          TF_CPP_MIN_LOG_LEVEL: '2'
+          CUDA_VISIBLE_DEVICES: '-1'
+        run: |
+          python WP-OS-Git-MAX/superintelligence_automl_research.py \
+            --csv WP-OS-Git-MAX/historical_archive.csv \
+            --output /tmp/superintelligence-automl-evidence.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('/tmp/superintelligence-automl-evidence.json').read_text())
+          assert data['tensorflow_automl_executed'] is True
+          assert data['prediction_integration'] is False
+          assert data['production_model_changed'] is False
+          assert data['feature_windows'] == [5,10]
+          assert len(data['first']) == 6 and 1 <= data['second'] <= 8
+          assert len(data['sha256']) == 64
+          print('Isolated TensorFlow/Keras-Tuner runtime evidence validated')
+          PY
+      - uses: actions/upload-artifact@v6
+        with:
+          name: superintelligence-automl-evidence-${{ github.run_id }}
+          path: /tmp/superintelligence-automl-evidence.json
+          if-no-files-found: error
+          retention-days: 30
