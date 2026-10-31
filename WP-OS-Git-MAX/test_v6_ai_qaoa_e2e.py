@@ -1,0 +1,70 @@
+import csv
+import importlib.util
+import tempfile
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+spec = importlib.util.spec_from_file_location("v6_ai_qaoa_e2e", HERE / "v6_ai_qaoa_e2e.py")
+v6 = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(v6)
+
+class V6ValidationTests(unittest.TestCase):
+    def make_csv(self, rows=12):
+        tmp = tempfile.TemporaryDirectory()
+        path = Path(tmp.name) / "draws.csv"
+        with path.open("w", encoding="utf-8", newline="") as handle:
+            w = csv.writer(handle)
+            w.writerow(["draw_id", "first", "second"])
+            for i in range(rows):
+                first = sorted(((i*3+j*5) % 38)+1 for j in range(6))
+                w.writerow([f"115{(i+1):06d}", " ".join(f"{x:02d}" for x in first), f"{i%8+1:02d}"])
+        return tmp, path
+
+    def test_three_views_and_output(self):
+        tmp, path = self.make_csv()
+        with tmp:
+            result = v6.run(path)
+            self.assertEqual(result["views"]["latest_5"]["rows"], 5)
+            self.assertEqual(result["views"]["latest_10"]["rows"], 10)
+            self.assertEqual(result["views"]["complete_archive"]["rows"], 12)
+            self.assertEqual(len(result["first_zone"]), 6)
+            self.assertEqual(len(set(result["first_zone"])), 6)
+            self.assertTrue(all(1 <= n <= 38 for n in result["first_zone"]))
+            self.assertIn(result["second_zone"], range(1, 9))
+            self.assertEqual(v6.run(path), result)
+
+    def test_rejects_too_few_rows(self):
+        tmp,path=self.make_csv(9)
+        with tmp, self.assertRaises(ValueError): v6.validate(path)
+
+    def test_rejects_duplicate_period(self):
+        tmp,path=self.make_csv()
+        with tmp:
+            lines=path.read_text().splitlines()
+            path.write_text("\n".join(lines+[lines[1]])+"\n")
+            with self.assertRaises(ValueError): v6.validate(path)
+
+    def test_rejects_invalid_number(self):
+        tmp,path=self.make_csv()
+        with tmp:
+            content=path.read_text().replace("01 06 11 16 21 26", "01 01 11 16 21 26")
+            path.write_text(content)
+            with self.assertRaises(ValueError): v6.validate(path)
+
+    def test_rejects_wrong_header(self):
+        tmp,path=self.make_csv()
+        with tmp:
+            path.write_text(path.read_text().replace("draw_id,first,second","id,first,second"))
+            with self.assertRaises(ValueError): v6.validate(path)
+
+    def test_rejects_out_of_order(self):
+        tmp,path=self.make_csv()
+        with tmp:
+            lines=path.read_text().splitlines()
+            lines[1],lines[2]=lines[2],lines[1]
+            path.write_text("\n".join(lines)+"\n")
+            with self.assertRaises(ValueError): v6.validate(path)
+
+if __name__=="__main__":
+    unittest.main()
