@@ -1,6 +1,10 @@
 name: V6 AI QAOA local simulation verification
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - '.github/workflows/v6-ai-qaoa-e2e.yml'
   push:
     paths:
       - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
