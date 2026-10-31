@@ -4,6 +4,9 @@ import tempfile
 import subprocess
 import sys
 import json
+import io
+from contextlib import redirect_stdout
+from unittest.mock import patch
 import unittest
 from pathlib import Path
 
@@ -36,6 +39,18 @@ class V6ValidationTests(unittest.TestCase):
             self.assertTrue(all(1 <= n <= 38 for n in result["first_zone"]))
             self.assertIn(result["second_zone"], range(1, 9))
             self.assertEqual(v6.run(path), result)
+
+    def test_main_in_process_for_coverage(self):
+        tmp, path = self.make_csv()
+        with tmp:
+            out = Path(tmp.name) / "result.json"
+            buf = io.StringIO()
+            with patch.object(sys, "argv", ["v6", "--csv", str(path), "--output", str(out)]), redirect_stdout(buf):
+                v6.main()
+            self.assertEqual(json.loads(buf.getvalue()), json.loads(out.read_text()))
+            with patch.object(sys, "argv", ["v6", "--csv", str(path)]), redirect_stdout(buf):
+                v6.main()
+            self.assertTrue(buf.getvalue())
 
     def test_cli_output_and_stdout(self):
         tmp, path = self.make_csv()
