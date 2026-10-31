@@ -26,6 +26,21 @@ class ExperimentalLayerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             preprocess_draws([{"draw_id": "x", "first": "1 1 2 3 4 5", "second": 1}])
 
+        with self.assertRaisesRegex(ValueError, "duplicate draw_id"):
+            preprocess_draws([DRAWS[0], DRAWS[0]])
+        with self.assertRaisesRegex(ValueError, "outside 1..38"):
+            preprocess_draws([{"draw_id": "x", "first": "0 2 3 4 5 6", "second": 1}])
+        with self.assertRaisesRegex(ValueError, "outside 1..8"):
+            preprocess_draws([{"draw_id": "x", "first": "1 2 3 4 5 6", "second": 9}])
+
+    def test_rejects_invalid_agent_registration(self):
+        orchestrator = ExperimentalOrchestrator(enabled=True)
+        with self.assertRaisesRegex(ValueError, "must not be empty"):
+            orchestrator.register(" ", lambda rows: {})
+        orchestrator.register("count", lambda rows: {"rows": len(rows)})
+        with self.assertRaisesRegex(ValueError, "duplicate agent name"):
+            orchestrator.register("count", lambda rows: {})
+
     def test_deterministic_audited_agent_run(self):
         orchestrator = ExperimentalOrchestrator(enabled=True)
         orchestrator.register("count", lambda rows: {"rows": len(rows)})
