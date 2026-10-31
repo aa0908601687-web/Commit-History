@@ -9,6 +9,13 @@ on:
       - "WP-OS-Git-MAX/modular_selection_pipeline.py"
       - "WP-OS-Git-MAX/historical_latest_20.csv"
       - ".github/workflows/wp-superintelligence-reference-e2e.yml"
+  pull_request:
+    paths:
+      - "WP-OS-Git-MAX/superintelligence_bridge.py"
+      - "WP-OS-Git-MAX/test_superintelligence_e2e.py"
+      - "WP-OS-Git-MAX/modular_selection_pipeline.py"
+      - "WP-OS-Git-MAX/historical_latest_20.csv"
+      - ".github/workflows/wp-superintelligence-reference-e2e.yml"
 
 permissions:
   contents: read
