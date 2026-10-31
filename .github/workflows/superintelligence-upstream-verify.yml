@@ -1,0 +1,59 @@
+name: Superintelligence upstream connection verification
+
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/superintelligence_upstream_adapter.py'
+      - 'WP-OS-Git-MAX/test_superintelligence_upstream_adapter.py'
+      - '.github/workflows/superintelligence-upstream-verify.yml'
+  push:
+    paths:
+      - 'WP-OS-Git-MAX/superintelligence_upstream_adapter.py'
+      - 'WP-OS-Git-MAX/test_superintelligence_upstream_adapter.py'
+      - '.github/workflows/superintelligence-upstream-verify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-pinned-upstream:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out WP-OS repository
+        uses: actions/checkout@v5
+        with:
+          path: wp-os
+
+      - name: Check out pinned upstream
+        uses: actions/checkout@v5
+        with:
+          repository: marciolscoutinho/superintelligence
+          ref: da09a58ae32aed50cdf13caa8a5e2f4c795a324d
+          path: upstream-superintelligence
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - name: Test connection boundary
+        working-directory: wp-os
+        run: python -m unittest WP-OS-Git-MAX/test_superintelligence_upstream_adapter.py
+
+      - name: Validate pinned checkout and write evidence
+        working-directory: wp-os
+        run: |
+          python WP-OS-Git-MAX/superintelligence_upstream_adapter.py \
+            --upstream-dir ../upstream-superintelligence \
+            --output ../superintelligence-connection-evidence.json
+          python -m json.tool ../superintelligence-connection-evidence.json > /dev/null
+
+      - name: Upload connection evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: superintelligence-connection-evidence-${{ github.run_id }}
+          path: superintelligence-connection-evidence.json
+          if-no-files-found: error
+          retention-days: 30
