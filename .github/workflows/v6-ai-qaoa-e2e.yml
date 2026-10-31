@@ -1,0 +1,38 @@
+name: V6 AI QAOA local simulation verification
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - '.github/workflows/v6-ai-qaoa-e2e.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate repository archive and run three-view V6 simulator
+        run: |
+          python -m py_compile WP-OS-Git-MAX/v6_ai_qaoa_e2e.py
+          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py --csv WP-OS-Git-MAX/historical_archive.csv --output v6-e2e-result.json
+          python - <<'PY'
+          import json
+          d=json.load(open('v6-e2e-result.json'))
+          assert d['views']['complete_archive']['rows'] >= 1959
+          assert len(d['first_zone'])==len(set(d['first_zone']))==6
+          assert all(1<=n<=38 for n in d['first_zone'])
+          assert 1<=d['second_zone']<=8
+          print('V6 local simulator and archive checks passed')
+          PY
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-ai-qaoa-validation
+          path: v6-e2e-result.json
+          if-no-files-found: warn
