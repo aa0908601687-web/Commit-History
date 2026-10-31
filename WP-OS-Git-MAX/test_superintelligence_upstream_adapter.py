@@ -2,6 +2,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import runpy
 import sys
 import tempfile
 import unittest
@@ -109,6 +110,20 @@ class SuperintelligenceUpstreamAdapterTests(unittest.TestCase):
                 code = adapter.main()
             self.assertEqual(code, 1)
             self.assertFalse(json.loads(stdout.getvalue())["pinned_checkout_ok"])
+
+
+    def test_direct_script_entrypoint_returns_failure_for_unpinned_layout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._layout(root)
+            argv = ["adapter", "--upstream-dir", str(root)]
+            with (
+                mock.patch.object(sys, "argv", argv),
+                contextlib.redirect_stdout(io.StringIO()),
+                self.assertRaises(SystemExit) as raised,
+            ):
+                runpy.run_path(str(MODULE_PATH), run_name="__main__")
+            self.assertEqual(raised.exception.code, 1)
 
 
 if __name__ == "__main__":
