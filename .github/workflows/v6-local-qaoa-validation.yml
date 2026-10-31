@@ -20,5 +20,7 @@ jobs:
       - name: Run deterministic tests
         working-directory: V6
         run: python -m unittest -v test_v6_local_qaoa.py test_v6_lottery_pipeline.py test_v6_e2e.py test_v6_walkforward.py test_v6_ai_fusion.py test_v6_neural_train.py test_v6_ensemble_v2.py test_v6_learned_stacking.py test_v6_stacking_e2e.py
+      - name: Full V6 synthetic CLI E2E and SHA256 verification
+        run: python V6/v6_ci_e2e.py
       - name: Execute sample research inference
         run: python V6/v6_local_qaoa.py --scores 1,2,3,4,5,6,7,8 --choose 6
