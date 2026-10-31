@@ -16,9 +16,9 @@ jobs:
         with:
           python-version: '3.11'
       - name: Compile V6 prototype
-        run: python -m py_compile V6/v6_local_qaoa.py V6/test_v6_local_qaoa.py V6/v6_lottery_pipeline.py V6/test_v6_lottery_pipeline.py V6/v6_e2e.py V6/test_v6_e2e.py V6/v6_walkforward.py V6/test_v6_walkforward.py V6/v6_ai_fusion.py V6/test_v6_ai_fusion.py V6/v6_neural_train.py V6/test_v6_neural_train.py V6/v6_ensemble_v2.py V6/test_v6_ensemble_v2.py V6/v6_learned_stacking.py V6/test_v6_learned_stacking.py
+        run: python -m py_compile V6/v6_local_qaoa.py V6/test_v6_local_qaoa.py V6/v6_lottery_pipeline.py V6/test_v6_lottery_pipeline.py V6/v6_e2e.py V6/test_v6_e2e.py V6/v6_walkforward.py V6/test_v6_walkforward.py V6/v6_ai_fusion.py V6/test_v6_ai_fusion.py V6/v6_neural_train.py V6/test_v6_neural_train.py V6/v6_ensemble_v2.py V6/test_v6_ensemble_v2.py V6/v6_learned_stacking.py V6/test_v6_learned_stacking.py V6/v6_stacking_e2e.py V6/test_v6_stacking_e2e.py
       - name: Run deterministic tests
         working-directory: V6
-        run: python -m unittest -v test_v6_local_qaoa.py test_v6_lottery_pipeline.py test_v6_e2e.py test_v6_walkforward.py test_v6_ai_fusion.py test_v6_neural_train.py test_v6_ensemble_v2.py test_v6_learned_stacking.py
+        run: python -m unittest -v test_v6_local_qaoa.py test_v6_lottery_pipeline.py test_v6_e2e.py test_v6_walkforward.py test_v6_ai_fusion.py test_v6_neural_train.py test_v6_ensemble_v2.py test_v6_learned_stacking.py test_v6_stacking_e2e.py
       - name: Execute sample research inference
         run: python V6/v6_local_qaoa.py --scores 1,2,3,4,5,6,7,8 --choose 6
