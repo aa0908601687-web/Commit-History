@@ -20,7 +20,6 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
-          cache: pip
       - name: Test data bridge without ML dependencies
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_superintelligence_automl_research.py' -v
       - name: Install real TensorFlow and Keras Tuner
