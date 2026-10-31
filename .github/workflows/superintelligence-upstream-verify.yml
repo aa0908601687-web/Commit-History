@@ -40,7 +40,7 @@ jobs:
 
       - name: Test connection boundary
         working-directory: wp-os
-        run: python -m unittest WP-OS-Git-MAX/test_superintelligence_upstream_adapter.py
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_superintelligence_upstream_adapter.py'
 
       - name: Validate pinned checkout and write evidence
         working-directory: wp-os
