@@ -81,13 +81,13 @@ class V6ValidationTests(unittest.TestCase):
             columns=lines[1].split(",")
             columns[2]="09"
             lines[1]=",".join(columns)
-            path.write_text("\\n".join(lines)+"\\n")
+            path.write_text("\n".join(lines)+"\n")
             with self.assertRaises(ValueError): v6.validate(path)
             lines=original.splitlines()
             columns=lines[1].split(",")
             columns[1]="01 06 11 16 21 39"
             lines[1]=",".join(columns)
-            path.write_text("\\n".join(lines)+"\\n")
+            path.write_text("\n".join(lines)+"\n")
             with self.assertRaises(ValueError): v6.validate(path)
 
     def test_rejects_invalid_period_and_count(self):
@@ -98,13 +98,13 @@ class V6ValidationTests(unittest.TestCase):
             columns=lines[1].split(",")
             columns[0]="BAD"
             lines[1]=",".join(columns)
-            path.write_text("\\n".join(lines)+"\\n")
+            path.write_text("\n".join(lines)+"\n")
             with self.assertRaises(ValueError): v6.validate(path)
             lines=original.splitlines()
             columns=lines[1].split(",")
             columns[1]="01 06 11 16 21"
             lines[1]=",".join(columns)
-            path.write_text("\\n".join(lines)+"\\n")
+            path.write_text("\n".join(lines)+"\n")
             with self.assertRaises(ValueError): v6.validate(path)
 
     def test_rejects_too_few_rows(self):
@@ -136,7 +136,7 @@ class V6ValidationTests(unittest.TestCase):
         with tmp:
             lines=path.read_text().splitlines()
             lines[1],lines[2]=lines[2],lines[1]
-            path.write_text("\\n".join(lines)+"\\n")
+            path.write_text("\n".join(lines)+"\n")
             with self.assertRaises(ValueError): v6.validate(path)
 
 if __name__=="__main__":
