@@ -5,11 +5,15 @@ on:
     paths:
       - 'WP-OS-Git-MAX/superintelligence_upstream_adapter.py'
       - 'WP-OS-Git-MAX/test_superintelligence_upstream_adapter.py'
+      - 'WP-OS-Git-MAX/superintelligence_runtime_probe.py'
+      - 'WP-OS-Git-MAX/test_superintelligence_runtime_probe.py'
       - '.github/workflows/superintelligence-upstream-verify.yml'
   push:
     paths:
       - 'WP-OS-Git-MAX/superintelligence_upstream_adapter.py'
       - 'WP-OS-Git-MAX/test_superintelligence_upstream_adapter.py'
+      - 'WP-OS-Git-MAX/superintelligence_runtime_probe.py'
+      - 'WP-OS-Git-MAX/test_superintelligence_runtime_probe.py'
       - '.github/workflows/superintelligence-upstream-verify.yml'
   workflow_dispatch:
 
@@ -40,7 +44,9 @@ jobs:
 
       - name: Test connection boundary
         working-directory: wp-os
-        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_superintelligence_upstream_adapter.py'
+        run: |
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_superintelligence_upstream_adapter.py'
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_superintelligence_runtime_probe.py'
 
       - name: Validate pinned checkout and write evidence
         working-directory: wp-os
@@ -50,10 +56,20 @@ jobs:
             --output ../superintelligence-connection-evidence.json
           python -m json.tool ../superintelligence-connection-evidence.json > /dev/null
 
+      - name: Execute bounded upstream runtime connection
+        working-directory: wp-os
+        run: |
+          python WP-OS-Git-MAX/superintelligence_runtime_probe.py \
+            --upstream-dir ../upstream-superintelligence \
+            --output ../superintelligence-runtime-evidence.json
+          python -m json.tool ../superintelligence-runtime-evidence.json > /dev/null
+
       - name: Upload connection evidence
         uses: actions/upload-artifact@v6
         with:
           name: superintelligence-connection-evidence-${{ github.run_id }}
-          path: superintelligence-connection-evidence.json
+          path: |
+            superintelligence-connection-evidence.json
+            superintelligence-runtime-evidence.json
           if-no-files-found: error
           retention-days: 30
