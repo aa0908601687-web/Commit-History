@@ -1,6 +1,9 @@
 import csv
 import importlib.util
 import tempfile
+import subprocess
+import sys
+import json
 import unittest
 from pathlib import Path
 
@@ -33,6 +36,26 @@ class V6ValidationTests(unittest.TestCase):
             self.assertTrue(all(1 <= n <= 38 for n in result["first_zone"]))
             self.assertIn(result["second_zone"], range(1, 9))
             self.assertEqual(v6.run(path), result)
+
+    def test_cli_output_and_stdout(self):
+        tmp, path = self.make_csv()
+        with tmp:
+            output = Path(tmp.name) / "output.json"
+            proc = subprocess.run(
+                [sys.executable, str(HERE / "v6_ai_qaoa_e2e.py"), "--csv", str(path), "--output", str(output)],
+                check=True, capture_output=True, text=True
+            )
+            self.assertEqual(json.loads(proc.stdout), json.loads(output.read_text()))
+            self.assertEqual(json.loads(proc.stdout)["last_draw"], "115000012")
+
+    def test_cli_without_output(self):
+        tmp, path = self.make_csv()
+        with tmp:
+            proc = subprocess.run(
+                [sys.executable, str(HERE / "v6_ai_qaoa_e2e.py"), "--csv", str(path)],
+                check=True, capture_output=True, text=True
+            )
+            self.assertEqual(json.loads(proc.stdout)["views"]["latest_10"]["rows"], 10)
 
     def test_rejects_too_few_rows(self):
         tmp,path=self.make_csv(9)
