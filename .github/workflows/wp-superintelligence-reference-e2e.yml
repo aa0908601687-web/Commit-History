@@ -1,0 +1,26 @@
+name: WP Superintelligence Reference E2E
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "WP-OS-Git-MAX/superintelligence_bridge.py"
+      - "WP-OS-Git-MAX/test_superintelligence_e2e.py"
+      - "WP-OS-Git-MAX/modular_selection_pipeline.py"
+      - "WP-OS-Git-MAX/historical_latest_20.csv"
+      - ".github/workflows/wp-superintelligence-reference-e2e.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run controlled bridge end-to-end test
+        run: python -m unittest WP-OS-Git-MAX/test_superintelligence_e2e.py -v
