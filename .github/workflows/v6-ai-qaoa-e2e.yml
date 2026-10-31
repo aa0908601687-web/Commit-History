@@ -20,6 +20,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install coverage
+        run: python -m pip install 'coverage>=7,<8'
+      - name: Run focused V6 unit tests and measure coverage
+        run: |
+          python -m coverage run --branch --source=WP-OS-Git-MAX/v6_ai_qaoa_e2e.py -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_ai_qaoa_e2e.py' -v
+          python -m coverage report -m
+          python -m coverage json -o v6-coverage.json
       - name: Validate repository archive and run three-view V6 simulator
         run: |
           python -m py_compile WP-OS-Git-MAX/v6_ai_qaoa_e2e.py
@@ -38,5 +45,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: v6-ai-qaoa-validation
-          path: v6-e2e-result.json
+          path: |
+            v6-e2e-result.json
+            v6-coverage.json
           if-no-files-found: warn
