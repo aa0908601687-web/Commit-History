@@ -1,0 +1,24 @@
+name: V6 Local QAOA Research Validation
+on:
+  push:
+    branches:
+      - v6-local-qaoa-validation
+    paths:
+      - 'V6/**'
+      - '.github/workflows/v6-local-qaoa-validation.yml'
+  workflow_dispatch:
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile V6 prototype
+        run: python -m py_compile V6/v6_local_qaoa.py V6/test_v6_local_qaoa.py
+      - name: Run deterministic tests
+        working-directory: V6
+        run: python -m unittest -v test_v6_local_qaoa.py
+      - name: Execute sample research inference
+        run: python V6/v6_local_qaoa.py --scores 1,2,3,4,5,6,7,8 --choose 6
