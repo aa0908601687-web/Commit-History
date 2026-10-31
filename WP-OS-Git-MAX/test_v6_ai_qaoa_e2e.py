@@ -4,6 +4,7 @@ import tempfile
 import subprocess
 import sys
 import json
+import runpy
 import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
@@ -106,6 +107,14 @@ class V6ValidationTests(unittest.TestCase):
             lines[1]=",".join(columns)
             path.write_text("\n".join(lines)+"\n")
             with self.assertRaises(ValueError): v6.validate(path)
+
+    def test_script_entrypoint_in_coverage(self):
+        tmp, path = self.make_csv()
+        with tmp:
+            buf = io.StringIO()
+            with patch.object(sys, "argv", ["v6", "--csv", str(path)]), redirect_stdout(buf):
+                runpy.run_path(str(HERE / "v6_ai_qaoa_e2e.py"), run_name="__main__")
+            self.assertEqual(json.loads(buf.getvalue())["last_draw"], "115000012")
 
     def test_rejects_too_few_rows(self):
         tmp,path=self.make_csv(9)
