@@ -7,13 +7,13 @@ on:
       - 'WP-OS-Git-MAX/test_superintelligence_upstream_adapter.py'
       - 'WP-OS-Git-MAX/superintelligence_runtime_probe.py'
       - 'WP-OS-Git-MAX/test_superintelligence_runtime_probe.py'
-      - 'WP-OS-Git-MAX/superintelligence_runtime_probe.py'
-      - 'WP-OS-Git-MAX/test_superintelligence_runtime_probe.py'
       - '.github/workflows/superintelligence-upstream-verify.yml'
   push:
     paths:
       - 'WP-OS-Git-MAX/superintelligence_upstream_adapter.py'
       - 'WP-OS-Git-MAX/test_superintelligence_upstream_adapter.py'
+      - 'WP-OS-Git-MAX/superintelligence_runtime_probe.py'
+      - 'WP-OS-Git-MAX/test_superintelligence_runtime_probe.py'
       - '.github/workflows/superintelligence-upstream-verify.yml'
   workflow_dispatch:
 
