@@ -189,5 +189,26 @@ class OpenFECoverageTests(unittest.TestCase):
             with patch.object(sys, "argv", ["v6_ai_qaoa_e2e.py", "--csv", str(csv)]):
                 runpy.run_path(qaoa.__file__, run_name="__main__")
 
+
+    def test_qaoa_csv_reader_exceptional_exit(self):
+        import v6_ai_qaoa_e2e as qaoa
+        with tempfile.TemporaryDirectory() as td:
+            csv = Path(td) / "draws.csv"
+            csv.write_text("draw_id,first,second\n" + "".join(
+                f"115000{i:03d},1 2 3 4 5 6,1\n" for i in range(1, 11)
+            ), encoding="utf-8")
+            original = qaoa.csv.DictReader
+            def failing_reader(file):
+                reader = original(file)
+                def iterate():
+                    next(reader)
+                    raise RuntimeError("synthetic CSV reader exception")
+                    yield
+                return SimpleNamespace(fieldnames=reader.fieldnames, __iter__=iterate)
+            # The context manager must close its file when the CSV reader raises.
+            with patch.object(qaoa.csv, "DictReader", side_effect=failing_reader):
+                with self.assertRaises(RuntimeError):
+                    qaoa.validate(csv)
+
 if __name__ == "__main__":
     unittest.main()
