@@ -14,7 +14,7 @@ class V6OpenFEIntegrationTests(unittest.TestCase):
         cls.csv=ROOT/"historical_archive.csv"
 
     def test_legacy_path_stays_disabled(self):
-        result=mod.run(cls.csv)
+        result=mod.run(self.csv)
         self.assertFalse(result["openfe_feature_layer"]["enabled"])
 
     def test_weight_guard(self):
