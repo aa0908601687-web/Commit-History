@@ -53,7 +53,8 @@ class OpenFEContractTests(unittest.TestCase):
 
     def test_three_view_fusion_and_metadata_with_stubbed_fit(self):
         probabilities = [0.2] * 38 + [0.4] * 38 + [0.6] * 38
-        with patch.object(openfe, "_training_frame", return_value=([1] * (38 * 3), "y")), \
+        with patch.dict(sys.modules, {"pandas": SimpleNamespace(DataFrame=lambda values: values)}), \
+             patch.object(openfe, "_training_frame", return_value=([1] * (38 * 3), "y")), \
              patch.object(openfe, "_base_row", return_value={"number": 1.0}), \
              patch.object(openfe, "_fit_and_score", return_value=(probabilities, 7, 4)):
             values, meta = openfe.score_three_history_views(self.rows)
