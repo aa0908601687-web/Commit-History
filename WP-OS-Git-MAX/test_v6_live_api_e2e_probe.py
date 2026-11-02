@@ -71,6 +71,22 @@ class LiveProbeContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ConnectionError, "unavailable"):
             probe.probe("2026-11", self.archive, fail, self.bridge)
 
+    def test_empty_current_month_is_explicit_not_falsely_updated(self):
+        def empty_current(month):
+            if month == "2026-11":
+                raise ValueError("No official draws returned")
+            return self.records[-4:]
+        result = probe.probe("2026-11", self.archive, empty_current, self.bridge)
+        self.assertEqual(result["months_without_published_draws"], ["2026-11"])
+        self.assertEqual(result["merged_cutoff"], self.records[-1][0])
+        self.assertEqual(result["api_rows"], 4)
+
+    def test_empty_previous_month_does_not_silently_pass(self):
+        def empty_any(month):
+            raise ValueError("No official draws returned")
+        with self.assertRaisesRegex(ValueError, "No official draws"):
+            probe.probe("2026-11", self.archive, empty_any, self.bridge)
+
     def test_invalid_month_rejected(self):
         with self.assertRaises(ValueError):
             probe.probe("2026-13", self.archive, self.fetch, self.bridge)
