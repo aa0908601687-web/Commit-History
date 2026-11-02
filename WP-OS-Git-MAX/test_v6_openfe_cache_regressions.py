@@ -102,5 +102,39 @@ class CacheIntegrityTests(unittest.TestCase):
             self.assertEqual(len(sha), 64)
 
 
+    def test_missing_cache_with_corrupt_json_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            p = Path(directory) / "bad.json"
+            p.write_text('{"sha256": [], "rows": null}', encoding="utf-8")
+            self.assertIsNone(cache._read(p, {"layer": "data"}))
+
+    def test_result_layer_hit_avoids_recomputation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "result.json"
+            key = {"schema_version": cache.SCHEMA_VERSION, "layer": "result",
+                   "feature_sha256": "features", "result_version": cache.RESULT_VERSION,
+                   "seed": cache.SEED}
+            cache._write(path, {**key, "result": {"first_zone": [1, 2, 3, 4, 5, 6]}})
+            with patch.object(cache, "complete_result", side_effect=AssertionError("recomputed")):
+                result, status, sha = cache.result_layer(
+                    "unused.csv", [], {}, {}, "features", path)
+            self.assertEqual(status, "hit")
+            self.assertEqual(result["first_zone"], [1, 2, 3, 4, 5, 6])
+            self.assertEqual(len(sha), 64)
+
+    def test_result_layer_refresh_and_cache_reuse(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "result.json"
+            fake = {"first_zone": [1, 2, 3, 4, 5, 6], "second_zone": 1}
+            with patch.object(cache, "complete_result", return_value=fake) as model:
+                first, status, _ = cache.result_layer(
+                    "unused.csv", [], {1: .5}, {"engine": "stub"}, "features", path)
+                second, status2, _ = cache.result_layer(
+                    "unused.csv", [], {1: .5}, {"engine": "stub"}, "features", path)
+            self.assertEqual(first, second)
+            self.assertEqual((status, status2), ("refreshed", "hit"))
+            model.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
