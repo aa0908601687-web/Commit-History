@@ -66,8 +66,10 @@ def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False):
         if best is None or cand[0]>best[0]:best=cand
     second=max(range(1,9),key=lambda n:(.6*sum(x[2]==n for x in five)+.4*sum(x[2]==n for x in ten),-n))
     return {"first_zone":list(best[1]),"second_zone":second,"last_draw":rows[-1][0],
-      "views":{"latest_10":{"rows":10,"from":ten[0][0],"to":ten[-1][0]},
-               "latest_20":{"rows":20,"from":twenty[0][0],"to":twenty[-1][0]},
+      "views":{"latest_5":{"rows":5,"from":five[0][0],"to":five[-1][0]},
+               "latest_10":{"rows":10,"from":ten[0][0],"to":ten[-1][0]},
+               "latest_20":{"rows":len(twenty),"from":twenty[0][0],"to":twenty[-1][0]},
+               "complete_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]},
                "full_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]}},
       "sha256":hashlib.sha256(Path(path).read_bytes()).hexdigest(),
       "model":"optional OpenFE/LightGBM three-history-view scoring + 8-qubit p=1 QAOA-inspired statevector; NOT QPU",
