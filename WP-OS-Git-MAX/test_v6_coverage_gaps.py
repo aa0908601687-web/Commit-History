@@ -90,13 +90,14 @@ class OpenFECoverageTests(unittest.TestCase):
 
     def test_training_rows_and_no_future_target(self):
         rows = sample_rows(25)
-        with patch.dict(sys.modules, {"pandas": SimpleNamespace(DataFrame=list, Series=lambda values, name=None: values)}):
+        fake_pandas = SimpleNamespace(DataFrame=list, Series=lambda values, name=None: values)
+        with patch.dict(sys.modules, {"pandas": fake_pandas}):
             x, y = bridge._training_frame(rows, three_views=True)
-        self.assertEqual(len(x), 5 * 3 * 38)
-        self.assertEqual(len(y), len(x))
+            self.assertEqual(len(x), 5 * 3 * 38)
+            self.assertEqual(len(y), len(x))
             x2, y2 = bridge._training_frame(rows)
-        self.assertEqual(len(x2), 15 * 38)
-        self.assertEqual(len(y2), len(x2))
+            self.assertEqual(len(x2), 15 * 38)
+            self.assertEqual(len(y2), len(x2))
             with self.assertRaises(ValueError):
                 bridge._training_frame([(f"115000{i:03d}", [1, 2, 3, 4, 5, 6], 1) for i in range(1, 12)])
 
