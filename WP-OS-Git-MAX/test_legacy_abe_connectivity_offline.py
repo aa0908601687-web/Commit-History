@@ -1,6 +1,7 @@
 """Legacy connectivity tests only. No network access, no V6/ABE integration."""
 import io
 import json
+import runpy
 import sys
 import tempfile
 import unittest
@@ -57,6 +58,17 @@ class LegacyConnectivityOfflineTests(unittest.TestCase):
             self.assertEqual(json.loads(printed.getvalue()), result)
             self.assertTrue(result["all_registries_reachable"])
             self.assertFalse(result["full_five_model_inference_verified"])
+
+    def test_script_entrypoint_with_offline_urlopen(self):
+        """Cover CLI entrypoint using a synthetic registry response only."""
+        with patch.object(legacy.urllib.request, "urlopen", side_effect=lambda request, timeout=12:
+                          FakeResponse({"id": request.full_url.split("/api/models/")[1], "sha": "fixture"})), \
+             patch.object(sys, "argv", ["abe_model_connectivity.py"]), \
+             redirect_stdout(io.StringIO()) as output:
+            runpy.run_path(str(Path(legacy.__file__)), run_name="__main__")
+        report = json.loads(output.getvalue())
+        self.assertTrue(report["all_registries_reachable"])
+        self.assertFalse(report["full_five_model_inference_verified"])
 
     def test_cli_report_failure_exits_nonzero(self):
         with patch.object(legacy, "check_model", return_value={
