@@ -99,11 +99,11 @@ class OpenFECoverageTests(unittest.TestCase):
             self.assertEqual(len(x2), 15 * 38)
             self.assertEqual(len(y2), len(x2))
             with self.assertRaises(ValueError):
-                bridge._training_frame([(f"115000{i:03d}", [1, 2, 3, 4, 5, 6], 1) for i in range(1, 12)])
+                bridge._training_frame([(f"115000{i:03d}", [], 1) for i in range(1, 12)])
 
     def test_scoring_three_views_and_legacy(self):
         rows = sample_rows()
-        with patch.dict(sys.modules, {"pandas": SimpleNamespace(DataFrame=list)}), patch.object(bridge, "_fit_and_score", side_effect=[
+        with patch.dict(sys.modules, {"pandas": SimpleNamespace(DataFrame=list, Series=lambda values, name=None: values)}), patch.object(bridge, "_fit_and_score", side_effect=[
             ([.2] * 38, 12, 8),
             ([.1] * 38 + [.2] * 38 + [.3] * 38, 15, 9),
         ]):
