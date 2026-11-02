@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Official API validation contract tests (no network)
-        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_update_official_data.py'
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_official_data.py'
       - name: Three-model historical data parity and evidence report
         run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json
       - name: Display audit
