@@ -2,6 +2,10 @@
 No ABE integration, no official API calls, and no production changes.
 """
 import unittest
+import io
+import json
+import sys
+from contextlib import redirect_stdout
 from unittest.mock import patch
 import adaptive_bayesian_ensemble_max as adaptive
 
@@ -30,6 +34,24 @@ class AdaptiveResearchBoundaryTests(unittest.TestCase):
         self.assertEqual(result["tested"], 0)
         self.assertIsNone(result["first_zone_3plus_rate"])
         self.assertEqual(result["jackpot_hits"], 0)
+
+    def test_cli_prediction_uses_mocked_archive(self):
+        draws = [{"draw_id": f"115000{i:03d}", "first": [1, 2, 3, 4, 5, 6], "second": 1} for i in range(1, 21)]
+        with patch.object(adaptive.base, "load", return_value=draws), \
+             patch.object(adaptive, "predict", return_value={"test": "predict"}), \
+             patch.object(sys, "argv", ["adaptive", "--csv", "fixture.csv"]), \
+             redirect_stdout(io.StringIO()) as output:
+            adaptive.main()
+        self.assertEqual(json.loads(output.getvalue()), {"test": "predict"})
+
+    def test_cli_backtest_uses_mocked_archive(self):
+        draws = [{"draw_id": f"115000{i:03d}", "first": [1, 2, 3, 4, 5, 6], "second": 1} for i in range(1, 21)]
+        with patch.object(adaptive.base, "load", return_value=draws), \
+             patch.object(adaptive, "backtest", return_value={"test": "backtest"}), \
+             patch.object(sys, "argv", ["adaptive", "--csv", "fixture.csv", "--backtest"]), \
+             redirect_stdout(io.StringIO()) as output:
+            adaptive.main()
+        self.assertEqual(json.loads(output.getvalue()), {"test": "backtest"})
 
     def test_weight_with_short_series_returns_equal_prior(self):
         self.assertEqual(adaptive.weight([1] * 20, True, 8), 0.5)
