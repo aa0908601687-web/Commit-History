@@ -140,7 +140,12 @@ class OpenFECoverageTests(unittest.TestCase):
             def fit(self, x, y):
                 self.x, self.y = x, y
             def predict_proba(self, x):
-                return [[0.25, 0.75] for _ in x]
+                class FakeProbabilities:
+                    def __getitem__(self, index):
+                        if index == (slice(None), 1):
+                            return [0.75 for _ in x]
+                        raise IndexError(index)
+                return FakeProbabilities()
 
         fake_np = SimpleNamespace(random=FakeRandom())
         fake_openfe = SimpleNamespace(OpenFE=FakeOpenFE, transform=lambda x, y, selected, n_jobs: (x, y))
