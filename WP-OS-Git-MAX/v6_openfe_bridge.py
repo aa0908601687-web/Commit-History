@@ -36,7 +36,7 @@ def _base_row(history, number, view_limit=None):
     }
 
 
-def _training_frame(rows, *, three_views=False, max_anchors=240):
+def _training_frame(rows, *, three_views=False, max_anchors=80):
     import pandas as pd
 
     samples, labels = [], []
