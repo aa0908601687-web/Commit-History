@@ -95,7 +95,10 @@ def run(csv_path,cache_dir,n_jobs=1):
 def main():
     p=argparse.ArgumentParser();p.add_argument("--csv",required=True)
     p.add_argument("--cache-dir",required=True);p.add_argument("--n-jobs",type=int,default=1)
-    a=p.parse_args();print(json.dumps(run(a.csv,a.cache_dir,a.n_jobs),ensure_ascii=False,indent=2))
+    p.add_argument("--output")
+    a=p.parse_args();result=json.dumps(run(a.csv,a.cache_dir,a.n_jobs),ensure_ascii=False,indent=2)+"\n"
+    if a.output:Path(a.output).write_text(result,encoding="utf-8")
+    print(result)
 
 
 if __name__=="__main__":main()
