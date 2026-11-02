@@ -116,5 +116,53 @@ class OpenFECoverageTests(unittest.TestCase):
             self.assertEqual(meta2["view_weights"], {"latest_10": 1 / 3, "latest_20": 1 / 3, "full_archive": 1 / 3})
 
 
+    def test_anchor_sampling_large_history(self):
+        rows = sample_rows(110)
+        fake_pandas = SimpleNamespace(DataFrame=list, Series=lambda values, name=None: values)
+        with patch.dict(sys.modules, {"pandas": fake_pandas}):
+            x, y = bridge._training_frame(rows, three_views=True, max_anchors=8)
+        self.assertEqual(len(x), 8 * 3 * 38)
+        self.assertEqual(len(y), len(x))
+
+    def test_fit_scoring_with_fake_dependencies(self):
+        class FakeRandom:
+            @staticmethod
+            def seed(value):
+                assert value == bridge.SEED
+
+        class FakeOpenFE:
+            def fit(self, **kwargs):
+                return ["feat1", "feat2"]
+
+        class FakeClassifier:
+            def __init__(self, **kwargs):
+                pass
+            def fit(self, x, y):
+                self.x, self.y = x, y
+            def predict_proba(self, x):
+                return [[0.25, 0.75] for _ in x]
+
+        fake_np = SimpleNamespace(random=FakeRandom())
+        fake_openfe = SimpleNamespace(OpenFE=FakeOpenFE, transform=lambda x, y, selected, n_jobs: (x, y))
+        fake_lgbm = SimpleNamespace(LGBMClassifier=FakeClassifier)
+        with patch.dict(sys.modules, {"numpy": fake_np, "openfe": fake_openfe, "lightgbm": fake_lgbm}):
+            for cap, expected in [(1, 1), (0, 0)]:
+                scores, generated, used = bridge._fit_and_score(
+                    [{"n": 1}], [1], [{"n": 2}], n_jobs=1, max_features=cap
+                )
+                self.assertEqual((generated, used), (2, expected))
+                self.assertEqual(scores[0][1], 0.75)
+
+    def test_cache_cli_output_and_stdout(self):
+        with tempfile.TemporaryDirectory() as td:
+            output = Path(td) / "result.json"
+            with patch.object(cache, "run", return_value={"ok": True}), \\
+                 patch.object(sys, "argv", ["cache", "--csv", "data.csv", "--cache-dir", td, "--output", str(output)]):
+                cache.main()
+            self.assertEqual(json.loads(output.read_text(encoding="utf-8")), {"ok": True})
+            with patch.object(cache, "run", return_value={"ok": True}), \\
+                 patch.object(sys, "argv", ["cache", "--csv", "data.csv", "--cache-dir", td]):
+                cache.main()
+
 if __name__ == "__main__":
     unittest.main()
