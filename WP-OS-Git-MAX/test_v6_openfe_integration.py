@@ -36,4 +36,22 @@ class V6OpenFEIntegrationTests(unittest.TestCase):
         self.assertTrue(layer["leakage_safe"])
         self.assertEqual(len(result["first_zone"]),6)
 
+    def test_three_history_views_are_openfe_100_percent(self):
+        views=["latest_10","latest_20","full_archive"]
+        class Fake:
+            @staticmethod
+            def score_three_history_views(rows,n_jobs=1):
+                per={name:{n:float(n) for n in range(1,39)} for name in views}
+                return ({n:float(n) for n in range(1,39)},
+                        {"engine":"fake-openfe","mode":"three_history_views_100_percent",
+                         "history_views":views,"view_weights":{name:1/3 for name in views},
+                         "per_view_scores":per,"leakage_safe":True})
+        with patch.dict(sys.modules,{"v6_openfe_bridge":Fake}):
+            result=mod.run(self.csv,openfe_three_views=True)
+        layer=result["openfe_feature_layer"]
+        self.assertEqual(layer["weight"],1.0)
+        self.assertEqual(layer["history_views"],views)
+        self.assertEqual(set(result["views"]),set(views))
+        self.assertEqual(len(result["first_zone"]),6)
+
 if __name__=="__main__":unittest.main()
