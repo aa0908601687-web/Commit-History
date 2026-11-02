@@ -4,7 +4,9 @@ Dependency-heavy feature training is mocked; integration remains covered separat
 by the existing OpenFE and cache E2E workflows.
 """
 import json
+import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -88,18 +90,19 @@ class OpenFECoverageTests(unittest.TestCase):
 
     def test_training_rows_and_no_future_target(self):
         rows = sample_rows(25)
-        x, y = bridge._training_frame(rows, three_views=True)
+        with patch.dict(sys.modules, {"pandas": SimpleNamespace(DataFrame=list, Series=lambda values, name=None: values)}):
+            x, y = bridge._training_frame(rows, three_views=True)
         self.assertEqual(len(x), 5 * 3 * 38)
         self.assertEqual(len(y), len(x))
-        x2, y2 = bridge._training_frame(rows)
+            x2, y2 = bridge._training_frame(rows)
         self.assertEqual(len(x2), 15 * 38)
         self.assertEqual(len(y2), len(x2))
-        with self.assertRaises(ValueError):
-            bridge._training_frame([(f"115000{i:03d}", [1, 2, 3, 4, 5, 6], 1) for i in range(1, 12)])
+            with self.assertRaises(ValueError):
+                bridge._training_frame([(f"115000{i:03d}", [1, 2, 3, 4, 5, 6], 1) for i in range(1, 12)])
 
     def test_scoring_three_views_and_legacy(self):
         rows = sample_rows()
-        with patch.object(bridge, "_fit_and_score", side_effect=[
+        with patch.dict(sys.modules, {"pandas": SimpleNamespace(DataFrame=list)}), patch.object(bridge, "_fit_and_score", side_effect=[
             ([.2] * 38, 12, 8),
             ([.1] * 38 + [.2] * 38 + [.3] * 38, 15, 9),
         ]):
