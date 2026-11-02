@@ -1,0 +1,38 @@
+name: V6 integration readiness (non-production)
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/**'
+      - '.github/workflows/v6-integration-readiness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-readiness:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Official API validation contract tests (no network)
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_official_data.py'
+      - name: V6 QAOA and official API contract tests (offline)
+        run: |
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_official_api_v6_contract.py'
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_ai_qaoa_e2e.py'
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_three_model_qaoa_bridge.py'
+      - name: Three-model historical data parity and evidence report
+        run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json
+      - name: Three-model to QAOA comparison evidence
+        run: python WP-OS-Git-MAX/v6_three_model_qaoa_bridge.py > v6-qaoa-comparison.json
+      - name: Display audit
+        run: cat v6-readiness.json
+      - name: Upload audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-main-readiness-${{ github.run_id }}
+          path: |
+            v6-readiness.json
+            v6-qaoa-comparison.json
+          if-no-files-found: error

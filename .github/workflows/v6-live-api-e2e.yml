@@ -1,0 +1,30 @@
+name: V6 live official API E2E probe (read only)
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_live_api_e2e_probe.py'
+      - 'WP-OS-Git-MAX/test_v6_live_api_e2e_probe.py'
+      - '.github/workflows/v6-live-api-e2e.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  official-api-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fail-closed offline contract tests
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_live_api_e2e_probe.py' -v
+      - name: Live official API to models to local QAOA (read-only)
+        run: python WP-OS-Git-MAX/v6_live_api_e2e_probe.py --output v6-live-api-e2e.json
+      - name: Upload verified evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-live-api-e2e-${{ github.run_id }}
+          path: v6-live-api-e2e.json
+          if-no-files-found: error
