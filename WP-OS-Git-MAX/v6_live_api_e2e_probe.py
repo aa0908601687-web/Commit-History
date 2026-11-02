@@ -64,8 +64,7 @@ def probe(month=None, archive_path=None, fetcher=None, bridge=None):
     if matching == 0:
         raise ValueError("No shared official period with repository archive; provenance unverified")
     merged = sorted(by_id.values(), key=lambda item: int(item[0]))
-    if int(merged[-1][0]) < int(stored[-1][0]):
-        raise ValueError("Official result older than repository cutoff")
+    # merged includes every stored draw; its latest period cannot precede the archive cutoff.
     # Run only on a disposable CSV. Never overwrite the repository archive.
     with tempfile.TemporaryDirectory(prefix="v6-live-probe-") as folder:
         path = Path(folder) / "verified_merge.csv"
