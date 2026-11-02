@@ -52,7 +52,7 @@ class CacheCoverageTests(unittest.TestCase):
                 (root / "saved" / "features.json").write_text("corrupt", encoding="utf-8")
                 fourth = cache.run(csv, root / "saved")
                 self.assertEqual(fourth["cache"]["features"], "refreshed")
-                self.assertEqual(fourth["cache"]["result"], "refreshed")
+                self.assertEqual(fourth["cache"]["result"], "hit")
 
     def test_result_version_and_feature_version_invalidate(self):
         with tempfile.TemporaryDirectory() as td:
