@@ -93,6 +93,29 @@ class LiveProbeContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "No official draws"):
             probe.probe("2026-11", self.archive, empty_any, self.bridge)
 
+    def test_088_mocked_new_draw_is_never_written_to_archive(self):
+        """Fixture verifies the 088 merge path, NOT official API publication."""
+        original = self.archive.read_bytes()
+        last = ("115000088", [4, 6, 16, 19, 21, 37], 7)
+        def mocked_fetch(month):
+            if month == "2026-10":
+                return self.records[-4:]
+            return [last]
+        result = probe.probe("2026-11", self.archive, mocked_fetch, self.bridge)
+        self.assertEqual(result["new_draw_periods"], ["115000088"])
+        self.assertEqual(result["merged_cutoff"], "115000088")
+        self.assertEqual(result["new_draw_count"], 1)
+        self.assertEqual(self.archive.read_bytes(), original)
+        self.assertFalse(result["trained_ai_verified"])
+
+    def test_duplicate_identical_api_records_are_deduplicated(self):
+        def duplicated(month):
+            return self.records[-4:] if month == "2026-10" else [self.records[-1]]
+        result = probe.probe("2026-11", self.archive, duplicated, self.bridge)
+        self.assertEqual(result["api_rows"], 5)
+        self.assertEqual(result["api_distinct_periods"], 4)
+        self.assertEqual(result["new_draw_count"], 0)
+
     def test_invalid_month_rejected(self):
         with self.assertRaises(ValueError):
             probe.probe("2026-13", self.archive, self.fetch, self.bridge)
