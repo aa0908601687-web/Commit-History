@@ -1,0 +1,80 @@
+"""Offline adversarial checks; these do NOT prove live endpoint connectivity."""
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+import csv
+
+import v6_live_api_e2e_probe as probe
+
+
+class LiveProbeContractTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.archive = Path(self.tmp.name) / "archive.csv"
+        self.records = [(f"115000{i:03d}", [1, 3, 7, 12, 20, 38], 4) for i in range(1, 22)]
+        with self.archive.open("w", newline="") as fp:
+            writer = csv.writer(fp)
+            writer.writerow(["draw_id", "first", "second"])
+            for k, nums, second in self.records:
+                writer.writerow([k, " ".join(map(str, nums)), second])
+
+    def fetch(self, month):
+        return self.records[-4:] if month == "2026-10" else [("115000022", [2, 4, 9, 11, 20, 37], 5)]
+
+    def bridge(self, path):
+        import hashlib
+        records = list(csv.DictReader(open(path)))
+        return {"cutoff": records[-1]["draw_id"], "source_archive_sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest()}
+
+    def test_success_uses_temp_file_and_preserves_archive(self):
+        before = self.archive.read_bytes()
+        result = probe.probe("2026-11", self.archive, self.fetch, self.bridge)
+        self.assertEqual(result["merged_cutoff"], "115000022")
+        self.assertEqual(result["overlap_verified"], 4)
+        self.assertEqual(result["months_requested"], ("2026-10", "2026-11"))
+        self.assertEqual(self.archive.read_bytes(), before)
+        self.assertFalse(result["trained_ai_verified"])
+
+    def test_conflicting_period_fails_closed(self):
+        def bad(month):
+            return [(self.records[-1][0], [2, 3, 4, 5, 6, 7], 1)]
+        with self.assertRaisesRegex(ValueError, "API/archive conflict"):
+            probe.probe("2026-11", self.archive, bad, self.bridge)
+
+    def test_no_overlap_rejected(self):
+        def unrelated(month):
+            return [("115000080", [2, 3, 4, 5, 6, 7], 1)]
+        with self.assertRaisesRegex(ValueError, "No shared"):
+            probe.probe("2026-11", self.archive, unrelated, self.bridge)
+
+    def test_bridge_cutoff_mismatch_fails(self):
+        def wrong(path):
+            result = self.bridge(path)
+            result["cutoff"] = "115000001"
+            return result
+        with self.assertRaisesRegex(ValueError, "cutoff differs"):
+            probe.probe("2026-11", self.archive, self.fetch, wrong)
+
+    def test_bridge_hash_mismatch_fails(self):
+        def wrong(path):
+            result = self.bridge(path)
+            result["source_archive_sha256"] = "invalid"
+            return result
+        with self.assertRaisesRegex(ValueError, "hash mismatch"):
+            probe.probe("2026-11", self.archive, self.fetch, wrong)
+
+    def test_no_network_fallback_after_error(self):
+        def fail(month):
+            raise ConnectionError("API unavailable")
+        with self.assertRaisesRegex(ConnectionError, "unavailable"):
+            probe.probe("2026-11", self.archive, fail, self.bridge)
+
+    def test_invalid_month_rejected(self):
+        with self.assertRaises(ValueError):
+            probe.probe("2026-13", self.archive, self.fetch, self.bridge)
+
+
+if __name__ == "__main__":
+    unittest.main()
