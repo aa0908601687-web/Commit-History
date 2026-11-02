@@ -156,7 +156,7 @@ class OpenFECoverageTests(unittest.TestCase):
                     [{"n": 1}], [1], [{"n": 2}], n_jobs=1, max_features=cap
                 )
                 self.assertEqual((generated, used), (2, expected))
-                self.assertEqual(scores[0][1], 0.75)
+                self.assertEqual(scores[0], 0.75)
 
     def test_cache_cli_output_and_stdout(self):
         with tempfile.TemporaryDirectory() as td:
