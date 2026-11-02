@@ -6,6 +6,9 @@ from unittest.mock import patch
 import csv
 import io
 import json
+import runpy
+import sys
+from datetime import datetime
 from contextlib import redirect_stdout
 
 import v6_live_api_e2e_probe as probe
@@ -148,6 +151,30 @@ class LiveProbeContractTests(unittest.TestCase):
              redirect_stdout(io.StringIO()):
             probe.main()
         self.assertEqual(json.loads(target.read_text(encoding="utf-8")), {"status": "fixture_only"})
+
+    def test_empty_both_months_rejected(self):
+        def absent(month):
+            if month == "2026-11":
+                raise ValueError("No official draws returned")
+            return []
+        with self.assertRaisesRegex(ValueError, "no validated records"):
+            probe.probe("2026-11", self.archive, absent, self.bridge)
+
+    def test_default_month_and_archive_use_taiwan_clock_and_official_path(self):
+        class FrozenDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return cls(2026, 11, 2, 23, 15, tzinfo=tz)
+        seen = []
+        def monthly(month):
+            seen.append(month)
+            return self.records[-4:]
+        with patch.object(probe.dt, "datetime", FrozenDateTime), \
+             patch.object(probe.official, "HISTORY", self.archive):
+            result = probe.probe(fetcher=monthly, bridge=self.bridge)
+        self.assertEqual(seen, ["2026-10", "2026-11"])
+        self.assertEqual(result["merged_cutoff"], self.records[-1][0])
+        self.assertEqual(result["new_draw_count"], 0)
 
     def test_invalid_month_rejected(self):
         with self.assertRaises(ValueError):
