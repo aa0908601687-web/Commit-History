@@ -214,5 +214,15 @@ class OpenFECoverageTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     qaoa.validate(csv)
 
+
+    def test_qaoa_csv_file_context_enter_failure(self):
+        import v6_ai_qaoa_e2e as qaoa
+        from unittest.mock import mock_open
+        source = mock_open(read_data="draw_id,first,second\n")()
+        source.__enter__.side_effect = OSError("synthetic enter failure")
+        with patch("builtins.open", return_value=source):
+            with self.assertRaisesRegex(OSError, "synthetic enter failure"):
+                qaoa.validate("unreadable.csv")
+
 if __name__ == "__main__":
     unittest.main()
