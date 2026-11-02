@@ -1,38 +1,45 @@
 #!/usr/bin/env python3
-"""Independent V6 AI/QAOA local simulator validation. No QPU, ABE or trained ML."""
+"""V6 AI/QAOA local simulator with an optional verified OpenFE feature layer.
+
+No QPU or ABE. OpenFE is enabled only with --openfe and its scores are blended
+with the existing 5/10-draw heuristic before the local statevector search.
+"""
 import argparse,csv,hashlib,json,math
 from pathlib import Path
 
 def validate(path):
-    rows = []
-    seen = set()
-    with open(path, encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f)
-        if reader.fieldnames != ["draw_id", "first", "second"]:
-            raise ValueError("bad columns")
+    rows=[];seen=set()
+    with open(path,encoding="utf-8-sig",newline="") as f:
+        reader=csv.DictReader(f)
+        if reader.fieldnames!=["draw_id","first","second"]:raise ValueError("bad columns")
         for row in reader:
-            k = row["draw_id"]
-            a = [int(x) for x in row["first"].split()]
-            b = int(row["second"])
-            if (len(k) != 9 or not k.isdigit() or k in seen or len(a) != 6
-                    or len(set(a)) != 6 or any(n < 1 or n > 38 for n in a)
-                    or b < 1 or b > 8):
-                raise ValueError("bad draw " + k)
-            seen.add(k)
-            rows.append((k, a, b))
-    if len(rows) < 10:
-        raise ValueError("at least 10 draws required")
-    for i in range(len(rows) - 1):
-        if int(rows[i][0]) >= int(rows[i + 1][0]):
-            raise ValueError("draw order")
+            k=row["draw_id"];a=[int(x) for x in row["first"].split()];b=int(row["second"])
+            if (len(k)!=9 or not k.isdigit() or k in seen or len(a)!=6
+                    or len(set(a))!=6 or any(n<1 or n>38 for n in a) or b<1 or b>8):
+                raise ValueError("bad draw "+k)
+            seen.add(k);rows.append((k,a,b))
+    if len(rows)<10:raise ValueError("at least 10 draws required")
+    for i in range(len(rows)-1):
+        if int(rows[i][0])>=int(rows[i+1][0]):raise ValueError("draw order")
     return rows
 
-def run(path):
-    rows=validate(path); five=rows[-5:];ten=rows[-10:]
+def run(path,use_openfe=False,openfe_weight=.30):
+    if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
+    rows=validate(path);five=rows[-5:];ten=rows[-10:]
     scores={}
     for n in range(1,39):
         a=sum(n in x[1] for x in five);b=sum(n in x[1] for x in ten)
         scores[n]=.6*(a+1)/(5+38/6)+.4*(b+1)/(10+38/6)
+    feature_layer={"enabled":False,"weight":0.0}
+    if use_openfe:
+        from v6_openfe_bridge import score_first_zone
+        learned,metadata=score_first_zone(rows,n_jobs=1)
+        low=min(learned.values());high=max(learned.values());span=high-low or 1.0
+        learned={n:(learned[n]-low)/span for n in learned}
+        base_low=min(scores.values());base_high=max(scores.values());base_span=base_high-base_low or 1.0
+        base={n:(scores[n]-base_low)/base_span for n in scores}
+        scores={n:(1-openfe_weight)*base[n]+openfe_weight*learned[n] for n in scores}
+        feature_layer={"enabled":True,"weight":openfe_weight,**metadata}
     pool=sorted(scores,key=lambda n:(-scores[n],n))[:8]
     costs=[]
     for mask in range(256):
@@ -40,10 +47,10 @@ def run(path):
         costs.append(sum(scores[n] for n in selected) if len(selected)==6 else -10)
     best=None
     for j in range(1,17):
-        gamma=j*math.pi/32; beta=j*math.pi/64
+        gamma=j*math.pi/32;beta=j*math.pi/64
         state=[complex(math.cos(-gamma*c),math.sin(-gamma*c))/16 for c in costs]
         for bit in range(8):
-            c=math.cos(beta); t=-1j*math.sin(beta)
+            c=math.cos(beta);t=-1j*math.sin(beta)
             for z in range(256):
                 if not z>>bit&1:
                     other=z|(1<<bit);x,y=state[z],state[other]
@@ -58,13 +65,16 @@ def run(path):
                "latest_10":{"rows":10,"from":ten[0][0],"to":ten[-1][0]},
                "complete_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]}},
       "sha256":hashlib.sha256(Path(path).read_bytes()).hexdigest(),
-      "model":"Bayesian-style heuristic and 8-qubit p=1 QAOA-inspired statevector; NOT trained ML/QPU",
-      "feature_windows":"5 and 10 draws only; full archive for validation",
+      "model":"5/10 heuristic + optional OpenFE/LightGBM + 8-qubit p=1 QAOA-inspired statevector; NOT QPU",
+      "openfe_feature_layer":feature_layer,
+      "feature_windows":"5 and 10 draws; full archive only for leakage-safe training/validation",
       "status":"Research simulation; no evidence of predictive advantage"}
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument("--csv",required=True);p.add_argument("--output");a=p.parse_args()
-    result=run(a.csv);out=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
+    p=argparse.ArgumentParser();p.add_argument("--csv",required=True);p.add_argument("--output")
+    p.add_argument("--openfe",action="store_true");p.add_argument("--openfe-weight",type=float,default=.30)
+    a=p.parse_args();result=run(a.csv,a.openfe,a.openfe_weight)
+    out=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
     if a.output:Path(a.output).write_text(out,encoding="utf-8")
     print(out)
 if __name__=="__main__":main()
