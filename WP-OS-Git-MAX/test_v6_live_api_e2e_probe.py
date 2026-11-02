@@ -4,6 +4,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 import csv
+import io
+import json
+from contextlib import redirect_stdout
 
 import v6_live_api_e2e_probe as probe
 
@@ -25,7 +28,8 @@ class LiveProbeContractTests(unittest.TestCase):
 
     def bridge(self, path):
         import hashlib
-        records = list(csv.DictReader(open(path)))
+        with open(path, newline="", encoding="utf-8") as stream:
+            records = list(csv.DictReader(stream))
         return {"cutoff": records[-1]["draw_id"], "source_archive_sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest()}
 
     def test_success_uses_temp_file_and_preserves_archive(self):
@@ -115,6 +119,35 @@ class LiveProbeContractTests(unittest.TestCase):
         self.assertEqual(result["api_rows"], 5)
         self.assertEqual(result["api_distinct_periods"], 4)
         self.assertEqual(result["new_draw_count"], 0)
+
+    def test_previous_month_year_boundary(self):
+        self.assertEqual(probe.previous_month("2026-01"), "2025-12")
+        self.assertEqual(probe.previous_month("2026-11"), "2026-10")
+
+    def test_conflicting_api_rows_rejected(self):
+        def contradictory(month):
+            if month == "2026-10":
+                return self.records[-4:]
+            return [(self.records[-1][0], [2, 4, 9, 11, 20, 37], 5)]
+        with self.assertRaisesRegex(ValueError, "Contradictory API records"):
+            probe.probe("2026-11", self.archive, contradictory, self.bridge)
+
+    def test_cli_output_is_json_with_mocked_probe(self):
+        from unittest.mock import patch
+        output = io.StringIO()
+        with patch.object(probe, "probe", return_value={"status": "fixture_only"}), \
+             patch("sys.argv", ["v6_live_api_e2e_probe.py"]), \
+             redirect_stdout(output):
+            probe.main()
+        self.assertEqual(json.loads(output.getvalue()), {"status": "fixture_only"})
+
+    def test_cli_writes_output_file(self):
+        target = Path(self.tmp.name) / "report.json"
+        with patch.object(probe, "probe", return_value={"status": "fixture_only"}), \
+             patch("sys.argv", ["v6_live_api_e2e_probe.py", "--month", "2026-11", "--output", str(target)]), \
+             redirect_stdout(io.StringIO()):
+            probe.main()
+        self.assertEqual(json.loads(target.read_text(encoding="utf-8")), {"status": "fixture_only"})
 
     def test_invalid_month_rejected(self):
         with self.assertRaises(ValueError):
