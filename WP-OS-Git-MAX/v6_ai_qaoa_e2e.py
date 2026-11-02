@@ -4,16 +4,27 @@ import argparse,csv,hashlib,json,math
 from pathlib import Path
 
 def validate(path):
-    rows=[]; seen=set()
-    with open(path,encoding="utf-8-sig",newline="") as f:
-        reader=csv.DictReader(f)
-        if reader.fieldnames!=["draw_id","first","second"]: raise ValueError("bad columns")
+    rows = []
+    seen = set()
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames != ["draw_id", "first", "second"]:
+            raise ValueError("bad columns")
         for row in reader:
-            k=row["draw_id"]; a=[int(x) for x in row["first"].split()]; b=int(row["second"])
-            if len(k)!=9 or not k.isdigit() or k in seen or len(a)!=6 or len(set(a))!=6 or any(n<1 or n>38 for n in a) or b<1 or b>8: raise ValueError("bad draw "+k)
-            seen.add(k);rows.append((k,a,b))
-    if len(rows)<10:raise ValueError("at least 10 draws required")
-    if any(int(rows[i][0])>=int(rows[i+1][0]) for i in range(len(rows)-1)):raise ValueError("draw order")
+            k = row["draw_id"]
+            a = [int(x) for x in row["first"].split()]
+            b = int(row["second"])
+            if (len(k) != 9 or not k.isdigit() or k in seen or len(a) != 6
+                    or len(set(a)) != 6 or any(n < 1 or n > 38 for n in a)
+                    or b < 1 or b > 8):
+                raise ValueError("bad draw " + k)
+            seen.add(k)
+            rows.append((k, a, b))
+    if len(rows) < 10:
+        raise ValueError("at least 10 draws required")
+    for i in range(len(rows) - 1):
+        if int(rows[i][0]) >= int(rows[i + 1][0]):
+            raise ValueError("draw order")
     return rows
 
 def run(path):
