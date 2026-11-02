@@ -36,12 +36,19 @@ def _base_row(history, number, view_limit=None):
     }
 
 
-def _training_frame(rows, *, three_views=False):
+def _training_frame(rows, *, three_views=False, max_anchors=240):
     import pandas as pd
 
     samples, labels = [], []
     limits = VIEW_LIMITS.values() if three_views else (None,)
-    for end in range(10, len(rows)):
+    ends = list(range(20 if three_views else 10, len(rows)))
+    if three_views and len(ends) > max_anchors:
+        positions = {
+            round(index * (len(ends) - 1) / (max_anchors - 1))
+            for index in range(max_anchors)
+        }
+        ends = [ends[index] for index in sorted(positions)]
+    for end in ends:
         history = rows[:end]
         target = set(rows[end][1])
         for view_limit in limits:
@@ -155,4 +162,6 @@ def score_three_history_views(rows, *, n_jobs=1, max_features=12):
         "history_views": list(VIEW_LIMITS),
         "view_weights": {name: 1 / 3 for name in VIEW_LIMITS},
         "per_view_scores": by_view,
+        "training_anchor_count": len(train_x) // (38 * len(VIEW_LIMITS)),
+        "training_anchor_strategy": "uniform_across_full_archive",
     }
