@@ -4,6 +4,7 @@ Dependency-heavy feature training is mocked; integration remains covered separat
 by the existing OpenFE and cache E2E workflows.
 """
 import json
+import runpy
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -168,6 +169,21 @@ class OpenFECoverageTests(unittest.TestCase):
             with patch.object(cache, "run", return_value={"ok": True}), \
                  patch.object(sys, "argv", ["cache", "--csv", "data.csv", "--cache-dir", td]):
                 cache.main()
+
+
+    def test_training_skips_history_view_longer_than_available(self):
+        fake_pandas = SimpleNamespace(DataFrame=list, Series=lambda values, name=None: values)
+        with patch.dict(sys.modules, {"pandas": fake_pandas}), \
+             patch.object(bridge, "VIEW_LIMITS", {"latest_10": 10, "long_view": 100, "full_archive": None}):
+            x, y = bridge._training_frame(sample_rows(25), three_views=True)
+        self.assertEqual(len(x), 5 * 2 * 38)
+        self.assertEqual(len(y), len(x))
+
+    def test_qaoa_module_entrypoint(self):
+        import v6_ai_qaoa_e2e as qaoa
+        with patch.object(qaoa, "run", return_value={"ok": True}), \
+             patch.object(sys, "argv", ["v6_ai_qaoa_e2e.py", "--csv", "fixture.csv"]):
+            runpy.run_path(qaoa.__file__, run_name="__main__")
 
 if __name__ == "__main__":
     unittest.main()
