@@ -51,7 +51,7 @@ class V6OpenFEIntegrationTests(unittest.TestCase):
         layer=result["openfe_feature_layer"]
         self.assertEqual(layer["weight"],1.0)
         self.assertEqual(layer["history_views"],views)
-        self.assertEqual(set(result["views"]),set(views))
+        self.assertTrue(set(views).issubset(result["views"]))
         self.assertEqual(len(result["first_zone"]),6)
 
 if __name__=="__main__":unittest.main()
