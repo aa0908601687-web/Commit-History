@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""V6 AI/QAOA local simulator with an optional verified OpenFE feature layer.
+"""V6 local QAOA simulator with optional OpenFE feature modes.
 
-No QPU or ABE. OpenFE is enabled only with --openfe and its scores are blended
-with the existing 5/10-draw heuristic before the local statevector search.
+No QPU or ABE. --openfe preserves the 30% fusion mode.
+--openfe-three-views uses OpenFE/LightGBM scores from latest-10, latest-20 and
+full-archive views at 100%, before the local statevector combination search.
 """
 import argparse,csv,hashlib,json,math
 from pathlib import Path
@@ -23,15 +24,19 @@ def validate(path):
         if int(rows[i][0])>=int(rows[i+1][0]):raise ValueError("draw order")
     return rows
 
-def run(path,use_openfe=False,openfe_weight=.30):
+def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False):
     if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
-    rows=validate(path);five=rows[-5:];ten=rows[-10:]
+    rows=validate(path);five=rows[-5:];ten=rows[-10:];twenty=rows[-20:]
     scores={}
     for n in range(1,39):
         a=sum(n in x[1] for x in five);b=sum(n in x[1] for x in ten)
         scores[n]=.6*(a+1)/(5+38/6)+.4*(b+1)/(10+38/6)
     feature_layer={"enabled":False,"weight":0.0}
-    if use_openfe:
+    if openfe_three_views:
+        from v6_openfe_bridge import score_three_history_views
+        scores,metadata=score_three_history_views(rows,n_jobs=1)
+        feature_layer={"enabled":True,"weight":1.0,**metadata}
+    elif use_openfe:
         from v6_openfe_bridge import score_first_zone
         learned,metadata=score_first_zone(rows,n_jobs=1)
         low=min(learned.values());high=max(learned.values());span=high-low or 1.0
@@ -63,17 +68,20 @@ def run(path,use_openfe=False,openfe_weight=.30):
     return {"first_zone":list(best[1]),"second_zone":second,"last_draw":rows[-1][0],
       "views":{"latest_5":{"rows":5,"from":five[0][0],"to":five[-1][0]},
                "latest_10":{"rows":10,"from":ten[0][0],"to":ten[-1][0]},
-               "complete_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]}},
+               "latest_20":{"rows":len(twenty),"from":twenty[0][0],"to":twenty[-1][0]},
+               "complete_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]},
+               "full_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]}},
       "sha256":hashlib.sha256(Path(path).read_bytes()).hexdigest(),
-      "model":"5/10 heuristic + optional OpenFE/LightGBM + 8-qubit p=1 QAOA-inspired statevector; NOT QPU",
+      "model":"optional OpenFE/LightGBM three-history-view scoring + 8-qubit p=1 QAOA-inspired statevector; NOT QPU",
       "openfe_feature_layer":feature_layer,
-      "feature_windows":"5 and 10 draws; full archive only for leakage-safe training/validation",
       "status":"Research simulation; no evidence of predictive advantage"}
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--csv",required=True);p.add_argument("--output")
     p.add_argument("--openfe",action="store_true");p.add_argument("--openfe-weight",type=float,default=.30)
-    a=p.parse_args();result=run(a.csv,a.openfe,a.openfe_weight)
+    p.add_argument("--openfe-three-views",action="store_true")
+    a=p.parse_args()
+    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views)
     out=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
     if a.output:Path(a.output).write_text(out,encoding="utf-8")
     print(out)
