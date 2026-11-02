@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from types import SimpleNamespace
+import sys
 
 import v6_openfe_bridge as openfe
 import v6_of3q_cache_v3 as cache
@@ -40,7 +42,8 @@ class OpenFEContractTests(unittest.TestCase):
             openfe.score_three_history_views(self.rows[:19])
 
     def test_score_first_zone_mapping_with_stubbed_fit(self):
-        with patch.object(openfe, "_training_frame", return_value=("x", "y")), \
+        with patch.dict(sys.modules, {"pandas": SimpleNamespace(DataFrame=lambda values: values)}), \
+             patch.object(openfe, "_training_frame", return_value=("x", "y")), \
              patch.object(openfe, "_base_row", return_value={"number": 1.0}), \
              patch.object(openfe, "_fit_and_score", return_value=([0.25] * 38, 3, 2)):
             values, meta = openfe.score_first_zone(self.rows)
