@@ -1,0 +1,47 @@
+name: V6 post-merge read-only E2E verification
+on:
+  push:
+    branches:
+      - validation/v6-main-e2e-20261103
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  readonly-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Three-model historical parity (offline)
+        run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json
+      - name: Three-model and local QAOA comparison
+        run: python WP-OS-Git-MAX/v6_three_model_qaoa_bridge.py > v6-model-qaoa.json
+      - name: Official API live read-only merge and comparison
+        run: python WP-OS-Git-MAX/v6_live_api_e2e_probe.py --output v6-live-api-e2e.json
+      - name: Assert provenance without making production deployment claims
+        run: |
+          python - <<'PY'
+          import json
+          a=json.load(open('v6-readiness.json'))
+          b=json.load(open('v6-model-qaoa.json'))
+          c=json.load(open('v6-live-api-e2e.json'))
+          assert a['three_model_parity']=='pass'
+          assert a['data']['cutoff']==b['cutoff']
+          assert c['merged_cutoff']==c['three_model_qaoa_comparison']['cutoff']
+          assert c['repository_archive_modified'] is False
+          assert c['trained_ai_verified'] is False
+          assert c['production_main_deployed'] is False
+          print(json.dumps({'offline_cutoff':a['data']['cutoff'],'live_merged_cutoff':c['merged_cutoff'],'api_rows':c['api_rows'],'new_draws':c['new_draw_count'],'status':c['status'],'production_verified':False}))
+          PY
+      - name: Upload verification artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-post-merge-e2e-evidence
+          path: |
+            v6-readiness.json
+            v6-model-qaoa.json
+            v6-live-api-e2e.json
+          if-no-files-found: error
