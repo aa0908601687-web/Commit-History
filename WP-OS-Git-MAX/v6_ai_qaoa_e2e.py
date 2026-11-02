@@ -24,27 +24,9 @@ def validate(path):
         if int(rows[i][0])>=int(rows[i+1][0]):raise ValueError("draw order")
     return rows
 
-def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False):
-    if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
-    rows=validate(path);five=rows[-5:];ten=rows[-10:];twenty=rows[-20:]
-    scores={}
-    for n in range(1,39):
-        a=sum(n in x[1] for x in five);b=sum(n in x[1] for x in ten)
-        scores[n]=.6*(a+1)/(5+38/6)+.4*(b+1)/(10+38/6)
-    feature_layer={"enabled":False,"weight":0.0}
-    if openfe_three_views:
-        from v6_openfe_bridge import score_three_history_views
-        scores,metadata=score_three_history_views(rows,n_jobs=1)
-        feature_layer={"enabled":True,"weight":1.0,**metadata}
-    elif use_openfe:
-        from v6_openfe_bridge import score_first_zone
-        learned,metadata=score_first_zone(rows,n_jobs=1)
-        low=min(learned.values());high=max(learned.values());span=high-low or 1.0
-        learned={n:(learned[n]-low)/span for n in learned}
-        base_low=min(scores.values());base_high=max(scores.values());base_span=base_high-base_low or 1.0
-        base={n:(scores[n]-base_low)/base_span for n in scores}
-        scores={n:(1-openfe_weight)*base[n]+openfe_weight*learned[n] for n in scores}
-        feature_layer={"enabled":True,"weight":openfe_weight,**metadata}
+def complete_result(path,rows,scores,feature_layer):
+    """Finish deterministic QAOA-inspired selection from supplied scores."""
+    five=rows[-5:];ten=rows[-10:];twenty=rows[-20:]
     pool=sorted(scores,key=lambda n:(-scores[n],n))[:8]
     costs=[]
     for mask in range(256):
@@ -75,6 +57,29 @@ def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False):
       "model":"optional OpenFE/LightGBM three-history-view scoring + 8-qubit p=1 QAOA-inspired statevector; NOT QPU",
       "openfe_feature_layer":feature_layer,
       "status":"Research simulation; no evidence of predictive advantage"}
+
+def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False):
+    if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
+    rows=validate(path);five=rows[-5:];ten=rows[-10:];twenty=rows[-20:]
+    scores={}
+    for n in range(1,39):
+        a=sum(n in x[1] for x in five);b=sum(n in x[1] for x in ten)
+        scores[n]=.6*(a+1)/(5+38/6)+.4*(b+1)/(10+38/6)
+    feature_layer={"enabled":False,"weight":0.0}
+    if openfe_three_views:
+        from v6_openfe_bridge import score_three_history_views
+        scores,metadata=score_three_history_views(rows,n_jobs=1)
+        feature_layer={"enabled":True,"weight":1.0,**metadata}
+    elif use_openfe:
+        from v6_openfe_bridge import score_first_zone
+        learned,metadata=score_first_zone(rows,n_jobs=1)
+        low=min(learned.values());high=max(learned.values());span=high-low or 1.0
+        learned={n:(learned[n]-low)/span for n in learned}
+        base_low=min(scores.values());base_high=max(scores.values());base_span=base_high-base_low or 1.0
+        base={n:(scores[n]-base_low)/base_span for n in scores}
+        scores={n:(1-openfe_weight)*base[n]+openfe_weight*learned[n] for n in scores}
+        feature_layer={"enabled":True,"weight":openfe_weight,**metadata}
+    return complete_result(path,rows,scores,feature_layer)
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--csv",required=True);p.add_argument("--output")
