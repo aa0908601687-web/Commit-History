@@ -156,11 +156,11 @@ class OpenFECoverageTests(unittest.TestCase):
     def test_cache_cli_output_and_stdout(self):
         with tempfile.TemporaryDirectory() as td:
             output = Path(td) / "result.json"
-            with patch.object(cache, "run", return_value={"ok": True}), \\
+            with patch.object(cache, "run", return_value={"ok": True}), \
                  patch.object(sys, "argv", ["cache", "--csv", "data.csv", "--cache-dir", td, "--output", str(output)]):
                 cache.main()
             self.assertEqual(json.loads(output.read_text(encoding="utf-8")), {"ok": True})
-            with patch.object(cache, "run", return_value={"ok": True}), \\
+            with patch.object(cache, "run", return_value={"ok": True}), \
                  patch.object(sys, "argv", ["cache", "--csv", "data.csv", "--cache-dir", td]):
                 cache.main()
 
