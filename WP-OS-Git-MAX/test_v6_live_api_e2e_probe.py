@@ -32,6 +32,9 @@ class LiveProbeContractTests(unittest.TestCase):
         before = self.archive.read_bytes()
         result = probe.probe("2026-11", self.archive, self.fetch, self.bridge)
         self.assertEqual(result["merged_cutoff"], "115000022")
+        self.assertEqual(result["status"], "new_draws_imported_and_verified")
+        self.assertEqual(result["new_draw_count"], 1)
+        self.assertEqual(result["new_draw_periods"], ["115000022"])
         self.assertEqual(result["overlap_verified"], 4)
         self.assertEqual(result["months_requested"], ("2026-10", "2026-11"))
         self.assertEqual(self.archive.read_bytes(), before)
@@ -80,6 +83,9 @@ class LiveProbeContractTests(unittest.TestCase):
         self.assertEqual(result["months_without_published_draws"], ["2026-11"])
         self.assertEqual(result["merged_cutoff"], self.records[-1][0])
         self.assertEqual(result["api_rows"], 4)
+        self.assertEqual(result["status"], "no_new_draws_live_bridge_verified")
+        self.assertEqual(result["new_draw_count"], 0)
+        self.assertFalse(result["latest_draw_advanced"])
 
     def test_empty_previous_month_does_not_silently_pass(self):
         def empty_any(month):
