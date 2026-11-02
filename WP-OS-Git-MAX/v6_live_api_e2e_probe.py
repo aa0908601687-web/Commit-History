@@ -34,8 +34,17 @@ def probe(month=None, archive_path=None, fetcher=None, bridge=None):
     # Request both months to bridge the month boundary. Never silently accept API errors.
     months = (previous_month(month), month)
     remote = []
+    empty_months = []
     for m in months:
-        remote.extend(fetcher(m))
+        try:
+            month_records = fetcher(m)
+        except ValueError as exc:
+            if m == month and str(exc) == "No official draws returned":
+                empty_months.append(m)
+                month_records = []
+            else:
+                raise
+        remote.extend(month_records)
     if not remote:
         raise ValueError("Official API returned no validated records")
     incoming = {}
@@ -74,6 +83,7 @@ def probe(month=None, archive_path=None, fetcher=None, bridge=None):
     return {
         "status": "live_api_bridge_verified",
         "months_requested": months,
+        "months_without_published_draws": empty_months,
         "api_rows": len(remote),
         "api_distinct_periods": len(incoming),
         "overlap_verified": matching,
