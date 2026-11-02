@@ -68,6 +68,53 @@ class AutoMLDataContractTests(unittest.TestCase):
         self.assertEqual(json.loads(output.read_text(encoding="utf-8")), result)
         self.assertEqual(json.loads(printed.getvalue()), result)
 
+    def test_run_isolated_training_contract_with_fake_numpy_tensorflow_tuner(self):
+        """Exercise training orchestration using fake modules; no real TensorFlow."""
+        import types
+        import numpy as np
+        import random
+        class FakeTensor:
+            def __init__(self, value=None):
+                self.value = value
+            def __call__(self, value):
+                return FakeTensor(value)
+        class FakeHP:
+            def Choice(self, name, values):
+                self.choice = (name, values)
+                return values[0]
+        class FakeModel:
+            def compile(self, **kwargs):
+                self.compiled = kwargs
+            def predict(self, values, verbose=0):
+                return ([[float(i) / 38 for i in range(38)]],
+                        [[float(i) / 8 for i in range(8)]])
+        model = FakeModel()
+        keras = types.SimpleNamespace(
+            Input=lambda **kwargs: FakeTensor(),
+            layers=types.SimpleNamespace(Dense=lambda *args, **kwargs: FakeTensor()),
+            Model=lambda *args: model)
+        tf = types.SimpleNamespace(
+            keras=keras, random=types.SimpleNamespace(set_seed=lambda seed: None))
+        class FakeTuner:
+            def __init__(self, build, **kwargs):
+                self.model = build(FakeHP())
+            def search(self, *args, **kwargs):
+                self.searched = True
+            def get_best_models(self, count):
+                return [self.model]
+        kt = types.SimpleNamespace(RandomSearch=FakeTuner)
+        import sys
+        with patch.dict(sys.modules, {"tensorflow": tf, "keras_tuner": kt}), \
+             patch.object(automl.random, "seed") as seed:
+            result = automl.run(self.draws, Path(self.temp.name))
+        seed.assert_called_once_with(automl.SEED)
+        self.assertTrue(result["tensorflow_automl_executed"])
+        self.assertFalse(result["prediction_integration"])
+        self.assertEqual(result["training_samples"], 2)
+        self.assertEqual(result["first"], [33, 34, 35, 36, 37, 38])
+        self.assertEqual(result["second"], 8)
+        self.assertEqual(len(result["sha256"]), 64)
+
     def test_short_history_rejected(self):
         self.write(self.draws[:11])
         with self.assertRaisesRegex(ValueError, "At least 12"):
