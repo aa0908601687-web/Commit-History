@@ -1,0 +1,81 @@
+name: V6 OF3Q three-layer cache E2E
+
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_of3q_cache_v3.py'
+      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/v6_openfe_bridge.py'
+      - 'WP-OS-Git-MAX/test_v6_of3q_cache_v3.py'
+      - '.github/workflows/v6-of3q-cache-e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cache-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: WP-OS-Git-MAX
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install OpenFE runtime and test dependencies
+        run: python -m pip install 'openfe>=0.0.12' 'lightgbm>=4,<5' matplotlib pytest
+      - name: Run focused cache tests
+        run: python -m pytest -q test_v6_of3q_cache_v3.py test_v6_ai_qaoa_e2e.py test_v6_openfe_integration.py
+      - name: First run builds all three layers
+        run: |
+          python v6_of3q_cache_v3.py \
+            --csv historical_archive.csv \
+            --cache-dir .v6-of3q-cache \
+            --n-jobs 1 > v6-of3q-first.json
+      - name: Second run must hit all three layers
+        run: |
+          python v6_of3q_cache_v3.py \
+            --csv historical_archive.csv \
+            --cache-dir .v6-of3q-cache \
+            --n-jobs 1 > v6-of3q-second.json
+      - name: Verify refresh, hit, integrity and deterministic output
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          first=json.loads(Path('v6-of3q-first.json').read_text())
+          second=json.loads(Path('v6-of3q-second.json').read_text())
+          assert first['cache']=={'data':'refreshed','features':'refreshed','result':'refreshed'}
+          assert second['cache']=={'data':'hit','features':'hit','result':'hit'}
+          assert first['result']==second['result']
+          assert first['digests']==second['digests']
+          assert first['seed']==20261103
+          assert first['result']['openfe_feature_layer']['enabled'] is True
+          assert first['result']['openfe_feature_layer']['weight']==1.0
+          assert 'NOT QPU' in first['result']['model']
+          evidence={
+            'status':'success',
+            'first_run_cache':first['cache'],
+            'second_run_cache':second['cache'],
+            'digests':second['digests'],
+            'seed':second['seed'],
+            'last_draw':second['result']['last_draw'],
+            'first_zone':second['result']['first_zone'],
+            'second_zone':second['result']['second_zone'],
+            'qpu':False,
+            'predictive_advantage_claimed':False,
+          }
+          Path('v6-of3q-cache-e2e-evidence.json').write_text(
+              json.dumps(evidence,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@v5
+        with:
+          name: v6-of3q-cache-e2e-${{ github.run_id }}
+          path: |
+            WP-OS-Git-MAX/v6-of3q-first.json
+            WP-OS-Git-MAX/v6-of3q-second.json
+            WP-OS-Git-MAX/v6-of3q-cache-e2e-evidence.json
+          if-no-files-found: error
