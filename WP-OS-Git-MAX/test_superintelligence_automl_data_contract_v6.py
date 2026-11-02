@@ -71,8 +71,6 @@ class AutoMLDataContractTests(unittest.TestCase):
     def test_run_isolated_training_contract_with_fake_numpy_tensorflow_tuner(self):
         """Exercise training orchestration using fake modules; no real TensorFlow."""
         import types
-        import numpy as np
-        import random
         class FakeTensor:
             def __init__(self, value=None):
                 self.value = value
@@ -104,7 +102,8 @@ class AutoMLDataContractTests(unittest.TestCase):
                 return [self.model]
         kt = types.SimpleNamespace(RandomSearch=FakeTuner)
         import sys
-        with patch.dict(sys.modules, {"tensorflow": tf, "keras_tuner": kt}), \
+        np = types.SimpleNamespace(asarray=lambda x, dtype=None: x, random=types.SimpleNamespace(seed=lambda seed: None))
+        with patch.dict(sys.modules, {"numpy": np, "tensorflow": tf, "keras_tuner": kt}), \
              patch.object(automl.random, "seed") as seed:
             result = automl.run(self.draws, Path(self.temp.name))
         seed.assert_called_once_with(automl.SEED)
