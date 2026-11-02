@@ -80,8 +80,12 @@ def probe(month=None, archive_path=None, fetcher=None, bridge=None):
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         if result["source_archive_sha256"] != digest:
             raise ValueError("Bridge input hash mismatch")
+    new_periods = [draw_id for draw_id in incoming if int(draw_id) > int(stored[-1][0])]
     return {
-        "status": "live_api_bridge_verified",
+        "status": "new_draws_imported_and_verified" if new_periods else "no_new_draws_live_bridge_verified",
+        "new_draw_count": len(new_periods),
+        "new_draw_periods": sorted(new_periods),
+        "latest_draw_advanced": bool(new_periods),
         "months_requested": months,
         "months_without_published_draws": empty_months,
         "api_rows": len(remote),
