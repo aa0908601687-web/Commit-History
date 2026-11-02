@@ -1,5 +1,10 @@
 """Offline coverage for isolated AutoML data preparation; no TensorFlow needed."""
 import csv
+import io
+import json
+import sys
+from contextlib import redirect_stdout
+from unittest.mock import patch
 import tempfile
 import unittest
 from pathlib import Path
@@ -47,6 +52,21 @@ class AutoMLDataContractTests(unittest.TestCase):
         f = automl.features(self.draws)
         self.assertAlmostEqual(f[0], 1.0)
         self.assertAlmostEqual(f[38], sum(x["second"] == 1 for x in self.draws[-5:]) / 5)
+
+    def test_main_emits_json_with_mocked_training(self):
+        """The CLI contract is tested without importing TensorFlow."""
+        result = {"mode": "offline_mock", "prediction_integration": False}
+        output = Path(self.temp.name) / "output.json"
+        with patch.object(automl, "load_draws", return_value=self.draws) as loader, \
+             patch.object(automl, "run", return_value=result) as trainer, \
+             patch.object(sys, "argv", ["automl", "--csv", str(self.path),
+                                        "--output", str(output), "--workdir", self.temp.name]), \
+             redirect_stdout(io.StringIO()) as printed:
+            automl.main()
+        loader.assert_called_once_with(str(self.path))
+        trainer.assert_called_once_with(self.draws, Path(self.temp.name))
+        self.assertEqual(json.loads(output.read_text(encoding="utf-8")), result)
+        self.assertEqual(json.loads(printed.getvalue()), result)
 
     def test_short_history_rejected(self):
         self.write(self.draws[:11])
