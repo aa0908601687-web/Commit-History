@@ -34,13 +34,15 @@ jobs:
           python v6_of3q_cache_v3.py \
             --csv historical_archive.csv \
             --cache-dir .v6-of3q-cache \
-            --n-jobs 1 > v6-of3q-first.json
+            --n-jobs 1 \
+            --output v6-of3q-first.json
       - name: Second run must hit all three layers
         run: |
           python v6_of3q_cache_v3.py \
             --csv historical_archive.csv \
             --cache-dir .v6-of3q-cache \
-            --n-jobs 1 > v6-of3q-second.json
+            --n-jobs 1 \
+            --output v6-of3q-second.json
       - name: Verify refresh, hit, integrity and deterministic output
         run: |
           python - <<'PY'
