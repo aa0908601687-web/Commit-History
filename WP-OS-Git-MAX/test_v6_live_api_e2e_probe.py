@@ -176,6 +176,22 @@ class LiveProbeContractTests(unittest.TestCase):
         self.assertEqual(result["merged_cutoff"], self.records[-1][0])
         self.assertEqual(result["new_draw_count"], 0)
 
+    def test_insufficient_archive_rejected_before_fetch(self):
+        self.archive.write_text("draw_id,first,second\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "fewer than 20"):
+            probe.probe("2026-11", self.archive, self.fetch, self.bridge)
+
+    def test_empty_archive_argument_uses_default_archive(self):
+        with patch.object(probe.official, "HISTORY", self.archive):
+            result = probe.probe("2026-11", None, self.fetch, self.bridge)
+        self.assertEqual(result["stored_cutoff"], self.records[-1][0])
+
+    def test_stale_api_record_does_not_claim_new_draw(self):
+        def old_only(month):
+            return self.records[-4:]
+        result = probe.probe("2026-11", self.archive, old_only, self.bridge)
+        self.assertFalse(result["latest_draw_advanced"])
+
     def test_invalid_month_rejected(self):
         with self.assertRaises(ValueError):
             probe.probe("2026-13", self.archive, self.fetch, self.bridge)
