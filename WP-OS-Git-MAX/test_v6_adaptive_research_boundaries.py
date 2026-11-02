@@ -3,6 +3,10 @@ No ABE integration, no official API calls, and no production changes.
 """
 import unittest
 import io
+import csv
+import runpy
+import tempfile
+from pathlib import Path
 import json
 import sys
 from contextlib import redirect_stdout
@@ -34,6 +38,23 @@ class AdaptiveResearchBoundaryTests(unittest.TestCase):
         self.assertEqual(result["tested"], 0)
         self.assertIsNone(result["first_zone_3plus_rate"])
         self.assertEqual(result["jackpot_hits"], 0)
+
+    def test_real_script_entrypoint_on_synthetic_history(self):
+        """Cover CLI entrypoint without network, production data, or ABE."""
+        with tempfile.TemporaryDirectory() as tmp:
+            csv_path = Path(tmp) / "synthetic.csv"
+            with csv_path.open("w", newline="", encoding="utf-8") as stream:
+                w = csv.writer(stream)
+                w.writerow(["draw_id", "first", "second"])
+                for i in range(20):
+                    w.writerow([f"115000{i+1:03d}", "01 02 03 04 05 06", "01"])
+            with patch.object(sys, "argv", ["adaptive_bayesian_ensemble_max.py", "--csv", str(csv_path)]), \
+                 redirect_stdout(io.StringIO()) as output:
+                runpy.run_path(str(Path(adaptive.__file__)), run_name="__main__")
+        payload = json.loads(output.getvalue())
+        self.assertEqual(payload["through_draw"], "115000020")
+        self.assertEqual(len(payload["first"]), 6)
+        self.assertIn("weights", payload)
 
     def test_cli_prediction_uses_mocked_archive(self):
         draws = [{"draw_id": f"115000{i:03d}", "first": [1, 2, 3, 4, 5, 6], "second": 1} for i in range(1, 21)]
