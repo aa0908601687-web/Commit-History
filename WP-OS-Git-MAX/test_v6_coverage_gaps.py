@@ -204,7 +204,11 @@ class OpenFECoverageTests(unittest.TestCase):
                     next(reader)
                     raise RuntimeError("synthetic CSV reader exception")
                     yield
-                return SimpleNamespace(fieldnames=reader.fieldnames, __iter__=iterate)
+                class FailingReader:
+                    fieldnames = reader.fieldnames
+                    def __iter__(self):
+                        return iterate()
+                return FailingReader()
             # The context manager must close its file when the CSV reader raises.
             with patch.object(qaoa.csv, "DictReader", side_effect=failing_reader):
                 with self.assertRaises(RuntimeError):
