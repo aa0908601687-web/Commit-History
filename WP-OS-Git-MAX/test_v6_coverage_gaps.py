@@ -181,9 +181,13 @@ class OpenFECoverageTests(unittest.TestCase):
 
     def test_qaoa_module_entrypoint(self):
         import v6_ai_qaoa_e2e as qaoa
-        with patch.object(qaoa, "run", return_value={"ok": True}), \
-             patch.object(sys, "argv", ["v6_ai_qaoa_e2e.py", "--csv", "fixture.csv"]):
-            runpy.run_path(qaoa.__file__, run_name="__main__")
+        with tempfile.TemporaryDirectory() as td:
+            csv = Path(td) / "draws.csv"
+            csv.write_text("draw_id,first,second\\n" + "".join(
+                f"115000{i:03d},1 2 3 4 5 6,{i % 8 + 1}\\n" for i in range(1, 11)
+            ), encoding="utf-8")
+            with patch.object(sys, "argv", ["v6_ai_qaoa_e2e.py", "--csv", str(csv)]):
+                runpy.run_path(qaoa.__file__, run_name="__main__")
 
 if __name__ == "__main__":
     unittest.main()
