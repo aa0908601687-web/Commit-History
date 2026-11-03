@@ -1,6 +1,7 @@
 import importlib.util
 import math
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 HERE=Path(__file__).resolve().parent
@@ -18,6 +19,13 @@ class HighFidelityTests(unittest.TestCase):
     def test_guards(self):
         with self.assertRaises(ValueError): hf.verified_statevector([1,2,3],.1,.2)
         with self.assertRaises(ValueError): hf.verified_statevector([1,2,3,4],.1,.2,minimum_fidelity=0)
+        with self.assertRaises(ValueError): hf._fidelity([0j],[0j])
+
+    def test_verification_failures(self):
+        with patch.object(hf,"_statevector",return_value=[2+0j,0j,0j,0j]):
+            with self.assertRaises(RuntimeError): hf.verified_statevector([1,2,3,4],.1,.2)
+        with patch.object(hf,"_fidelity",return_value=(0.5,1.0)):
+            with self.assertRaises(RuntimeError): hf.verified_statevector([1,2,3,4],.1,.2)
 
 
 if __name__=="__main__": unittest.main()
