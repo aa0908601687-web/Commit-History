@@ -9,7 +9,7 @@ permissions:
 jobs:
   readonly-e2e:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,10 +46,13 @@ jobs:
           PY
       - name: Execute V6 selection with required CUDA-Q backend
         run: |
-          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py --csv WP-OS-Git-MAX/historical_latest_10.csv --require-cudaq --output v6-cudaq-selection.json
+          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py --csv WP-OS-Git-MAX/historical_latest_10.csv --openfe-three-views --high-fidelity-verify --require-cudaq --output v6-cudaq-selection.json
           python - <<'PY'
           import json
           result = json.load(open("v6-cudaq-selection.json"))
+          assert result["openfe_feature_layer"]["enabled"] is True
+          assert result["high_fidelity_layer"]["enabled"] is True
+          assert result["high_fidelity_layer"]["minimum_observed_fidelity"] >= 0.99999
           assert result["cudaq_layer"]["executed"] is True
           assert result["cudaq_layer"]["qpu"] is False
           assert len(result["first_zone"]) == 6
