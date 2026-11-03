@@ -146,7 +146,7 @@ def score_three_history_views(rows, *, n_jobs=1, max_features=12, v3_cache=None)
             record["freq_10"] = float(v3_cache["first"]["ten"][index])
             if record["view_is_5"]:
                 record["freq_view"] = record["freq_5"] / 5.0
-            elif record["view_is_10"] or record["view_is_full"]:
+            else:
                 record["freq_view"] = record["freq_10"] / 10.0
             record["gap_view"] = float(min(v3_cache["first"]["age"][index] + 1, 10)) if not record["view_is_5"] else record["gap_view"]
     current_x = pd.DataFrame(current_records)
