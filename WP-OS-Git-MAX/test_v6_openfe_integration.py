@@ -37,7 +37,7 @@ class V6OpenFEIntegrationTests(unittest.TestCase):
         self.assertEqual(len(result["first_zone"]),6)
 
     def test_three_history_views_are_openfe_100_percent(self):
-        views=["latest_10","latest_20","full_archive"]
+        views=["latest_5","latest_10","full_archive"]
         class Fake:
             @staticmethod
             def score_three_history_views(rows,n_jobs=1):
