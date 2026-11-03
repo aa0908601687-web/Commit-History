@@ -25,7 +25,7 @@ def validate(path):
         if int(rows[i][0])>=int(rows[i+1][0]):raise ValueError("draw order")
     return rows
 
-def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False):
+def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False):
     """Finish deterministic QAOA-inspired selection from supplied scores."""
     five=rows[-5:];ten=rows[-10:]
     pool=sorted(scores,key=lambda n:(-scores[n],n))[:8]
@@ -52,6 +52,12 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False):
         selected=sorted(pool[i] for i in range(8) if mask>>i&1)
         cand=(sum(scores[n] for n in selected),tuple(selected))
         if best is None or cand[0]>best[0]:best=cand
+    cudaq_layer={"enabled":False,"executed":False,"qpu":False}
+    if use_cudaq or require_cudaq:
+        from v6_cudaq_backend import select_six
+        cudaq_selected,cudaq_layer=select_six(pool,scores,required=require_cudaq)
+        if cudaq_selected is not None:
+            best=(sum(scores[n] for n in cudaq_selected),tuple(cudaq_selected))
     second=max(range(1,9),key=lambda n:(.6*sum(x[2]==n for x in five)+.4*sum(x[2]==n for x in ten),-n))
     fidelity_layer={"enabled":False,"scope":"not requested"}
     if high_fidelity_verify:
@@ -69,9 +75,10 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False):
       "model":"optional OpenFE/LightGBM three-history-view scoring + 8-qubit p=1 QAOA-inspired statevector; NOT QPU",
       "openfe_feature_layer":feature_layer,
       "high_fidelity_layer":fidelity_layer,
+      "cudaq_layer":cudaq_layer,
       "status":"Research simulation; no evidence of predictive advantage"}
 
-def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False):
+def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False):
     if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
     rows=validate(path);five=rows[-5:];ten=rows[-10:]
     scores={}
@@ -92,7 +99,7 @@ def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fi
         base={n:(scores[n]-base_low)/base_span for n in scores}
         scores={n:(1-openfe_weight)*base[n]+openfe_weight*learned[n] for n in scores}
         feature_layer={"enabled":True,"weight":openfe_weight,**metadata}
-    return complete_result(path,rows,scores,feature_layer,high_fidelity_verify)
+    return complete_result(path,rows,scores,feature_layer,high_fidelity_verify,use_cudaq,require_cudaq)
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--csv",required=True);p.add_argument("--output")
@@ -100,8 +107,12 @@ def main():
     p.add_argument("--openfe-three-views",action="store_true")
     p.add_argument("--high-fidelity-verify",action="store_true",
                    help="run local numerical statevector fidelity checks; not QPU/JUPITER")
+    p.add_argument("--cudaq",action="store_true",
+                   help="use optional NVIDIA CUDA-Q qpp-cpu local simulator; never a real QPU")
+    p.add_argument("--require-cudaq",action="store_true",
+                   help="fail instead of falling back when CUDA-Q is unavailable")
     a=p.parse_args()
-    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify)
+    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify,a.cudaq or a.require_cudaq,a.require_cudaq)
     out=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
     if a.output:Path(a.output).write_text(out,encoding="utf-8")
     print(out)

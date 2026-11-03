@@ -1,0 +1,66 @@
+name: V6 CUDA-Q local simulator verification
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_cudaq_backend.py'
+      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/test_v6_cudaq_backend.py'
+      - '.github/workflows/v6-cudaq-local.yml'
+  push:
+    paths:
+      - 'WP-OS-Git-MAX/v6_cudaq_backend.py'
+      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/test_v6_cudaq_backend.py'
+      - '.github/workflows/v6-cudaq-local.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run dependency-independent contract tests
+        working-directory: WP-OS-Git-MAX
+        run: python -m unittest -v test_v6_cudaq_backend.py test_v6_ai_qaoa_e2e.py
+
+  cudaq-local:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned open-source CUDA-Q wheel
+        run: |
+          python -m pip install --upgrade 'pip>=24'
+          python -m pip install 'cudaq==0.16.0'
+      - name: Run V6 through required local CUDA-Q backend
+        run: |
+          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+            --csv WP-OS-Git-MAX/historical_archive.csv \
+            --cudaq --require-cudaq --output v6-cudaq-result.json
+          python - <<'PY'
+          import json
+          result=json.load(open("v6-cudaq-result.json",encoding="utf-8"))
+          layer=result["cudaq_layer"]
+          assert layer["enabled"] and layer["executed"]
+          assert layer["backend"] == "qpp-cpu"
+          assert layer["qpu"] is False
+          assert layer["real_qpu_connected"] is False
+          assert layer["remote_service_connected"] is False
+          assert len(result["first_zone"]) == len(set(result["first_zone"])) == 6
+          print("CUDA-Q local qpp-cpu verification passed")
+          PY
+      - name: Upload CUDA-Q evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-cudaq-local-${{ github.run_id }}
+          path: v6-cudaq-result.json
+          if-no-files-found: warn
