@@ -2,8 +2,8 @@
 """V6 local QAOA simulator with optional OpenFE feature modes.
 
 No QPU or ABE. --openfe preserves the 30% fusion mode.
---openfe-three-views uses OpenFE/LightGBM scores from latest-10, latest-20 and
-full-archive views at 100%, before the local statevector combination search.
+--openfe-three-views uses OpenFE/LightGBM scores from latest-5, latest-10 and
+full-archive training views (all selection features capped at 10 draws) at 100%, before the local statevector combination search.
 """
 import argparse,csv,hashlib,json,math
 from pathlib import Path
@@ -27,7 +27,7 @@ def validate(path):
 
 def complete_result(path,rows,scores,feature_layer):
     """Finish deterministic QAOA-inspired selection from supplied scores."""
-    five=rows[-5:];ten=rows[-10:];twenty=rows[-20:]
+    five=rows[-5:];ten=rows[-10:]
     pool=sorted(scores,key=lambda n:(-scores[n],n))[:8]
     costs=[]
     for mask in range(256):
@@ -51,7 +51,6 @@ def complete_result(path,rows,scores,feature_layer):
     return {"first_zone":list(best[1]),"second_zone":second,"last_draw":rows[-1][0],
       "views":{"latest_5":{"rows":5,"from":five[0][0],"to":five[-1][0]},
                "latest_10":{"rows":10,"from":ten[0][0],"to":ten[-1][0]},
-               "latest_20":{"rows":len(twenty),"from":twenty[0][0],"to":twenty[-1][0]},
                "complete_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]},
                "full_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]}},
       "sha256":hashlib.sha256(Path(path).read_bytes()).hexdigest(),
@@ -61,7 +60,7 @@ def complete_result(path,rows,scores,feature_layer):
 
 def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False):
     if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
-    rows=validate(path);five=rows[-5:];ten=rows[-10:];twenty=rows[-20:]
+    rows=validate(path);five=rows[-5:];ten=rows[-10:]
     scores={}
     for n in range(1,39):
         a=sum(n in x[1] for x in five);b=sum(n in x[1] for x in ten)

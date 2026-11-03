@@ -15,7 +15,7 @@ from v6_openfe_bridge import score_three_history_views
 
 SCHEMA_VERSION = 3
 SEED = 20261103
-FEATURE_VERSION = "openfe-three-views-v1"
+FEATURE_VERSION = "openfe-three-views-5-10-training-v2"
 RESULT_VERSION = "v6-of3q-p1-v1"
 
 
