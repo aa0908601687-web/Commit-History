@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0,str(HERE))
 spec = importlib.util.spec_from_file_location("v6_ai_qaoa_e2e", HERE / "v6_ai_qaoa_e2e.py")
 v6 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(v6)
@@ -40,6 +41,17 @@ class V6ValidationTests(unittest.TestCase):
             self.assertTrue(all(1 <= n <= 38 for n in result["first_zone"]))
             self.assertIn(result["second_zone"], range(1, 9))
             self.assertEqual(v6.run(path), result)
+
+    def test_high_fidelity_e2e_is_local_and_not_hit_rate(self):
+        tmp,path=self.make_csv()
+        with tmp:
+            result=v6.run(path,high_fidelity_verify=True)
+            layer=result["high_fidelity_layer"]
+            self.assertTrue(layer["enabled"])
+            self.assertGreaterEqual(layer["minimum_observed_fidelity"],layer["threshold"])
+            self.assertFalse(layer["qpu"])
+            self.assertFalse(layer["jupiter_nvidia_connected"])
+            self.assertIn("not lottery hit rate",layer["meaning"])
 
     def test_main_in_process_for_coverage(self):
         tmp, path = self.make_csv()

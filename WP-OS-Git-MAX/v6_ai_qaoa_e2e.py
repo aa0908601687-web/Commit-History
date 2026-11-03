@@ -25,7 +25,7 @@ def validate(path):
         if int(rows[i][0])>=int(rows[i+1][0]):raise ValueError("draw order")
     return rows
 
-def complete_result(path,rows,scores,feature_layer):
+def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False):
     """Finish deterministic QAOA-inspired selection from supplied scores."""
     five=rows[-5:];ten=rows[-10:]
     pool=sorted(scores,key=lambda n:(-scores[n],n))[:8]
@@ -33,21 +33,33 @@ def complete_result(path,rows,scores,feature_layer):
     for mask in range(256):
         selected=[pool[i] for i in range(8) if mask>>i&1]
         costs.append(sum(scores[n] for n in selected) if len(selected)==6 else -10)
-    best=None
+    best=None;fidelity_samples=[]
     for j in range(1,17):
         gamma=j*math.pi/32;beta=j*math.pi/64
-        state=[complex(math.cos(-gamma*c),math.sin(-gamma*c))/16 for c in costs]
-        for bit in range(8):
-            c=math.cos(beta);t=-1j*math.sin(beta)
-            for z in range(256):
-                if not z>>bit&1:
-                    other=z|(1<<bit);x,y=state[z],state[other]
-                    state[z]=c*x+t*y;state[other]=t*x+c*y
+        if high_fidelity_verify:
+            from v6_high_fidelity_simulator import verified_statevector
+            state,evidence=verified_statevector(costs,gamma,beta)
+            fidelity_samples.append(evidence)
+        else:
+            state=[complex(math.cos(-gamma*c),math.sin(-gamma*c))/16 for c in costs]
+            for bit in range(8):
+                c=math.cos(beta);t=-1j*math.sin(beta)
+                for z in range(256):
+                    if not z>>bit&1:
+                        other=z|(1<<bit);x,y=state[z],state[other]
+                        state[z]=c*x+t*y;state[other]=t*x+c*y
         mask=max((z for z in range(256) if z.bit_count()==6),key=lambda z:(abs(state[z])**2,costs[z]))
         selected=sorted(pool[i] for i in range(8) if mask>>i&1)
         cand=(sum(scores[n] for n in selected),tuple(selected))
         if best is None or cand[0]>best[0]:best=cand
     second=max(range(1,9),key=lambda n:(.6*sum(x[2]==n for x in five)+.4*sum(x[2]==n for x in ten),-n))
+    fidelity_layer={"enabled":False,"scope":"not requested"}
+    if high_fidelity_verify:
+        fidelity_layer={"enabled":True,"backend":"local deterministic statevector cross-check",
+          "minimum_observed_fidelity":min(x["fidelity"] for x in fidelity_samples),
+          "maximum_norm_error":max(abs(x["state_norm"]-1.0) for x in fidelity_samples),
+          "threshold":0.99999,"qpu":False,"jupiter_nvidia_connected":False,
+          "meaning":"numerical simulation fidelity; not lottery hit rate"}
     return {"first_zone":list(best[1]),"second_zone":second,"last_draw":rows[-1][0],
       "views":{"latest_5":{"rows":5,"from":five[0][0],"to":five[-1][0]},
                "latest_10":{"rows":10,"from":ten[0][0],"to":ten[-1][0]},
@@ -56,9 +68,10 @@ def complete_result(path,rows,scores,feature_layer):
       "sha256":hashlib.sha256(Path(path).read_bytes()).hexdigest(),
       "model":"optional OpenFE/LightGBM three-history-view scoring + 8-qubit p=1 QAOA-inspired statevector; NOT QPU",
       "openfe_feature_layer":feature_layer,
+      "high_fidelity_layer":fidelity_layer,
       "status":"Research simulation; no evidence of predictive advantage"}
 
-def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False):
+def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False):
     if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
     rows=validate(path);five=rows[-5:];ten=rows[-10:]
     scores={}
@@ -79,14 +92,16 @@ def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False):
         base={n:(scores[n]-base_low)/base_span for n in scores}
         scores={n:(1-openfe_weight)*base[n]+openfe_weight*learned[n] for n in scores}
         feature_layer={"enabled":True,"weight":openfe_weight,**metadata}
-    return complete_result(path,rows,scores,feature_layer)
+    return complete_result(path,rows,scores,feature_layer,high_fidelity_verify)
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--csv",required=True);p.add_argument("--output")
     p.add_argument("--openfe",action="store_true");p.add_argument("--openfe-weight",type=float,default=.30)
     p.add_argument("--openfe-three-views",action="store_true")
+    p.add_argument("--high-fidelity-verify",action="store_true",
+                   help="run local numerical statevector fidelity checks; not QPU/JUPITER")
     a=p.parse_args()
-    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views)
+    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify)
     out=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
     if a.output:Path(a.output).write_text(out,encoding="utf-8")
     print(out)
