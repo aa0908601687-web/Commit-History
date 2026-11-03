@@ -70,9 +70,9 @@ class V6ValidationTests(unittest.TestCase):
                 None, {"enabled": True, "executed": False, "qpu": False}
             )
         )
-        with tempfile.TemporaryDirectory() as extra_tmp, patch.dict(sys.modules, {"v6_cudaq_backend": fallback}):
-            _, extra_path = self.make_csv()
-            fallback_result = v6.run(extra_path, use_cudaq=True)
+        fallback_tmp, fallback_path = self.make_csv()
+        with fallback_tmp, patch.dict(sys.modules, {"v6_cudaq_backend": fallback}):
+            fallback_result = v6.run(fallback_path, use_cudaq=True)
         self.assertFalse(fallback_result["cudaq_layer"]["executed"])
         self.assertTrue(required_result["cudaq_layer"]["required"])
         self.assertTrue(result["cudaq_layer"]["executed"])
