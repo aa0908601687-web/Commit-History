@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0,str(HERE))
 spec = importlib.util.spec_from_file_location("v6_ai_qaoa_e2e", HERE / "v6_ai_qaoa_e2e.py")
 v6 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(v6)
