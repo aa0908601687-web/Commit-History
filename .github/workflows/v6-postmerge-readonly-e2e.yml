@@ -9,12 +9,80 @@ permissions:
 jobs:
   readonly-e2e:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install OpenFE and LightGBM
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install openfe lightgbm
+      - name: Verify OpenFE and LightGBM imports
+        run: |
+          python - <<'PY'
+          from openfe import OpenFE
+          import lightgbm
+          print("OpenFE + LightGBM import OK")
+          print("LightGBM version:", lightgbm.__version__)
+          PY
+      - name: Install NVIDIA CUDA-Q CPU simulator
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cudaq
+      - name: Verify CUDA-Q qpp-cpu simulation
+        run: |
+          python - <<'PY'
+          import cudaq
+          cudaq.set_target("qpp-cpu")
+          kernel = cudaq.make_kernel()
+          q = kernel.qalloc()
+          kernel.x(q)
+          kernel.mz(q)
+          result = cudaq.sample(kernel, shots_count=100)
+          assert result.count("1") == 100, str(result)
+          print("CUDA-Q qpp-cpu simulation OK:", result)
+          PY
+      - name: Execute V6 selection with required CUDA-Q backend
+        run: |
+          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py --csv WP-OS-Git-MAX/historical_latest_10.csv --openfe-three-views --high-fidelity-verify --require-cudaq --output v6-cudaq-selection.json
+          python - <<'PY'
+          import json
+          result = json.load(open("v6-cudaq-selection.json"))
+          assert result["openfe_feature_layer"]["enabled"] is True
+          assert result["high_fidelity_layer"]["enabled"] is True
+          assert result["high_fidelity_layer"]["minimum_observed_fidelity"] >= 0.99999
+          assert result["cudaq_layer"]["executed"] is True
+          assert result["cudaq_layer"]["qpu"] is False
+          assert len(result["first_zone"]) == 6
+          assert 1 <= result["second_zone"] <= 8
+          print("V6 CUDA-Q integrated selection OK")
+          PY
+      - name: Verify V3 feature cache refresh hit and tamper recovery
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys, tempfile
+          sys.path.insert(0, "WP-OS-Git-MAX")
+          from cache_and_hit_validation import load_draws
+          from cache_v3_pipeline import cache_for, predict_from_cache
+          from wp_os_git_max import predict
+          draws = load_draws("WP-OS-Git-MAX/historical_latest_10.csv")
+          with tempfile.TemporaryDirectory() as folder:
+              path = pathlib.Path(folder) / "feature-cache.json"
+              fresh, first = cache_for(draws, path)
+              reused, second = cache_for(draws, path)
+              assert (first, second) == ("refreshed", "hit")
+              assert fresh == reused
+              assert predict_from_cache(reused) == predict(draws)
+              corrupt = json.loads(path.read_text())
+              corrupt["first"]["five"][0] += 1
+              path.write_text(json.dumps(corrupt))
+              restored, third = cache_for(draws, path)
+              assert third == "refreshed" and restored == fresh
+              assert predict_from_cache(restored) == predict(draws)
+              print(json.dumps({"initial": first, "repeat": second, "tamper": third, "parity": "pass", "through_draw": draws[-1]["draw_id"]}))
+          PY
       - name: Three-model historical parity (offline)
         run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json
       - name: Three-model and local QAOA comparison
@@ -41,6 +109,7 @@ jobs:
         with:
           name: v6-post-merge-e2e-evidence
           path: |
+            v6-cudaq-selection.json
             v6-readiness.json
             v6-model-qaoa.json
             v6-live-api-e2e.json
