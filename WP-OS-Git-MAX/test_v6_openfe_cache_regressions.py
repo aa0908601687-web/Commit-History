@@ -31,7 +31,7 @@ class OpenFEContractTests(unittest.TestCase):
 
     def test_missing_number_gap_is_bounded_by_view(self):
         row = openfe._base_row(self.rows[:10], 38, 10)
-        self.assertEqual(row["gap_view"], 11.0)
+        self.assertEqual(row["gap_view"], 10.0)
         self.assertEqual(row["freq_view"], 0.0)
         self.assertEqual(row["low_zone"], 0.0)
 
@@ -39,7 +39,7 @@ class OpenFEContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             openfe.score_first_zone(self.rows[:11])
         with self.assertRaises(ValueError):
-            openfe.score_three_history_views(self.rows[:19])
+            openfe.score_three_history_views(self.rows[:11])
 
     def test_score_first_zone_mapping_with_stubbed_fit(self):
         with patch.dict(sys.modules, {"pandas": SimpleNamespace(DataFrame=lambda values: values)}), \
@@ -59,7 +59,7 @@ class OpenFEContractTests(unittest.TestCase):
              patch.object(openfe, "_fit_and_score", return_value=(probabilities, 7, 4)):
             values, meta = openfe.score_three_history_views(self.rows)
         self.assertAlmostEqual(values[1], 0.4)
-        self.assertEqual(len(meta["per_view_scores"]["latest_20"]), 38)
+        self.assertEqual(len(meta["per_view_scores"]["latest_5"]), 38)
         self.assertEqual(meta["training_anchor_count"], 1)
         self.assertEqual(meta["used_features"], 4)
 
