@@ -36,26 +36,35 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install pinned open-source CUDA-Q wheel
+      - name: Install pinned CUDA-Q and OpenFE stack
         run: |
           python -m pip install --upgrade 'pip>=24'
-          python -m pip install 'cudaq==0.16.0'
+          python -m pip install 'cudaq==0.16.0' 'openfe==0.0.12' 'matplotlib>=3.9,<4'
       - name: Run V6 through required local CUDA-Q backend
         run: |
           python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
-            --cudaq --require-cudaq --output v6-cudaq-result.json
+            --openfe-three-views --cudaq --require-cudaq --output v6-cudaq-result.json
           python - <<'PY'
           import json
           result=json.load(open("v6-cudaq-result.json",encoding="utf-8"))
           layer=result["cudaq_layer"]
+          openfe=result["openfe_feature_layer"]
+          assert openfe["enabled"] is True
+          assert openfe["weight"] == 1.0
+          assert openfe["engine"] == "OpenFE+LightGBM"
+          assert openfe["mode"] == "three_history_views_100_percent"
+          assert openfe["history_views"] == ["latest_5","latest_10","full_archive"]
+          assert openfe["feature_window"] == [5,10]
+          assert openfe["leakage_safe"] is True
+          assert openfe["used_features"] > 0
           assert layer["enabled"] and layer["executed"]
           assert layer["backend"] == "qpp-cpu"
           assert layer["qpu"] is False
           assert layer["real_qpu_connected"] is False
           assert layer["remote_service_connected"] is False
           assert len(result["first_zone"]) == len(set(result["first_zone"])) == 6
-          print("CUDA-Q local qpp-cpu verification passed")
+          print("OpenFE three views -> LightGBM -> CUDA-Q qpp-cpu verification passed")
           PY
       - name: Upload CUDA-Q evidence
         if: always()
