@@ -12,7 +12,8 @@ def validate(path):
     rows=[];seen=set()
     with open(path,encoding="utf-8-sig",newline="") as f:
         reader=csv.DictReader(f)
-        if reader.fieldnames!=["draw_id","first","second"]:raise ValueError("bad columns")
+        if reader.fieldnames != ["draw_id", "first", "second"]:
+            raise ValueError("bad columns")
         for row in reader:
             k=row["draw_id"];a=[int(x) for x in row["first"].split()];b=int(row["second"])
             if (len(k)!=9 or not k.isdigit() or k in seen or len(a)!=6
