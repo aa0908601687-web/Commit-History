@@ -56,6 +56,30 @@ jobs:
           assert 1 <= result["second_zone"] <= 8
           print("V6 CUDA-Q integrated selection OK")
           PY
+      - name: Verify V3 feature cache refresh hit and tamper recovery
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys, tempfile
+          sys.path.insert(0, "WP-OS-Git-MAX")
+          from cache_and_hit_validation import load_draws
+          from cache_v3_pipeline import cache_for, predict_from_cache
+          from wp_os_git_max import predict
+          draws = load_draws("WP-OS-Git-MAX/historical_latest_10.csv")
+          with tempfile.TemporaryDirectory() as folder:
+              path = pathlib.Path(folder) / "feature-cache.json"
+              fresh, first = cache_for(draws, path)
+              reused, second = cache_for(draws, path)
+              assert (first, second) == ("refreshed", "hit")
+              assert fresh == reused
+              assert predict_from_cache(reused) == predict(draws)
+              corrupt = json.loads(path.read_text())
+              corrupt["first"]["five"][0] += 1
+              path.write_text(json.dumps(corrupt))
+              restored, third = cache_for(draws, path)
+              assert third == "refreshed" and restored == fresh
+              assert predict_from_cache(restored) == predict(draws)
+              print(json.dumps({"initial": first, "repeat": second, "tamper": third, "parity": "pass", "through_draw": draws[-1]["draw_id"]}))
+          PY
       - name: Three-model historical parity (offline)
         run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json
       - name: Three-model and local QAOA comparison
