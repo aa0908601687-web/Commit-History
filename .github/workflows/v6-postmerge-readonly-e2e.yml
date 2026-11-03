@@ -101,12 +101,13 @@ jobs:
               assert cached==reused==expected(draws)
               assert cached["through_draw"]==draws[-1]["draw_id"]
               direct=run(source,openfe_three_views=True,high_fidelity_verify=True,require_cudaq=True)
-              gated=run(source,openfe_three_views=True,high_fidelity_verify=True,require_cudaq=True)
+              gated=run(source,openfe_three_views=True,high_fidelity_verify=True,require_cudaq=True,v3_cache_path=str(path))
               assert direct["first_zone"]==gated["first_zone"]
               assert direct["second_zone"]==gated["second_zone"]
               assert gated["openfe_feature_layer"]["enabled"] is True
+              assert gated["openfe_feature_layer"]["v3_cache_features_used"] is True
               assert gated["cudaq_layer"]["executed"] is True
-              print(json.dumps({"status":"pass","cache_initial":initial,"cache_repeat":hit,"cache_verified":True,"selection_parity":"pass","first_zone":gated["first_zone"],"second_zone":gated["second_zone"],"through_draw":gated["last_draw"],"scope":"cache integrity gate followed by identical V6 inference; OpenFE feature input is not yet sourced from V3 cache"}))
+              print(json.dumps({"status":"pass","cache_initial":initial,"cache_repeat":hit,"cache_verified":True,"selection_parity":"pass","first_zone":gated["first_zone"],"second_zone":gated["second_zone"],"through_draw":gated["last_draw"],"scope":"cache integrity gate followed by identical V6 inference; OpenFE current-draw frequency features sourced from verified V3 cache"}))
           PY
       - name: Three-model historical parity (offline)
         run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json
