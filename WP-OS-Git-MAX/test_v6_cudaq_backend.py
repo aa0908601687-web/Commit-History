@@ -71,6 +71,18 @@ class CudaQBackendTests(unittest.TestCase):
         self.assertFalse(metadata["remote_service_connected"])
         self.assertFalse(metadata["predictive_advantage_verified"])
 
+    def test_equal_scores_and_runtime_without_seed_api(self):
+        self.assertEqual(backend._normalise(self.pool, {n: 1.0 for n in self.pool}), [0.5] * 8)
+        fake = _FakeCudaQ()
+        real_hasattr = hasattr
+        with patch.dict(sys.modules, {"cudaq": fake}), patch(
+            "builtins.hasattr",
+            side_effect=lambda obj, name: False if obj is fake and name == "set_random_seed" else real_hasattr(obj, name),
+        ):
+            selected, metadata = backend.select_six(self.pool, self.scores, required=True)
+        self.assertEqual(len(selected), 6)
+        self.assertTrue(metadata["executed"])
+
     def test_rejects_invalid_pool_and_missing_score(self):
         with self.assertRaises(ValueError):
             backend.select_six([1] * 8, self.scores)
