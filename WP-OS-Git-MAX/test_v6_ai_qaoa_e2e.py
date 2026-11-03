@@ -53,6 +53,20 @@ class V6ValidationTests(unittest.TestCase):
             self.assertFalse(layer["jupiter_nvidia_connected"])
             self.assertIn("not lottery hit rate",layer["meaning"])
 
+    def test_cudaq_result_replaces_local_candidate(self):
+        tmp, path = self.make_csv()
+        fake = types.SimpleNamespace(
+            select_six=lambda pool, scores, required=False: (
+                sorted(pool[:6]),
+                {"enabled": True, "executed": True, "qpu": False, "required": required},
+            )
+        )
+        with tmp, patch.dict(sys.modules, {"v6_cudaq_backend": fake}):
+            result = v6.run(path, use_cudaq=True)
+        self.assertTrue(result["cudaq_layer"]["executed"])
+        self.assertFalse(result["cudaq_layer"]["qpu"])
+        self.assertEqual(len(result["first_zone"]), 6)
+
     def test_main_in_process_for_coverage(self):
         tmp, path = self.make_csv()
         with tmp:
