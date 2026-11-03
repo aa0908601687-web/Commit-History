@@ -93,7 +93,10 @@ def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fi
             from cache_and_hit_validation import load_draws
             from cache_v3_pipeline import cache_for
             verified_cache,_=cache_for(load_draws(path),v3_cache_path)
-        scores,metadata=score_three_history_views(rows,n_jobs=1,v3_cache=verified_cache)
+        if verified_cache is None:
+            scores,metadata=score_three_history_views(rows,n_jobs=1)
+        else:
+            scores,metadata=score_three_history_views(rows,n_jobs=1,v3_cache=verified_cache)
         feature_layer={"enabled":True,"weight":1.0,**metadata}
     elif use_openfe:
         from v6_openfe_bridge import score_first_zone
