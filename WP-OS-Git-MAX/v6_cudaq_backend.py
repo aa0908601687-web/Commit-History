@@ -71,7 +71,7 @@ def select_six(
         cudaq.set_random_seed(SEED)
 
     @cudaq.kernel
-    def score_phase(weights: list[float], gamma: float, beta: float):
+    def score_phase(weights: list[float], gamma: float, beta: float):  # pragma: no cover - compiled by CUDA-Q
         qubits = cudaq.qvector(8)
         h(qubits)
         for index in range(8):
