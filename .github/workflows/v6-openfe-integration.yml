@@ -36,13 +36,15 @@ jobs:
           from pathlib import Path
           data=json.loads(Path('/tmp/v6-openfe-three-views-evidence.json').read_text())
           layer=data['openfe_feature_layer']
-          expected=['latest_10','latest_20','full_archive']
+          expected=['latest_5','latest_10','full_archive']
           assert layer['enabled'] is True
           assert layer['weight']==1.0
           assert layer['engine']=='OpenFE+LightGBM'
           assert layer['mode']=='three_history_views_100_percent'
           assert layer['history_views']==expected
           assert layer['leakage_safe'] is True
+          assert layer['feature_window']==[5,10]
+          assert layer['full_archive_role']=='training_anchors_only'
           assert layer['used_features'] > 0
           assert set(layer['per_view_scores'])==set(expected)
           assert all(len(layer['per_view_scores'][name])==38 for name in expected)
