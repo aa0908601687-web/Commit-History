@@ -44,6 +44,18 @@ jobs:
           assert result.count("1") == 100, str(result)
           print("CUDA-Q qpp-cpu simulation OK:", result)
           PY
+      - name: Execute V6 selection with required CUDA-Q backend
+        run: |
+          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py --csv WP-OS-Git-MAX/historical_latest_10.csv --require-cudaq --output v6-cudaq-selection.json
+          python - <<'PY'
+          import json
+          result = json.load(open("v6-cudaq-selection.json"))
+          assert result["cudaq_layer"]["executed"] is True
+          assert result["cudaq_layer"]["qpu"] is False
+          assert len(result["first_zone"]) == 6
+          assert 1 <= result["second_zone"] <= 8
+          print("V6 CUDA-Q integrated selection OK")
+          PY
       - name: Three-model historical parity (offline)
         run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json
       - name: Three-model and local QAOA comparison
@@ -70,6 +82,7 @@ jobs:
         with:
           name: v6-post-merge-e2e-evidence
           path: |
+            v6-cudaq-selection.json
             v6-readiness.json
             v6-model-qaoa.json
             v6-live-api-e2e.json
