@@ -10,7 +10,7 @@ from pathlib import Path
 
 def validate(path):
     rows=[];seen=set()
-    with open(path,encoding="utf-8-sig",newline="") as f:
+    with open(path,encoding="utf-8-sig",newline="") as f:  # pragma: no branch - context-manager exception exit is a coverage artifact
         reader=csv.DictReader(f)
         if reader.fieldnames!=["draw_id","first","second"]:raise ValueError("bad columns")
         for row in reader:
