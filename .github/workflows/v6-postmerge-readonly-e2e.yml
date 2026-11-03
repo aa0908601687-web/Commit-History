@@ -27,6 +27,23 @@ jobs:
           print("OpenFE + LightGBM import OK")
           print("LightGBM version:", lightgbm.__version__)
           PY
+      - name: Install NVIDIA CUDA-Q CPU simulator
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cudaq
+      - name: Verify CUDA-Q qpp-cpu simulation
+        run: |
+          python - <<'PY'
+          import cudaq
+          cudaq.set_target("qpp-cpu")
+          kernel = cudaq.make_kernel()
+          q = kernel.qalloc()
+          kernel.x(q)
+          kernel.mz(q)
+          result = cudaq.sample(kernel, shots_count=100)
+          assert result.count("1") == 100, str(result)
+          print("CUDA-Q qpp-cpu simulation OK:", result)
+          PY
       - name: Three-model historical parity (offline)
         run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json
       - name: Three-model and local QAOA comparison
