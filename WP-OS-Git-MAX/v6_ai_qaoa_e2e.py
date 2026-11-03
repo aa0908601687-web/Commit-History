@@ -37,14 +37,7 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False):
     for j in range(1,17):
         gamma=j*math.pi/32;beta=j*math.pi/64
         if high_fidelity_verify:
-            try:
-                from v6_high_fidelity_simulator import verified_statevector
-            except ModuleNotFoundError:
-                import importlib.util
-                module_path=Path(__file__).resolve().with_name("v6_high_fidelity_simulator.py")
-                spec=importlib.util.spec_from_file_location("v6_high_fidelity_simulator",module_path)
-                module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-                verified_statevector=module.verified_statevector
+            from v6_high_fidelity_simulator import verified_statevector
             state,evidence=verified_statevector(costs,gamma,beta)
             fidelity_samples.append(evidence)
         else:
