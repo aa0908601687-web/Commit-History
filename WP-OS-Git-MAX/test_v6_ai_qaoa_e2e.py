@@ -64,6 +64,8 @@ class V6ValidationTests(unittest.TestCase):
         )
         with tmp, patch.dict(sys.modules, {"v6_cudaq_backend": fake}):
             result = v6.run(path, use_cudaq=True)
+            required_result = v6.run(path, require_cudaq=True)
+        self.assertTrue(required_result["cudaq_layer"]["required"])
         self.assertTrue(result["cudaq_layer"]["executed"])
         self.assertFalse(result["cudaq_layer"]["qpu"])
         self.assertEqual(len(result["first_zone"]), 6)
