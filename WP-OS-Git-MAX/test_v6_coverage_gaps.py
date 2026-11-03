@@ -176,7 +176,7 @@ class OpenFECoverageTests(unittest.TestCase):
         with patch.dict(sys.modules, {"pandas": fake_pandas}), \
              patch.object(bridge, "VIEW_LIMITS", {"latest_10": 10, "long_view": 100, "full_archive": None}):
             x, y = bridge._training_frame(sample_rows(25), three_views=True)
-        self.assertEqual(len(x), 15 * 2 * 38
+        self.assertEqual(len(x), 15 * 2 * 38)
         self.assertEqual(len(y), len(x))
 
     def test_qaoa_module_entrypoint(self):
