@@ -55,24 +55,19 @@ class V6OpenFEIntegrationTests(unittest.TestCase):
         self.assertEqual(len(result["first_zone"]),6)
 
 
-    def test_three_view_cache_passes_verified_payload(self):
+    def test_three_view_direct_inference_without_cache(self):
         from types import SimpleNamespace
-        cache = {"through_draw": "test-cache"}
         captured = {}
-        def score(rows, n_jobs=1, v3_cache=None):
-            captured["cache"] = v3_cache
-            return ({n: float(n) for n in range(1, 39)}, {"v3_cache_features_used": True})
+        def score(rows, n_jobs=1):
+            captured["rows"] = rows
+            return ({n: float(n) for n in range(1, 39)},
+                    {"v3_cache_features_used": False, "history_views": ["latest_5", "latest_10", "full_archive"]})
         fake_bridge = SimpleNamespace(score_three_history_views=score)
-        fake_loader = SimpleNamespace(load_draws=lambda path: ["loaded"])
-        fake_cache = SimpleNamespace(cache_for=lambda rows, path: (cache, {"verified": True}))
-        with patch.dict(sys.modules, {
-            "v6_openfe_bridge": fake_bridge,
-            "cache_and_hit_validation": fake_loader,
-            "cache_v3_pipeline": fake_cache,
-        }):
-            result = mod.run(self.csv, openfe_three_views=True, v3_cache_path="test-cache.json")
-        self.assertIs(captured["cache"], cache)
-        self.assertTrue(result["openfe_feature_layer"]["v3_cache_features_used"])
+        with patch.dict(sys.modules, {"v6_openfe_bridge": fake_bridge}):
+            result = mod.run(self.csv, openfe_three_views=True)
+        self.assertEqual(len(captured["rows"]), len(mod.validate(self.csv)))
+        self.assertFalse(result["openfe_feature_layer"]["v3_cache_features_used"])
+        self.assertEqual(result["openfe_feature_layer"]["weight"], 1.0)
 
     def test_three_view_cache_features_and_cutoff_guard(self):
         from types import SimpleNamespace
