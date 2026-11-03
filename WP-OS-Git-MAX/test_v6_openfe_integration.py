@@ -76,7 +76,9 @@ class V6OpenFEIntegrationTests(unittest.TestCase):
 
     def test_three_view_cache_features_and_cutoff_guard(self):
         from types import SimpleNamespace
-        import v6_openfe_bridge as bridge
+        bridge_spec = importlib.util.spec_from_file_location("v6_openfe_bridge", ROOT / "v6_openfe_bridge.py")
+        bridge = importlib.util.module_from_spec(bridge_spec)
+        bridge_spec.loader.exec_module(bridge)
         rows = [(str(115000001 + i), [1, 2, 3, 4, 5, 6], 1) for i in range(12)]
         cache = {"through_draw": rows[-1][0],
                  "first": {"five": [2] * 38, "ten": [4] * 38, "age": [2] * 38}}
