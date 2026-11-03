@@ -9,11 +9,12 @@ from __future__ import annotations
 import random
 
 SEED = 20261103
-VIEW_LIMITS = {"latest_10": 10, "latest_20": 20, "full_archive": None}
+VIEW_LIMITS = {"latest_5": 5, "latest_10": 10, "full_archive": None}
 
 
 def _base_row(history, number, view_limit=None):
-    view = history if view_limit is None else history[-view_limit:]
+    view = history[-10:] if view_limit is None else history[-view_limit:]
+    # Full archive supplies historical training anchors, never >10-draw features.
     five = history[-5:]
     ten = history[-10:]
     last_seen = next(
@@ -26,10 +27,10 @@ def _base_row(history, number, view_limit=None):
         "freq_5": float(sum(number in draw[1] for draw in five)),
         "freq_10": float(sum(number in draw[1] for draw in ten)),
         "freq_view": float(sum(number in draw[1] for draw in view)) / len(view),
-        "gap_view": float(min(last_seen, 50)),
+        "gap_view": float(min(last_seen, 10)),
         "view_rows": float(len(view)),
         "view_is_10": float(view_limit == 10),
-        "view_is_20": float(view_limit == 20),
+        "view_is_5": float(view_limit == 5),
         "view_is_full": float(view_limit is None),
         "odd": float(number % 2),
         "low_zone": float(number <= 19),
@@ -41,7 +42,7 @@ def _training_frame(rows, *, three_views=False, max_anchors=80):
 
     samples, labels = [], []
     limits = VIEW_LIMITS.values() if three_views else (None,)
-    ends = list(range(20 if three_views else 10, len(rows)))
+    ends = list(range(10, len(rows)))
     if three_views and len(ends) > max_anchors:
         positions = {
             round(index * (len(ends) - 1) / (max_anchors - 1))
@@ -115,6 +116,7 @@ def score_first_zone(rows, *, n_jobs=1, max_features=12):
         number: float(probabilities[number - 1]) for number in range(1, 39)
     }, {
         "engine": "OpenFE+LightGBM",
+        "feature_window": [5, 10],
         "generated_features": generated,
         "used_features": used,
         "seed": SEED,
@@ -124,9 +126,9 @@ def score_first_zone(rows, *, n_jobs=1, max_features=12):
 
 
 def score_three_history_views(rows, *, n_jobs=1, max_features=12):
-    """Score latest-10, latest-20 and full-archive views, then equal-fuse them."""
-    if len(rows) < 20:
-        raise ValueError("three-view OpenFE requires at least 20 completed draws")
+    """Score 5/10/full-archive-training views. All prediction features use <=10 prior draws."""
+    if len(rows) < 12:
+        raise ValueError("three-view OpenFE requires at least 12 completed draws")
     import pandas as pd
 
     train_x, train_y = _training_frame(rows, three_views=True)
@@ -153,6 +155,8 @@ def score_three_history_views(rows, *, n_jobs=1, max_features=12):
         for number in range(1, 39)
     }
     return fused, {
+        "feature_window": [5, 10],
+        "full_archive_role": "training_anchors_only",
         "engine": "OpenFE+LightGBM",
         "mode": "three_history_views_100_percent",
         "generated_features": generated,
