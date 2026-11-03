@@ -4,6 +4,7 @@ on:
     branches:
       - validation/v6-main-e2e-20261103
       - integration/v6-cache-openfe-clean-20261104
+      - change/v6-no-bayesian-no-cache-20261104
       - main
   workflow_dispatch:
 permissions:
@@ -53,6 +54,9 @@ jobs:
           import json
           result = json.load(open("v6-cudaq-selection.json"))
           assert result["openfe_feature_layer"]["enabled"] is True
+          assert result["openfe_feature_layer"]["weight"] == 1.0
+          assert result["openfe_feature_layer"]["v3_cache_features_used"] is False
+          assert result["openfe_feature_layer"]["view_weights"] == {"latest_5":1/3,"latest_10":1/3,"full_archive":1/3}
           assert result["high_fidelity_layer"]["enabled"] is True
           assert result["high_fidelity_layer"]["minimum_observed_fidelity"] >= 0.99999
           assert result["cudaq_layer"]["executed"] is True
