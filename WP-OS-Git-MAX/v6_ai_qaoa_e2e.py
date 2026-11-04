@@ -9,8 +9,7 @@ import argparse,csv,hashlib,json,math,sys
 from pathlib import Path
 # Support test runners that load this module directly by file path.
 _module_dir = str(Path(__file__).resolve().parent)
-if _module_dir not in sys.path:
-    sys.path.insert(0, _module_dir)
+sys.path.insert(0, _module_dir)
 
 def validate(path):
     rows=[];seen=set()
