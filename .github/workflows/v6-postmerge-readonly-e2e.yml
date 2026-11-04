@@ -9,6 +9,7 @@ on:
       - integration/v6-cache-openfe-clean-20261104
       - change/v6-no-bayesian-no-cache-20261104
       - main
+      - feature/v6-exact-search-e2e-20261105
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,6 +37,8 @@ jobs:
           print("V6 no-cache contract OK")
           PY
           python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_openfe_integration.py' -v
+      - name: Test exact-search optimizer
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_exact_search.py' -v
       - name: Install OpenFE and LightGBM
         run: |
           python -m pip install --upgrade pip
@@ -78,6 +81,11 @@ jobs:
           assert result["high_fidelity_layer"]["enabled"] is True
           assert result["high_fidelity_layer"]["minimum_observed_fidelity"] >= 0.99999
           assert result["cudaq_layer"]["executed"] is True
+          opt = result["exact_optimization_layer"]
+          assert opt["globally_optimal_within_pool"] is True
+          assert opt["score_gap"] >= 0
+          assert result["first_zone"] == opt["exact_selection"]
+          assert opt["searched_combinations"] == 28
           assert result["cudaq_layer"]["qpu"] is False
           assert result["openfe_feature_layer"]["mode"] == "three_history_views_100_percent"
           assert len(result["first_zone"]) == 6
