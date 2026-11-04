@@ -15,6 +15,8 @@ class ExactSearchTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             exact_select([1,2],{1:1,2:2})
         with self.assertRaises(ValueError):
+            exact_select(range(1,9),{i:i for i in range(1,8)})
+        with self.assertRaises(ValueError):
             compare_selection(range(1,9),{i:i for i in range(1,9)},[1]*6)
 
 if __name__=="__main__":
