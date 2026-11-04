@@ -58,6 +58,9 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,us
         cudaq_selected,cudaq_layer=select_six(pool,scores,required=require_cudaq)
         if cudaq_selected is not None:
             best=(sum(scores[n] for n in cudaq_selected),tuple(cudaq_selected))
+    from v6_exact_search import compare_selection
+    optimization_layer=compare_selection(pool,scores,best[1])
+    best=(optimization_layer["exact_score"],tuple(optimization_layer["exact_selection"]))
     second=max(range(1,9),key=lambda n:(.6*sum(x[2]==n for x in five)+.4*sum(x[2]==n for x in ten),-n))
     fidelity_layer={"enabled":False,"scope":"not requested"}
     if high_fidelity_verify:
@@ -76,6 +79,7 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,us
       "openfe_feature_layer":feature_layer,
       "high_fidelity_layer":fidelity_layer,
       "cudaq_layer":cudaq_layer,
+      "exact_optimization_layer":optimization_layer,
       "status":"Research simulation; no evidence of predictive advantage"}
 
 def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False):
