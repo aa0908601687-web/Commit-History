@@ -78,7 +78,7 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,us
       "cudaq_layer":cudaq_layer,
       "status":"Research simulation; no evidence of predictive advantage"}
 
-def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,v3_cache_path=None):
+def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False):
     if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
     rows=validate(path);five=rows[-5:];ten=rows[-10:]
     scores={}
@@ -88,12 +88,7 @@ def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fi
     feature_layer={"enabled":False,"weight":0.0}
     if openfe_three_views:
         from v6_openfe_bridge import score_three_history_views
-        verified_cache=None
-        if v3_cache_path:
-            from cache_and_hit_validation import load_draws
-            from cache_v3_pipeline import cache_for
-            verified_cache,_=cache_for(load_draws(path),v3_cache_path)
-        scores,metadata=score_three_history_views(rows,n_jobs=1,v3_cache=verified_cache)
+        scores,metadata=score_three_history_views(rows,n_jobs=1)
         feature_layer={"enabled":True,"weight":1.0,**metadata}
     elif use_openfe:
         from v6_openfe_bridge import score_first_zone
@@ -110,7 +105,6 @@ def main():
     p=argparse.ArgumentParser();p.add_argument("--csv",required=True);p.add_argument("--output")
     p.add_argument("--openfe",action="store_true");p.add_argument("--openfe-weight",type=float,default=.30)
     p.add_argument("--openfe-three-views",action="store_true")
-    p.add_argument("--v3-cache",help="verified V3 feature cache for OpenFE inference")
     p.add_argument("--high-fidelity-verify",action="store_true",
                    help="run local numerical statevector fidelity checks; not QPU/JUPITER")
     p.add_argument("--cudaq",action="store_true",
@@ -118,7 +112,7 @@ def main():
     p.add_argument("--require-cudaq",action="store_true",
                    help="fail instead of falling back when CUDA-Q is unavailable")
     a=p.parse_args()
-    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify,a.cudaq or a.require_cudaq,a.require_cudaq,a.v3_cache)
+    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify,a.cudaq or a.require_cudaq,a.require_cudaq)
     out=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
     if a.output:Path(a.output).write_text(out,encoding="utf-8")
     print(out)
