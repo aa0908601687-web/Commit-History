@@ -21,7 +21,7 @@ def previous_month(month):
     return f"{year - (mon == 1):04d}-{12 if mon == 1 else mon - 1:02d}"
 
 
-def probe(month=None, archive_path=None, fetcher=None, bridge=None):
+def probe(month=None, archive_path=None, fetcher=None, bridge=None, merged_output=None):
     if month is None:
         month = dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).strftime("%Y-%m")
     dt.date.fromisoformat(month + "-01")  # Reject malformed month before any requests.
@@ -77,6 +77,9 @@ def probe(month=None, archive_path=None, fetcher=None, bridge=None):
         if result["cutoff"] != merged[-1][0]:
             raise ValueError("Bridge output cutoff differs from validated input")
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if merged_output is not None:
+            destination = Path(merged_output)
+            destination.write_bytes(path.read_bytes())
         if result["source_archive_sha256"] != digest:
             raise ValueError("Bridge input hash mismatch")
     new_periods = [draw_id for draw_id in incoming if int(draw_id) > int(stored[-1][0])]
@@ -106,8 +109,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--month", help="Target month in YYYY-MM; default Taiwan current month")
     parser.add_argument("--output", help="JSON output artifact")
+    parser.add_argument("--merged-csv-output", help="Verified live-merged CSV for downstream V6 E2E; does not modify archive")
     args = parser.parse_args()
-    result = probe(month=args.month)
+    result = probe(month=args.month, merged_output=args.merged_csv_output)
     encoded = json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     if args.output:
         Path(args.output).write_text(encoded, encoding="utf-8")
