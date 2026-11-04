@@ -1,7 +1,6 @@
-"""Focused regression tests for V6 OpenFE bridge and three-layer cache.
+"""Focused regression tests for cache-free V6 OpenFE bridge and QAOA.
 
-Dependency-heavy feature training is mocked; integration remains covered separately
-by the existing OpenFE and cache E2E workflows.
+Dependency-heavy feature training is mocked; integration is tested separately.
 """
 import json
 import runpy
@@ -12,65 +11,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import v6_of3q_cache_v3 as cache
 import v6_openfe_bridge as bridge
 
 
 def sample_rows(n=24):
     return [(f"115000{i:03d}", list(range(1 + i % 30, 7 + i % 30)), (i % 8) + 1) for i in range(1, n + 1)]
-
-
-class CacheCoverageTests(unittest.TestCase):
-    def test_digest_and_tampering_and_key_mismatch(self):
-        with tempfile.TemporaryDirectory() as td:
-            p = Path(td) / "cache.json"
-            self.assertIsNone(cache._read(p, {"layer": "data"}))
-            written = cache._write(p, {"layer": "data", "items": {1: [2, 3]}})
-            self.assertEqual(written["sha256"], cache.digest({"layer": "data", "items": {1: [2, 3]}}))
-            self.assertEqual(cache._read(p, {"layer": "data"})["items"], {"1": [2, 3]})
-            self.assertIsNone(cache._read(p, {"layer": "other"}))
-            p.write_text("{bad json", encoding="utf-8")
-            self.assertIsNone(cache._read(p, {"layer": "data"}))
-            p.write_text(json.dumps({"layer": "data", "sha256": "wrong"}), encoding="utf-8")
-            self.assertIsNone(cache._read(p, {"layer": "data"}))
-
-    def test_layers_refresh_then_hit_and_invalidate(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            csv = root / "draws.csv"
-            csv.write_text("fixture", encoding="utf-8")
-            rows = sample_rows()
-            with patch.object(cache, "validate", return_value=rows) as validate, \
-                 patch.object(cache, "score_three_history_views", return_value=({1: 0.8, 2: 0.2}, {"engine": "fixture"})) as score, \
-                 patch.object(cache, "complete_result", return_value={"first_zone": [1, 2, 3, 4, 5, 6]}) as complete:
-                first = cache.run(csv, root / "saved")
-                second = cache.run(csv, root / "saved")
-                self.assertEqual(first["cache"], {"data": "refreshed", "features": "refreshed", "result": "refreshed"})
-                self.assertEqual(second["cache"], {"data": "hit", "features": "hit", "result": "hit"})
-                self.assertEqual((validate.call_count, score.call_count, complete.call_count), (1, 1, 1))
-                csv.write_text("changed fixture", encoding="utf-8")
-                third = cache.run(csv, root / "saved")
-                self.assertEqual(third["cache"]["data"], "refreshed")
-                self.assertEqual((validate.call_count, score.call_count, complete.call_count), (2, 2, 2))
-                (root / "saved" / "features.json").write_text("corrupt", encoding="utf-8")
-                fourth = cache.run(csv, root / "saved")
-                self.assertEqual(fourth["cache"]["features"], "refreshed")
-                self.assertEqual(fourth["cache"]["result"], "hit")
-
-    def test_result_version_and_feature_version_invalidate(self):
-        with tempfile.TemporaryDirectory() as td:
-            csv = Path(td) / "draws.csv"
-            csv.write_text("fixture", encoding="utf-8")
-            with patch.object(cache, "validate", return_value=sample_rows()), \
-                 patch.object(cache, "score_three_history_views", return_value=({1: .3}, {})), \
-                 patch.object(cache, "complete_result", return_value={"ok": True}):
-                cache.run(csv, Path(td) / "saved")
-                with patch.object(cache, "RESULT_VERSION", "new"):
-                    result = cache.run(csv, Path(td) / "saved")
-                    self.assertEqual(result["cache"], {"data": "hit", "features": "hit", "result": "refreshed"})
-                with patch.object(cache, "FEATURE_VERSION", "new"):
-                    result = cache.run(csv, Path(td) / "saved")
-                    self.assertEqual(result["cache"]["features"], "refreshed")
 
 
 class OpenFECoverageTests(unittest.TestCase):
@@ -158,18 +103,6 @@ class OpenFECoverageTests(unittest.TestCase):
                 )
                 self.assertEqual((generated, used), (2, expected))
                 self.assertEqual(scores[0], 0.75)
-
-    def test_cache_cli_output_and_stdout(self):
-        with tempfile.TemporaryDirectory() as td:
-            output = Path(td) / "result.json"
-            with patch.object(cache, "run", return_value={"ok": True}), \
-                 patch.object(sys, "argv", ["cache", "--csv", "data.csv", "--cache-dir", td, "--output", str(output)]):
-                cache.main()
-            self.assertEqual(json.loads(output.read_text(encoding="utf-8")), {"ok": True})
-            with patch.object(cache, "run", return_value={"ok": True}), \
-                 patch.object(sys, "argv", ["cache", "--csv", "data.csv", "--cache-dir", td]):
-                cache.main()
-
 
     def test_training_skips_history_view_longer_than_available(self):
         fake_pandas = SimpleNamespace(DataFrame=list, Series=lambda values, name=None: values)

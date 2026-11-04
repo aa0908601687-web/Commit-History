@@ -18,7 +18,6 @@ def load(name, alias):
     spec.loader.exec_module(mod)
     return mod
 
-cache = load("cache_and_hit_validation.py", "wp_cache_extra")
 updater = load("update_official_data.py", "wp_updater_extra")
 
 
@@ -29,97 +28,6 @@ def rows(n=11):
          "second": i % 8 + 1}
         for i in range(n)
     ]
-
-
-class MoreCacheBranches(unittest.TestCase):
-    def test_short_history(self):
-        with self.assertRaisesRegex(ValueError, "10"):
-            cache.cache_features(rows(9))
-
-    def test_bad_csv_and_period_order(self):
-        with tempfile.TemporaryDirectory() as d:
-            p = Path(d)/"input.csv"
-            def write(r):
-                with p.open("w", newline="", encoding="utf-8") as f:
-                    w=csv.writer(f)
-                    w.writerow(["draw_id", "first", "second"])
-                    w.writerows(r)
-            good = [(x["draw_id"], "01 02 03 04 05 06", x["second"]) for x in rows()]
-            write(good)
-            self.assertEqual(len(cache.load_draws(p)), 11)
-            for bad in [
-                [("bad", "01 02 03 04 05 06", 1)],
-                [("115000001", "01 01 02 03 04 05", 1)],
-                [("115000001", "01 02 03 04 05 39", 1)],
-                [("115000001", "01 02 03 04 05 06", 9)],
-                good + [good[-1]],
-                list(reversed(good))
-            ]:
-                with self.subTest(bad=str(bad)[:40]):
-                    write(bad)
-                    with self.assertRaises(ValueError):
-                        cache.load_draws(p)
-
-    def test_invalid_json_cache_refresh(self):
-        with tempfile.TemporaryDirectory() as d:
-            p=Path(d)/"cache.json"
-            p.write_text("{bad", encoding="utf-8")
-            obj,status=cache.get_versioned_cache(rows(),p)
-            self.assertEqual(status, "refreshed")
-            self.assertEqual(json.loads(p.read_text())["sha256"],obj["sha256"])
-            p.write_text("null", encoding="utf-8")
-            self.assertEqual(cache.get_versioned_cache(rows(),p)[1], "refreshed")
-
-    def test_snapshot_input_and_missing_fields(self):
-        with self.assertRaises(ValueError):
-            cache.make_prediction_snapshot(rows(10), "not-a-period")
-        snap=cache.make_prediction_snapshot(rows(10), "115000011")
-        del snap["first"]
-        with self.assertRaisesRegex(ValueError,"Incomplete"):
-            cache.validate(snap,rows())
-
-    def test_snapshot_history_and_lookahead(self):
-        snap=cache.make_prediction_snapshot(rows(10), "115000011")
-        altered=[dict(x) for x in rows()]
-        altered[0]=dict(altered[0],second=8)
-        with self.assertRaisesRegex(ValueError,"historical"):
-            cache.validate(snap,altered)
-        snap["target_draw"]="115000010"
-        snap["sha256"]=cache.digest({k:v for k,v in snap.items() if k!="sha256"})
-        with self.assertRaises(ValueError):
-            cache.validate(snap,rows())
-
-    def test_invalid_prediction_values(self):
-        base=cache.make_prediction_snapshot(rows(10), "115000011")
-        for first,second in [([1]*6,1),([0,2,3,4,5,6],1),
-                             ([1,2,3,4,5,39],1),([1,2,3,4,5,6],9),
-                             ([1,2,3,4,5,6],"1"),([1,2,3],1)]:
-            with self.subTest(first=first,second=second):
-                snap=dict(base,first=first,second=second)
-                snap["sha256"]=cache.digest({k:v for k,v in snap.items() if k!="sha256"})
-                with self.assertRaisesRegex(ValueError,"Invalid prediction"):
-                    cache.validate(snap,rows())
-
-    def test_cli_cache_and_snapshot(self):
-        with tempfile.TemporaryDirectory() as d:
-            p=Path(d)/"draws.csv"
-            with p.open("w", newline="") as f:
-                w=csv.writer(f);w.writerow(["draw_id","first","second"])
-                for r in rows(10):w.writerow([r["draw_id"],"01 02 03 04 05 06",r["second"]])
-            c=Path(d)/"features.json"
-            out=io.StringIO()
-            with patch.object(sys,"argv",["cache","--csv",str(p),"--feature-cache",str(c)]),contextlib.redirect_stdout(out):
-                cache.main()
-            self.assertIn("refreshed",out.getvalue())
-            with patch.object(sys,"argv",["cache","--csv",str(p),"--feature-cache",str(c)]),contextlib.redirect_stdout(io.StringIO()):
-                cache.main()
-            snapshot=Path(d)/"snapshot.json"
-            with patch.object(sys,"argv",["cache","--csv",str(p),"--snapshot",str(snapshot),"--target-draw","115000011"]),contextlib.redirect_stdout(io.StringIO()):
-                cache.main()
-            with patch.object(sys,"argv",["cache","--csv",str(p),"--snapshot",str(snapshot),"--target-draw","115000011"]):
-                with self.assertRaises(FileExistsError): cache.main()
-            with patch.object(sys,"argv",["cache","--csv",str(p),"--snapshot",str(Path(d)/"missing.json")]):
-                with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):cache.main()
 
 
 class MoreUpdaterBranches(unittest.TestCase):
@@ -193,20 +101,6 @@ class EntryPointCoverage(unittest.TestCase):
             for d in rows(count):
                 writer.writerow([d["draw_id"],"01 02 03 04 05 06",d["second"]])
         return p
-
-    def test_cache_cli_plain_and_snapshot_validation(self):
-        import runpy
-        with tempfile.TemporaryDirectory() as directory:
-            csv_path=self.draw_csv(directory)
-            with patch.object(sys,"argv",["cache","--csv",str(csv_path)]),contextlib.redirect_stdout(io.StringIO()) as output:
-                runpy.run_path(str(BASE/"cache_and_hit_validation.py"),run_name="__main__")
-            self.assertIn("through_draw",output.getvalue())
-            snapshot=cache.make_prediction_snapshot(rows(10),"115000011")
-            snap_path=Path(directory)/"snapshot.json"
-            snap_path.write_text(json.dumps(snapshot),encoding="utf-8")
-            with patch.object(sys,"argv",["cache","--csv",str(csv_path),"--validate-snapshot",str(snap_path)]),contextlib.redirect_stdout(io.StringIO()) as output:
-                cache.main()
-            self.assertIn("first_zone_hits",output.getvalue())
 
     def test_model_main_entry_point(self):
         import runpy
