@@ -30,16 +30,6 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
-      - name: Restore Scion-style regional cache layer
-        id: v3-cache
-        uses: actions/cache@v5
-        with:
-          path: .cache/wp-os-v3
-          key: wp-os-v3-${{ runner.os }}-${{ hashFiles('WP-OS-Git-MAX/historical_latest_20.csv', 'WP-OS-Git-MAX/historical_archive.csv', 'WP-OS-Git-MAX/cache_and_hit_validation.py', 'WP-OS-Git-MAX/three_layer_cache_v3.py', 'WP-OS-Git-MAX/research_cache_v3.py', 'WP-OS-Git-MAX/historical_backtest_cache_v3.py', 'WP-OS-Git-MAX/wp_os_git_max.py', 'WP-OS-Git-MAX/wp_os_git_max_10_20.py', 'WP-OS-Git-MAX/wp_os_git_max_fusion.py') }}
-          restore-keys: |
-            wp-os-v3-${{ runner.os }}-
-      - name: Prepare node cache layer
-        run: mkdir -p .cache/wp-os-v3
       - name: Refresh official data (scheduled or manual only)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: python WP-OS-Git-MAX/update_official_data.py
@@ -113,101 +103,6 @@ jobs:
             /tmp/wp-os-fusion-backtest.json
           if-no-files-found: error
           retention-days: 30
-      - name: Generate validated 5/10-draw feature cache
-        run: |
-          python WP-OS-Git-MAX/cache_and_hit_validation.py --csv WP-OS-Git-MAX/historical_latest_10.csv --feature-cache .cache/wp-os-v3/wp-os-feature-cache.json > /dev/null
-          python -m json.tool .cache/wp-os-v3/wp-os-feature-cache.json > /dev/null
-      - name: V3 result cache and cached/direct consistency checks
-        run: |
-          python WP-OS-Git-MAX/three_layer_cache_v3.py --csv WP-OS-Git-MAX/historical_latest_20.csv --feature-cache .cache/wp-os-v3/wp-os-feature-cache.json --prediction-cache .cache/wp-os-v3/wp-os-v3-prediction-cache.json --verify > /tmp/wp-os-v3-run-1.json
-          python WP-OS-Git-MAX/three_layer_cache_v3.py --csv WP-OS-Git-MAX/historical_latest_20.csv --feature-cache .cache/wp-os-v3/wp-os-feature-cache.json --prediction-cache .cache/wp-os-v3/wp-os-v3-prediction-cache.json --verify > /tmp/wp-os-v3-run-2.json
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          first=json.loads(Path('/tmp/wp-os-v3-run-1.json').read_text())
-          second=json.loads(Path('/tmp/wp-os-v3-run-2.json').read_text())
-          assert second["feature_cache"] == second["prediction_cache"] == "hit"
-          assert first["prediction"] == second["prediction"]
-          assert second["consistency_verified"]
-          print("V3 repeated-run hit, result integrity and parity: passed")
-          PY
-      - name: V3 control and fusion result caches
-        run: |
-          python WP-OS-Git-MAX/research_cache_v3.py --csv WP-OS-Git-MAX/historical_latest_20.csv --control-cache .cache/wp-os-v3/wp-os-control-cache.json --fusion-cache .cache/wp-os-v3/wp-os-fusion-cache.json --verify > /tmp/wp-os-v3-research-run-1.json
-          python WP-OS-Git-MAX/research_cache_v3.py --csv WP-OS-Git-MAX/historical_latest_20.csv --control-cache .cache/wp-os-v3/wp-os-control-cache.json --fusion-cache .cache/wp-os-v3/wp-os-fusion-cache.json --verify > /tmp/wp-os-v3-research-run-2.json
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          first=json.loads(Path('/tmp/wp-os-v3-research-run-1.json').read_text())
-          second=json.loads(Path('/tmp/wp-os-v3-research-run-2.json').read_text())
-          assert second['models']['control_10_20']['cache'] == 'hit'
-          assert second['models']['fusion_5_10_20']['cache'] == 'hit'
-          assert first['models']['control_10_20']['prediction'] == second['models']['control_10_20']['prediction']
-          assert first['models']['fusion_5_10_20']['prediction'] == second['models']['fusion_5_10_20']['prediction']
-          assert second['consistency_verified']
-          print('V3 control/fusion repeated-run cache hits and direct parity: passed')
-          PY
-      - name: V3 full-history backtest cache
-        run: |
-          python WP-OS-Git-MAX/historical_backtest_cache_v3.py --csv WP-OS-Git-MAX/historical_archive.csv --cache .cache/wp-os-v3/wp-os-full-history-backtests.json > /tmp/wp-os-history-cache-run-1.json
-          python WP-OS-Git-MAX/historical_backtest_cache_v3.py --csv WP-OS-Git-MAX/historical_archive.csv --cache .cache/wp-os-v3/wp-os-full-history-backtests.json > /tmp/wp-os-history-cache-run-2.json
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          first=json.loads(Path('/tmp/wp-os-history-cache-run-1.json').read_text())
-          second=json.loads(Path('/tmp/wp-os-history-cache-run-2.json').read_text())
-          assert second['cache'] == 'hit'
-          assert first['archive_sha256'] == second['archive_sha256']
-          assert first['backtests'] == second['backtests']
-          assert set(second['backtests']) == {'main_5_10','control_10_20','fusion_5_10_20'}
-          print('V3 full-history backtest cache hit and parity: passed')
-          PY
-      - name: Record three-layer cache status
-        run: |
-          python - <<'PY'
-          import hashlib, json
-          from pathlib import Path
-          run = json.loads(Path('/tmp/wp-os-v3-run-2.json').read_text())
-          source = Path('WP-OS-Git-MAX/historical_latest_20.csv').read_bytes()
-          status = {
-              'architecture': 'Scion-style (not Anthropic Scion)',
-              'schema_version': 3,
-              'layers': {
-                  'node': '.cache/wp-os-v3',
-                  'regional': 'GitHub Actions cache',
-                  'authoritative': 'repository CSV and source'
-              },
-              'actions_cache_restored': '${{ steps.v3-cache.outputs.cache-hit }}' == 'true',
-              'source_sha256': hashlib.sha256(source).hexdigest(),
-              'feature_cache': run['feature_cache'],
-              'prediction_cache': run['prediction_cache'],
-              'consistency_verified': run['consistency_verified']
-          }
-          Path('/tmp/wp-os-v3-cache-status.json').write_text(
-              json.dumps(status, ensure_ascii=False, sort_keys=True, indent=2) + '\n')
-          PY
-      - name: Upload V3 verified result cache
-        uses: actions/upload-artifact@v6
-        with:
-          name: wp-os-v3-result-cache-${{ github.run_id }}
-          path: |
-            .cache/wp-os-v3/wp-os-v3-prediction-cache.json
-            /tmp/wp-os-v3-run-2.json
-            /tmp/wp-os-v3-cache-status.json
-            /tmp/wp-os-v3-research-run-2.json
-            .cache/wp-os-v3/wp-os-control-cache.json
-            .cache/wp-os-v3/wp-os-fusion-cache.json
-            .cache/wp-os-v3/wp-os-full-history-backtests.json
-            /tmp/wp-os-history-cache-run-2.json
-          if-no-files-found: error
-          retention-days: 30
-      - name: Upload analysis cache artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: wp-os-feature-cache-${{ github.run_id }}
-          path: .cache/wp-os-v3/wp-os-feature-cache.json
-          if-no-files-found: error
-          retention-days: 30
       - name: Upload prediction research artifact
         uses: actions/upload-artifact@v6
         with:
@@ -223,42 +118,6 @@ jobs:
             /tmp/wp-os-control-10-20.json
             /tmp/wp-os-control-10-20-backtest.json
             /tmp/wp-os-main-vs-control.json
-          if-no-files-found: error
-          retention-days: 30
-      - name: V3 end-to-end cache and selection parity
-        run: |
-          python WP-OS-Git-MAX/cache_v3_pipeline.py --csv WP-OS-Git-MAX/historical_latest_10.csv --cache /tmp/wp-os-cache-v3.json --prediction /tmp/wp-os-prediction-v3.json > /tmp/wp-os-v3-status.json
-          python WP-OS-Git-MAX/cache_v3_pipeline.py --csv WP-OS-Git-MAX/historical_latest_10.csv --cache /tmp/wp-os-cache-v3.json > /tmp/wp-os-v3-reuse.json
-          python - <<'PY'
-          import json
-          a=json.load(open('/tmp/wp-os-v3-status.json',encoding='utf-8'))
-          b=json.load(open('/tmp/wp-os-v3-reuse.json',encoding='utf-8'))
-          assert a['cache_status']=='refreshed' and b['cache_status']=='hit'
-          assert a['prediction']==b['prediction']
-          PY
-      - name: V3 research snapshot for next sequential draw
-        run: |
-          python - <<'PY'
-          import csv, subprocess, sys
-          p='WP-OS-Git-MAX/historical_latest_10.csv'
-          with open(p,encoding='utf-8-sig',newline='') as fp:
-              rows=list(csv.DictReader(fp))
-          target=str(int(rows[-1]['draw_id'])+1)
-          subprocess.run([sys.executable,'WP-OS-Git-MAX/cache_v3_pipeline.py',
-              '--csv',p,'--cache','/tmp/wp-os-cache-v3.json',
-              '--snapshot','/tmp/wp-os-v3-snapshot.json','--target-draw',target],check=True)
-          print('Snapshot requires external timestamp verification before pre-draw claims:',target)
-          PY
-      - name: Upload V3 verified cache and prediction
-        uses: actions/upload-artifact@v6
-        with:
-          name: wp-os-v3-${{ github.run_id }}
-          path: |
-            /tmp/wp-os-cache-v3.json
-            /tmp/wp-os-prediction-v3.json
-            /tmp/wp-os-v3-status.json
-            /tmp/wp-os-v3-reuse.json
-            /tmp/wp-os-v3-snapshot.json
           if-no-files-found: error
           retention-days: 30
       - name: Historical backtest when more than ten draws exist
