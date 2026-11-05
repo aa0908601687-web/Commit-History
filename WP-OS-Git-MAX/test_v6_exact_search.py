@@ -1,4 +1,7 @@
 import unittest
+from unittest.mock import patch
+import sys
+import v6_ai_qaoa_e2e as v6
 from v6_exact_search import exact_select, compare_selection
 
 class ExactSearchTests(unittest.TestCase):
@@ -11,6 +14,15 @@ class ExactSearchTests(unittest.TestCase):
         result=compare_selection(list(scores),scores,[1,2,3,4,5,6])
         self.assertGreater(result["score_gap"],0)
         self.assertEqual(result["exact_selection"],selection)
+    def test_selection_rejects_invalid_feature_scores(self):
+        from pathlib import Path
+        csv = Path(__file__).parent / "historical_archive.csv"
+        rows = v6.validate(csv)
+        base = {i: float(i) for i in range(1, 39)}
+        for scores in ({**base, 38: float("nan")}, {k: v for k, v in base.items() if k != 38}):
+            with self.assertRaisesRegex(ValueError, "feature scores"):
+                v6.complete_result(csv, rows, scores, {})
+
     def test_invalid(self):
         with self.assertRaises(ValueError):
             exact_select([1,2],{1:1,2:2})
