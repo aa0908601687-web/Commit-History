@@ -70,7 +70,7 @@ jobs:
         timeout-minutes: 30
         run: |
           set -euxo pipefail
-          opam install --switch=v6-rocq -y rocq-prover
+          opam install --switch=v6-rocq -y rocq-prover rocq-stdlib
       - name: Verify Rocq installation
         timeout-minutes: 3
         run: |
