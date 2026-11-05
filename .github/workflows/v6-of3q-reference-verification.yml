@@ -65,5 +65,5 @@ jobs:
           opam switch create v6-rocq ocaml-base-compiler.5.2.1 -y
           eval "$(opam env --switch=v6-rocq)"
           opam install -y rocq-prover
-          rocqc --version
-          rocqc verification/rocq/V6Candidate.v
+          rocq --version
+          rocq compile verification/rocq/V6Candidate.v
