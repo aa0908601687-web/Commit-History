@@ -47,5 +47,43 @@ class ReferenceTests(unittest.TestCase):
         self.assertFalse(validate_ticket((1, 2, 3, 4, 5, 5), 1))
         self.assertFalse(validate_ticket((1, 2, 3, 4, 5, 6), 9))
 
+
+
+def mask_to_selection(pool, mask):
+    """Bit i corresponds exactly to candidate pool[i]."""
+    validate_pool(pool)
+    if type(mask) is not int or not 0 <= mask < 256 or mask.bit_count() != 6:
+        raise ValueError("expected an 8-bit mask with exactly six selected bits")
+    return tuple(pool[i] for i in range(8) if (mask >> i) & 1)
+
+
+def exact_mask_argmax(pool, score):
+    """Exhaustively optimize the same score function over all 28 valid masks."""
+    validate_pool(pool)
+    masks = [m for m in range(256) if m.bit_count() == 6]
+    return max(masks, key=lambda m: (score(mask_to_selection(pool, m)), -m))
+
+
+class BitMappingAndObjectiveTests(unittest.TestCase):
+    def test_all_masks_bijection(self):
+        pool = (1, 3, 8, 12, 19, 24, 31, 38)
+        masks = [m for m in range(256) if m.bit_count() == 6]
+        self.assertEqual(len(masks), 28)
+        self.assertEqual(set(map(lambda m: mask_to_selection(pool, m), masks)),
+                         set(enumerate_six(pool)))
+
+    def test_mask_objective_matches_exact_search(self):
+        pool = (1, 3, 8, 12, 19, 24, 31, 38)
+        score = lambda xs: sum(x * x for x in xs) + (10 if 1 in xs and 38 in xs else 0)
+        winning_mask = exact_mask_argmax(pool, score)
+        self.assertEqual(score(mask_to_selection(pool, winning_mask)),
+                         score(exact_argmax(pool, score)))
+
+    def test_invalid_masks(self):
+        pool = (1, 3, 8, 12, 19, 24, 31, 38)
+        for mask in [-1, 256, 0, 255, True, 1.5]:
+            with self.assertRaises(ValueError):
+                mask_to_selection(pool, mask)
+
 if __name__ == "__main__":
     unittest.main()
