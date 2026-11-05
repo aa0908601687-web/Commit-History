@@ -21,12 +21,17 @@ def _base_row(history, number, view_limit=None):
         (age for age, draw in enumerate(reversed(view), 1) if number in draw[1]),
         len(view) + 1,
     )
+    # Full-archive is a training-anchor view; its current statistics use a
+    # distinct time-decayed 10-draw signal rather than duplicating latest_10.
+    weighted = sum((i + 1) * (number in draw[1]) for i, draw in enumerate(view))
+    weighted_denominator = sum(range(1, len(view) + 1))
+    view_frequency = (weighted / weighted_denominator) if view_limit is None else (sum(number in draw[1] for draw in view) / len(view))
     return {
         "number": float(number),
         "number_scaled": number / 38.0,
         "freq_5": float(sum(number in draw[1] for draw in five)),
         "freq_10": float(sum(number in draw[1] for draw in ten)),
-        "freq_view": float(sum(number in draw[1] for draw in view)) / len(view),
+        "freq_view": float(view_frequency),
         "gap_view": float(min(last_seen, 10)),
         "view_rows": float(len(view)),
         "view_is_10": float(view_limit == 10),
@@ -125,7 +130,7 @@ def score_first_zone(rows, *, n_jobs=1, max_features=12):
     }
 
 
-def score_three_history_views(rows, *, n_jobs=1, max_features=12, v3_cache=None):
+def score_three_history_views(rows, *, n_jobs=1, max_features=12):
     """Score 5/10/full-archive-training views. All prediction features use <=10 prior draws."""
     if len(rows) < 12:
         raise ValueError("three-view OpenFE requires at least 12 completed draws")
@@ -137,18 +142,6 @@ def score_three_history_views(rows, *, n_jobs=1, max_features=12, v3_cache=None)
         current_records.extend(
             _base_row(rows, number, view_limit) for number in range(1, 39)
         )
-    if v3_cache is not None:
-        if v3_cache["through_draw"] != rows[-1][0]:
-            raise ValueError("V3 cache draw cutoff mismatch")
-        for record in current_records:
-            index = int(record["number"]) - 1
-            record["freq_5"] = float(v3_cache["first"]["five"][index])
-            record["freq_10"] = float(v3_cache["first"]["ten"][index])
-            if record["view_is_5"]:
-                record["freq_view"] = record["freq_5"] / 5.0
-            else:
-                record["freq_view"] = record["freq_10"] / 10.0
-            record["gap_view"] = float(min(v3_cache["first"]["age"][index] + 1, 10)) if not record["view_is_5"] else record["gap_view"]
     current_x = pd.DataFrame(current_records)
     probabilities, generated, used = _fit_and_score(
         train_x, train_y, current_x, n_jobs=n_jobs, max_features=max_features
@@ -162,13 +155,14 @@ def score_three_history_views(rows, *, n_jobs=1, max_features=12, v3_cache=None)
             for number in range(1, 39)
         }
         offset += 38
+    assert len(probabilities) == 38 * len(VIEW_LIMITS), "view-score alignment mismatch"
     fused = {
         number: sum(by_view[name][number] for name in VIEW_LIMITS) / len(VIEW_LIMITS)
         for number in range(1, 39)
     }
     return fused, {
         "feature_window": [5, 10],
-        "v3_cache_features_used": v3_cache is not None,
+        "v3_cache_features_used": False,
         "full_archive_role": "training_anchors_only",
         "engine": "OpenFE+LightGBM",
         "mode": "three_history_views_100_percent",
