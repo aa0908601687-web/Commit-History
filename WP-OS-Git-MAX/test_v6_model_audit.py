@@ -1,7 +1,15 @@
 import unittest
+import io
+import json
+import runpy
+import tempfile
+from contextlib import redirect_stdout
+from types import SimpleNamespace
+from unittest.mock import patch
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
+import v6_model_audit as audit
 from v6_model_audit import (
     BASE_RATE, brier, leave_one_recent_draw_out, top_numbers,
     validate_scores, walk_forward,
@@ -64,6 +72,44 @@ class ScoreAuditTests(unittest.TestCase):
     def test_no_evaluation_possible_without_future_target(self):
         with self.assertRaises(ValueError):
             walk_forward(fake_rows(12), scorer)
+
+
+    def test_walk_forward_argument_boundaries(self):
+        with self.assertRaisesRegex(ValueError, "at least 12"):
+            walk_forward(fake_rows(18), scorer, min_history=11)
+        with self.assertRaisesRegex(ValueError, "max_steps"):
+            walk_forward(fake_rows(18), scorer, max_steps=0)
+        result = walk_forward(fake_rows(14), scorer, max_steps=None)
+        self.assertEqual(result["evaluated_draws"], 2)
+        with self.assertRaisesRegex(ValueError, "at least 13"):
+            leave_one_recent_draw_out(fake_rows(12), scorer)
+
+    def test_cli_output_and_skip_sensitivity(self):
+        rows = fake_rows()
+        fake_v6 = SimpleNamespace(validate=lambda path: rows)
+        fake_bridge = SimpleNamespace(score_three_history_views=lambda history, n_jobs=1: scorer(history))
+        with tempfile.TemporaryDirectory() as directory:
+            destination = str(Path(directory) / "audit.json")
+            args = ["v6_model_audit.py", "--csv", "fake.csv", "--output", destination,
+                    "--max-steps", "2", "--skip-sensitivity"]
+            with patch.dict(sys.modules, {"v6_ai_qaoa_e2e": fake_v6, "v6_openfe_bridge": fake_bridge}), \\
+                 patch.object(sys, "argv", args), redirect_stdout(io.StringIO()):
+                audit.main()
+            report = json.loads(Path(destination).read_text(encoding="utf-8"))
+            self.assertIsNone(report["sensitivity"])
+            self.assertEqual(report["walk_forward"]["evaluated_draws"], 2)
+
+    def test_executable_entrypoint_and_sensitivity(self):
+        rows = fake_rows()
+        fake_v6 = SimpleNamespace(validate=lambda path: rows)
+        fake_bridge = SimpleNamespace(score_three_history_views=lambda history, n_jobs=1: scorer(history))
+        args = ["v6_model_audit.py", "--csv", "fake.csv", "--max-steps", "1"]
+        with patch.dict(sys.modules, {"v6_ai_qaoa_e2e": fake_v6, "v6_openfe_bridge": fake_bridge}), \\
+             patch.object(sys, "argv", args), redirect_stdout(io.StringIO()) as output:
+            runpy.run_path(str(Path(__file__).parent / "v6_model_audit.py"), run_name="__main__")
+        report = json.loads(output.getvalue())
+        self.assertEqual(len(report["sensitivity"]["trials"]), 10)
+        self.assertEqual(report["walk_forward"]["evaluated_draws"], 1)
 
 if __name__ == "__main__":
     unittest.main()
