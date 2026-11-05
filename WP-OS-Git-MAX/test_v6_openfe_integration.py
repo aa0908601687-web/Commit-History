@@ -69,32 +69,37 @@ class V6OpenFEIntegrationTests(unittest.TestCase):
         self.assertFalse(result["openfe_feature_layer"]["v3_cache_features_used"])
         self.assertEqual(result["openfe_feature_layer"]["weight"], 1.0)
 
-    def test_three_view_cache_features_and_cutoff_guard(self):
+    def test_three_view_distinct_features_and_no_cache(self):
+        import inspect
+        bridge_spec = importlib.util.spec_from_file_location("v6_openfe_bridge", ROOT / "v6_openfe_bridge.py")
+        bridge = importlib.util.module_from_spec(bridge_spec)
+        bridge_spec.loader.exec_module(bridge)
+        self.assertNotIn("v3_cache", inspect.signature(bridge.score_three_history_views).parameters)
+        rows = [(str(115000001 + i), [1, 2, 3, 4, 5, 6] if i < 5 else [7, 8, 9, 10, 11, 12], 1) for i in range(10)]
+        ten = bridge._base_row(rows, 1, 10)
+        archive = bridge._base_row(rows, 1, None)
+        self.assertNotEqual(ten["freq_view"], archive["freq_view"])
+        self.assertEqual(ten["freq_view"], 0.5)
+        self.assertAlmostEqual(archive["freq_view"], 15 / 55)
+
+    def test_number_and_view_alignment(self):
         from types import SimpleNamespace
         bridge_spec = importlib.util.spec_from_file_location("v6_openfe_bridge", ROOT / "v6_openfe_bridge.py")
         bridge = importlib.util.module_from_spec(bridge_spec)
         bridge_spec.loader.exec_module(bridge)
-        rows = [(str(115000001 + i), [1, 2, 3, 4, 5, 6], 1) for i in range(12)]
-        cache = {"through_draw": rows[-1][0],
-                 "first": {"five": [2] * 38, "ten": [4] * 38, "age": [2] * 38}}
-        seen = {}
-        def fit(train_x, train_y, current_x, **kwargs):
-            seen["records"] = current_x
-            return [0.5] * 114, 2, 2
-        fake_pd = SimpleNamespace(DataFrame=lambda records: records)
+        rows = mod.validate(self.csv)
+        def fake_fit(train_x, train_y, current_x, **kwargs):
+            return [float(i) for i in range(114)], 0, 0
+        class FakeFrame(list):
+            pass
+        fake_pd = SimpleNamespace(DataFrame=lambda records: FakeFrame(records))
         with patch.dict(sys.modules, {"pandas": fake_pd}), \
              patch.object(bridge, "_training_frame", return_value=([None] * 114, None)), \
-             patch.object(bridge, "_fit_and_score", side_effect=fit):
-            with self.assertRaisesRegex(ValueError, "cutoff mismatch"):
-                bridge.score_three_history_views(rows, v3_cache={**cache, "through_draw": "wrong"})
-            scores, metadata = bridge.score_three_history_views(rows, v3_cache=cache)
+             patch.object(bridge, "_fit_and_score", side_effect=fake_fit):
+            scores, meta = bridge.score_three_history_views(rows)
         self.assertEqual(len(scores), 38)
-        self.assertTrue(metadata["v3_cache_features_used"])
-        records = seen["records"]
-        self.assertEqual(len(records), 114)
-        self.assertEqual(records[0]["freq_view"], 2 / 5)
-        self.assertEqual(records[38]["freq_view"], 4 / 10)
-        self.assertEqual(records[76]["freq_view"], 4 / 10)
-        self.assertEqual(records[38]["gap_view"], 3.0)
+        self.assertAlmostEqual(scores[1], (0 + 38 + 76) / 3)
+        self.assertAlmostEqual(scores[38], (37 + 75 + 113) / 3)
+        self.assertFalse(meta["v3_cache_features_used"])
 
 if __name__=="__main__":unittest.main()

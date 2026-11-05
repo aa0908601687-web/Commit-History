@@ -31,6 +31,8 @@ def validate(path):
 def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False):
     """Finish deterministic QAOA-inspired selection from supplied scores."""
     five=rows[-5:];ten=rows[-10:]
+    if set(scores) != set(range(1, 39)) or any(not math.isfinite(scores[n]) for n in scores):
+        raise ValueError("first-zone feature scores must be finite for every number 1..38")
     pool=sorted(scores,key=lambda n:(-scores[n],n))[:8]
     costs=[]
     for mask in range(256):
