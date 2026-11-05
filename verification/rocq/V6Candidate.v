@@ -1,4 +1,4 @@
-From Rocq Require Import Arith Lia List.
+From Stdlib Require Import Arith Lia List.
 Import ListNotations.
 
 (* Abstract index-level specification for a fixed eight-candidate pool. *)
