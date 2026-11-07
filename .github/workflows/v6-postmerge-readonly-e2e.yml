@@ -92,6 +92,8 @@ jobs:
           assert 1 <= result["second_zone"] <= 8
           print("V6 CUDA-Q integrated selection OK")
           PY
+      - name: Independent final selection consistency audit
+        run: python WP-OS-Git-MAX/v6_selection_consistency_audit.py --result v6-cudaq-selection.json --output v6-selection-consistency.json
       - name: Three-model historical parity (offline)
         run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json
       - name: Three-model and local QAOA comparison
@@ -141,6 +143,7 @@ jobs:
           name: v6-post-merge-e2e-evidence
           path: |
             v6-cudaq-selection.json
+            v6-selection-consistency.json
             v6-readiness.json
             v6-model-qaoa.json
             v6-live-api-e2e.json
