@@ -1,5 +1,13 @@
 name: V6 PyTorch LightGBM fusion E2E
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'WP-OS-Git-MAX/v6_pytorch_bridge.py'
+      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/v6_openfe_bridge.py'
+      - 'WP-OS-Git-MAX/test_v6_pytorch_fusion.py'
+      - '.github/workflows/v6-pytorch-fusion-e2e.yml'
   pull_request:
     paths:
       - 'WP-OS-Git-MAX/v6_pytorch_bridge.py'
