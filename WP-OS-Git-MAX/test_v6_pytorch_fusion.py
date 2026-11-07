@@ -72,5 +72,49 @@ class TorchFusionContracts(unittest.TestCase):
         self.assertEqual(meta["selection_feature_windows"], [5,10])
         self.assertFalse(meta["predictive_advantage_verified"])
 
+
+    def test_torch_rejects_short_history_and_invalid_hyperparameters(self):
+        from v6_pytorch_bridge import score_three_history_views_pytorch as score
+        with self.assertRaisesRegex(ValueError, "at least 12"):
+            score([])
+        with self.assertRaisesRegex(ValueError, "training parameters"):
+            score([None]*12, epochs=0)
+        with self.assertRaisesRegex(ValueError, "training parameters"):
+            score([None]*12, hidden=0)
+
+    def test_torch_rejects_mismatched_schema_and_nan_features(self):
+        import pandas as pd
+        from v6_pytorch_bridge import score_three_history_views_pytorch as score
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"draws.csv"
+            synthetic_csv(path)
+            rows=v6.validate(path)
+            from v6_openfe_bridge import _training_frame
+            features, labels=_training_frame(rows, three_views=True)
+            with patch("v6_pytorch_bridge._training_frame", return_value=(features.drop(columns=["freq_5"]), labels)):
+                with self.assertRaisesRegex(ValueError, "schema mismatch"):
+                    score(rows, epochs=1)
+            invalid=features.copy()
+            invalid.loc[invalid.index[0], "freq_5"]=float("nan")
+            with patch("v6_pytorch_bridge._training_frame", return_value=(invalid,labels)):
+                with self.assertRaisesRegex(ValueError, "non-finite"):
+                    score(rows, epochs=1)
+
+    def test_torch_rejects_nonfinite_loss_and_bad_output_shape(self):
+        import torch
+        from v6_pytorch_bridge import score_three_history_views_pytorch as score
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"draws.csv"
+            synthetic_csv(path)
+            rows=v6.validate(path)
+            # Keep training inference path real, replace only the failure injection.
+            with patch.object(torch.nn, "BCEWithLogitsLoss", return_value=lambda logits,targets: torch.tensor(float("nan"))):
+                with self.assertRaisesRegex(ValueError, "non-finite PyTorch loss"):
+                    score(rows, epochs=1)
+            real_sigmoid=torch.sigmoid
+            with patch.object(torch,"sigmoid",side_effect=lambda tensor: torch.zeros((113,),dtype=torch.float32)):
+                with self.assertRaisesRegex(ValueError, "invalid PyTorch score vector"):
+                    score(rows, epochs=1)
+
 if __name__ == "__main__":
     unittest.main()
