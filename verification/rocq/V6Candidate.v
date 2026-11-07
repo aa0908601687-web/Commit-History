@@ -14,7 +14,7 @@ Theorem valid_selection_indices_bounded :
   forall xs i, valid_selection xs -> In i xs -> i < 8.
 Proof.
   intros xs i [_ [_ H]] Hin.
-  apply Forall_forall in H. exact (H i Hin).
+  rewrite Forall_forall in H. exact (H i Hin).
 Qed.
 
 Theorem valid_selection_no_duplicates :
