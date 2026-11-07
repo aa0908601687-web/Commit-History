@@ -97,7 +97,29 @@ jobs:
       - name: Three-model and local QAOA comparison
         run: python WP-OS-Git-MAX/v6_three_model_qaoa_bridge.py > v6-model-qaoa.json
       - name: Official API live read-only merge and comparison
-        run: python WP-OS-Git-MAX/v6_live_api_e2e_probe.py --output v6-live-api-e2e.json
+        run: python WP-OS-Git-MAX/v6_live_api_e2e_probe.py --output v6-live-api-e2e.json --merged-csv-output v6-live-merged-verified.csv
+      - name: Full V6 OpenFE CUDA-Q exact selection on verified live-merged draws
+        run: |
+          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py --csv v6-live-merged-verified.csv --openfe-three-views --high-fidelity-verify --require-cudaq --output v6-live-full-selection.json
+          python - <<'PY'
+          import csv, hashlib, json
+          from pathlib import Path
+          provenance=json.loads(Path("v6-live-api-e2e.json").read_text())
+          selection=json.loads(Path("v6-live-full-selection.json").read_text())
+          csv_path=Path("v6-live-merged-verified.csv")
+          with csv_path.open(newline="",encoding="utf-8") as f:
+              draws=list(csv.DictReader(f))
+          assert draws and selection["last_draw"] == draws[-1]["draw_id"] == provenance["merged_cutoff"]
+          assert hashlib.sha256(csv_path.read_bytes()).hexdigest() == provenance["verified_merged_sha256"] == selection["sha256"]
+          assert selection["openfe_feature_layer"]["enabled"] is True
+          assert selection["openfe_feature_layer"]["weight"] == 1.0
+          assert selection["cudaq_layer"]["executed"] is True
+          assert selection["cudaq_layer"]["qpu"] is False
+          assert selection["exact_optimization_layer"]["globally_optimal_within_pool"] is True
+          assert selection["first_zone"] == selection["exact_optimization_layer"]["exact_selection"]
+          assert len(selection["first_zone"]) == 6 and 1 <= selection["second_zone"] <= 8
+          print(json.dumps({"verified_cutoff":selection["last_draw"],"first_zone":selection["first_zone"],"second_zone":selection["second_zone"],"live_data_rows":len(draws),"production_deployed":False}))
+          PY
       - name: Assert provenance without making production deployment claims
         run: |
           python - <<'PY'
@@ -122,4 +144,6 @@ jobs:
             v6-readiness.json
             v6-model-qaoa.json
             v6-live-api-e2e.json
+            v6-live-merged-verified.csv
+            v6-live-full-selection.json
           if-no-files-found: error
