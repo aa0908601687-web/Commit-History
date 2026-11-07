@@ -83,7 +83,12 @@ class TorchFusionContracts(unittest.TestCase):
             score([None]*12, hidden=0)
 
     def test_torch_rejects_mismatched_schema_and_nan_features(self):
-        import pandas as pd
+        try:
+            import torch
+            import pandas as pd
+            import numpy
+        except ImportError:
+            self.skipTest("Optional torch/pandas/numpy unavailable in lightweight test job")
         from v6_pytorch_bridge import score_three_history_views_pytorch as score
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/"draws.csv"
@@ -101,7 +106,12 @@ class TorchFusionContracts(unittest.TestCase):
                     score(rows, epochs=1)
 
     def test_torch_rejects_nonfinite_loss_and_bad_output_shape(self):
-        import torch
+        try:
+            import torch
+            import pandas
+            import numpy
+        except ImportError:
+            self.skipTest("Optional torch/pandas/numpy unavailable in lightweight test job")
         from v6_pytorch_bridge import score_three_history_views_pytorch as score
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/"draws.csv"
