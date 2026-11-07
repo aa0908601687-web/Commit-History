@@ -22,7 +22,7 @@ jobs:
       - name: Install LightGBM/OpenFE diagnostic dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install openfe lightgbm
+          python -m pip install openfe lightgbm matplotlib
       - name: Run strictly past-only exploratory scoring report
         run: |
           python WP-OS-Git-MAX/v6_model_audit.py --csv WP-OS-Git-MAX/historical_latest_20.csv --max-steps 3 --skip-sensitivity --output v6-model-audit.json
