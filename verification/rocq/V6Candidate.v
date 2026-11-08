@@ -47,3 +47,16 @@ Qed.
 
 (* Actual QUBO coefficient mapping, float arithmetic, solver bit endianness,
    and exact argmax remain runtime / differential validation obligations. *)
+
+(* Index/bitvector representation invariant used by the Python 8-candidate
+   mapping. This establishes the length of the encoded boolean vector only;
+   it does not prove bit endianness or floating-point QUBO agreement. *)
+Definition candidate_mask (xs : list nat) : list bool :=
+  map (fun i => if in_dec Nat.eq_dec i xs then true else false) (seq 0 8).
+
+Theorem candidate_mask_has_eight_bits :
+  forall xs, length (candidate_mask xs) = 8.
+Proof.
+  intro xs. unfold candidate_mask.
+  rewrite map_length. apply seq_length.
+Qed.
