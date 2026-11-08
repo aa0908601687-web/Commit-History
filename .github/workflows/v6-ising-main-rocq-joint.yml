@@ -1,0 +1,94 @@
+name: V6 integrated Ising QUBO and Rocq joint E2E
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/test_v6_ising_pipeline.py'
+      - 'verification/v6_ising_*.py'
+      - 'verification/rocq/V6Candidate.v'
+      - '.github/workflows/v6-ising-main-rocq-joint.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/test_v6_ising_pipeline.py'
+      - 'verification/v6_ising_*.py'
+      - 'verification/rocq/V6Candidate.v'
+      - '.github/workflows/v6-ising-main-rocq-joint.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integrated-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install real CPU ML and CUDA-Q dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install 'openfe==0.0.12' 'matplotlib>=3.9,<4' cudaq
+      - name: Run integrated Ising and QUBO unit contracts
+        run: |
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_ising_pipeline.py' -v
+          python -m unittest discover -s verification -p 'test_v6_ising_*.py' -v
+      - name: Execute OpenFE PyTorch CUDA-Q Ising QUBO and exact in one call
+        run: |
+          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+            --csv WP-OS-Git-MAX/historical_archive.csv \
+            --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 \
+            --require-cudaq --ising-qubo-check \
+            --output v6-ising-production-e2e.json
+      - name: Assert fused-score pool and optimizer consistency
+        run: |
+          python - <<'PY'
+          import json,math
+          from pathlib import Path
+          d=json.loads(Path('v6-ising-production-e2e.json').read_text())
+          f=d['openfe_feature_layer']
+          i=d['ising_qubo_layer']
+          o=d['exact_optimization_layer']
+          c=d['cudaq_layer']
+          assert f['engine']=='OpenFE+LightGBM+PyTorch'
+          assert f['pytorch_layer']['trained'] is True
+          assert f['fusion_weights']=={'lightgbm':0.5,'pytorch':0.5}
+          scores={int(n):float(v) for n,v in f['fused_scores'].items()}
+          assert set(scores)==set(range(1,39))
+          assert all(math.isfinite(v) and 0<=v<=1 for v in scores.values())
+          assert d['candidate_pool']==sorted(scores,key=lambda n:(-scores[n],n))[:8]
+          assert c['executed'] is True and c['backend']=='qpp-cpu' and c['qpu'] is False
+          assert i['enabled'] and i['executed'] and i['same_optimal_score']
+          assert i['pool']==d['candidate_pool']
+          assert i['combinations_checked']==o['searched_combinations']==28
+          assert i['nvidia_native_solver_executed'] is False
+          assert i['rocq_runtime_proof'] is False
+          assert math.isclose(sum(scores[n] for n in i['reference_selection']),o['exact_score'],abs_tol=1e-8)
+          assert d['first_zone']==o['exact_selection']
+          assert len(set(d['first_zone']))==6
+          assert all(1<=n<=38 for n in d['first_zone'])
+          assert 1<=d['second_zone']<=8
+          print('PASS: trained 38-score fusion -> top8 -> CUDA-Q -> Ising QUBO CPU reference -> exact 28 -> legal 6+1')
+          PY
+      - uses: actions/upload-artifact@v6
+        with:
+          name: v6-ising-main-e2e-${{ github.run_id }}
+          path: v6-ising-production-e2e.json
+          if-no-files-found: error
+          retention-days: 30
+  rocq-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rocq through opam
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y opam build-essential m4 pkg-config libgmp-dev
+          opam init --disable-sandboxing -y --bare
+          opam switch create v6-rocq ocaml-base-compiler.5.2.1 -y
+          opam install --switch=v6-rocq -y rocq-prover rocq-stdlib
+      - name: Compile candidate and cardinality consistency proof
+        run: opam exec --switch=v6-rocq -- rocq compile verification/rocq/V6Candidate.v
