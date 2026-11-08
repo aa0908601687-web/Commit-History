@@ -94,7 +94,7 @@ jobs:
               'source':extracted['source'],
               'nvidia_native_ising_executed':False,
               'rocq_runtime_proof':False}
-          Path('v6-live-vision-integrated-e2e.json').write_text(json.dumps(result,indent=2)+'\\n')
+          Path('v6-live-vision-integrated-e2e.json').write_text(json.dumps(result,indent=2)+'\n')
           print('PASS: true NVIDIA API vision -> trusted CSV -> CPU AI + CUDA-Q/QUBO/exact 6+1')
           PY
       - name: Upload redacted live integration evidence
