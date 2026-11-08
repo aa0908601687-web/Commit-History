@@ -42,6 +42,8 @@ def exact_six(scores, pair_scores=None):
 
 def check_solver_output(bits, scores, pair_scores=None, atol=1e-8):
     Q, offset = build_qubo(scores, pair_scores)
+    if len(bits) != 8 or any(type(bit) is not int or bit not in (0, 1) for bit in bits):
+        return {"valid": False, "optimal": False}
     if sum(bits) != 6:
         return {"valid": False, "optimal": False}
     exact = exact_six(scores, pair_scores)
