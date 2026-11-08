@@ -52,6 +52,59 @@ jobs:
           a=audit_extraction('WP-OS-Git-MAX/historical_archive.csv','nemotron-extracted.json')
           print('NVIDIA model API returned structured data; canonical audit:',a['status'],a['checked_draws'])
           PY
+      - name: Install production CPU AI and CUDA-Q dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install --disable-pip-version-check 'openfe==0.0.12' 'matplotlib>=3.9,<4' 'cudaq==0.16.0'
+      - name: Run full V6 scoring and optimization after authenticated vision audit
+        run: |
+          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+            --csv WP-OS-Git-MAX/historical_archive.csv \
+            --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 \
+            --require-cudaq --ising-qubo-check \
+            --output v6-live-vision-integrated-e2e.json
+      - name: Validate end-to-end output and record true live invocation
+        run: |
+          python - <<'PY'
+          import json,math
+          from pathlib import Path
+          extracted=json.loads(Path('nemotron-extracted.json').read_text())
+          assert extracted['source'].startswith('nvidia-nemotron-vision:')
+          assert len(extracted['draws'])>0
+          result=json.loads(Path('v6-live-vision-integrated-e2e.json').read_text())
+          assert result['openfe_feature_layer']['engine']=='OpenFE+LightGBM+PyTorch'
+          assert result['openfe_feature_layer']['pytorch_layer']['trained'] is True
+          assert result['openfe_feature_layer']['fusion_weights']=={'lightgbm':0.5,'pytorch':0.5}
+          cuda=result['cudaq_layer']
+          assert cuda['executed'] and cuda['backend']=='qpp-cpu' and not cuda['qpu']
+          qubo=result['ising_qubo_layer']
+          exact=result['exact_optimization_layer']
+          assert qubo['executed'] and qubo['same_optimal_score']
+          assert qubo['combinations_checked']==exact['searched_combinations']==28
+          assert not qubo['nvidia_native_solver_executed']
+          assert result['first_zone']==exact['exact_selection']
+          assert len(result['candidate_pool'])==len(set(result['candidate_pool']))==8
+          assert len(result['first_zone'])==len(set(result['first_zone']))==6
+          assert all(1<=n<=38 for n in result['first_zone'])
+          assert 1<=result['second_zone']<=8
+          result['live_vision_audit']={
+              'nvidia_api_executed':True,
+              'canonical_match':True,
+              'checked_draws':len(extracted['draws']),
+              'source':extracted['source'],
+              'nvidia_native_ising_executed':False,
+              'rocq_runtime_proof':False}
+          Path('v6-live-vision-integrated-e2e.json').write_text(json.dumps(result,indent=2)+'\\n')
+          print('PASS: true NVIDIA API vision -> trusted CSV -> CPU AI + CUDA-Q/QUBO/exact 6+1')
+          PY
+      - name: Upload redacted live integration evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-nemotron-live-integrated-${{ github.run_id }}
+          path: v6-live-vision-integrated-e2e.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Evidence limitations
         run: |
-          echo 'Live vision extraction + canonical CSV audit succeeded. This job does not run OpenFE/PyTorch/CUDA-Q or Rocq.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Successful live API extraction -> verified canonical CSV -> CPU OpenFE/PyTorch/CUDA-Q/QUBO/exact E2E. NVIDIA native Ising, real QPU and Rocq runtime numerical proof are NOT executed.' >> "$GITHUB_STEP_SUMMARY"
