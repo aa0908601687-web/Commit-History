@@ -23,7 +23,7 @@ jobs:
       - name: Compile and mock-test NVIDIA Nemotron vision API client
         run: |
           python -m py_compile .github/scripts/v6_nemotron_vision_client.py
-          python -m unittest -v .github/scripts/test_v6_nemotron_vision_client.py
+          python -m unittest discover -v -s .github/scripts -p 'test_v6_nemotron_vision_client.py'
       - name: Describe assurance boundary
         run: |
           echo '## Nemotron structured-extraction audit' >> "$GITHUB_STEP_SUMMARY"
