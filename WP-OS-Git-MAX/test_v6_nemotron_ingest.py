@@ -111,5 +111,24 @@ class NemotronIngestTests(unittest.TestCase):
         self.assertTrue(mocked.call_args.kwargs["use_cudaq"])
 
 
+    def test_script_entry_point_runs_only_after_audit(self):
+        import io
+        import runpy
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+        import v6_ai_qaoa_e2e
+        self.save({"source": "fixture", "draws": self.draws})
+        args = ["v6_nemotron_ingest.py", "--csv", str(self.csv_path),
+                "--nemotron-extraction", str(self.json_path)]
+        stdout = io.StringIO()
+        script = str(Path(__file__).resolve().parent / "v6_nemotron_ingest.py")
+        with patch.object(sys, "argv", args), patch.object(
+             v6_ai_qaoa_e2e, "run", return_value={"first_zone": [1,2,3,4,5,6]}
+        ), redirect_stdout(stdout):
+            runpy.run_path(script, run_name="__main__")
+        result = json.loads(stdout.getvalue())
+        self.assertEqual(result["nemotron_audit"]["checked_draws"], 10)
+
+
 if __name__ == "__main__":
     unittest.main()
