@@ -1,0 +1,57 @@
+name: V6 NVIDIA Nemotron live vision (manual, secret-gated)
+on:
+  workflow_dispatch:
+    inputs:
+      image_path:
+        description: 'Repository-relative JPG/PNG/WEBP image path; must be a reviewed non-secret file'
+        required: true
+        type: string
+      model:
+        description: 'NVIDIA API vision-capable Nemotron model ID'
+        required: true
+        default: nvidia/nemotron-nano-12b-v2-vl
+        type: string
+permissions:
+  contents: read
+jobs:
+  nvidia-vision-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate input and secret
+        env:
+          IMAGE_PATH: ${{ inputs.image_path }}
+        run: |
+          test -n "$NVIDIA_API_KEY" || { echo 'Missing NVIDIA_API_KEY secret'; exit 1; }
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          path=Path(os.environ['IMAGE_PATH'])
+          assert not path.is_absolute() and '..' not in path.parts
+          assert path.suffix.lower() in ('.png','.jpg','.jpeg','.webp')
+          assert path.is_file()
+          PY
+      - name: Call real NVIDIA Nemotron vision model
+        env:
+          IMAGE_PATH: ${{ inputs.image_path }}
+          MODEL_ID: ${{ inputs.model }}
+        run: |
+          python .github/scripts/v6_nemotron_vision_client.py --image "$IMAGE_PATH" --model "$MODEL_ID" --output nemotron-extracted.json
+      - name: Fail-closed cross-check against repository canonical draw CSV
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'WP-OS-Git-MAX')
+          from v6_nemotron_ingest import audit_extraction
+          a=audit_extraction('WP-OS-Git-MAX/historical_archive.csv','nemotron-extracted.json')
+          print('NVIDIA model API returned structured data; canonical audit:',a['status'],a['checked_draws'])
+          PY
+      - name: Evidence limitations
+        run: |
+          echo 'Live vision extraction + canonical CSV audit succeeded. This job does not run OpenFE/PyTorch/CUDA-Q or Rocq.' >> "$GITHUB_STEP_SUMMARY"
