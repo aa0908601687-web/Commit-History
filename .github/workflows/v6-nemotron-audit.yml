@@ -1,9 +1,20 @@
 name: V6 Nemotron extraction audit (offline)
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'WP-OS-Git-MAX/v6_nemotron_ingest.py'
+      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/test_v6_nemotron_ingest.py'
+      - '.github/scripts/v6_nemotron_vision_client.py'
+      - '.github/scripts/test_v6_nemotron_vision_client.py'
+      - '.github/workflows/v6-nemotron-audit.yml'
   pull_request:
     paths:
       - 'WP-OS-Git-MAX/v6_nemotron_ingest.py'
       - 'WP-OS-Git-MAX/test_v6_nemotron_ingest.py'
+      - '.github/scripts/v6_nemotron_vision_client.py'
+      - '.github/scripts/test_v6_nemotron_vision_client.py'
       - '.github/workflows/v6-nemotron-audit.yml'
   workflow_dispatch:
 permissions:
