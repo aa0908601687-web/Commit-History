@@ -1,0 +1,26 @@
+name: V6 Nemotron extraction audit (offline)
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_nemotron_ingest.py'
+      - 'WP-OS-Git-MAX/test_v6_nemotron_ingest.py'
+      - '.github/workflows/v6-nemotron-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  nemotron-audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check adapter syntax
+        run: python -m py_compile WP-OS-Git-MAX/v6_nemotron_ingest.py
+      - name: Run extraction verification tests
+        run: python -m unittest discover -v -s WP-OS-Git-MAX -p 'test_v6_nemotron_ingest.py'
+      - name: Describe assurance boundary
+        run: |
+          echo '## Nemotron structured-extraction audit' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Offline parser/CSV-match tests only. No NVIDIA model was loaded or called; no live visual inference or full V6 E2E is certified.' >> "$GITHUB_STEP_SUMMARY"
