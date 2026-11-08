@@ -88,7 +88,11 @@ jobs:
       - name: Verify Rocq and compile actual candidate proof
         run: |
           set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v6-rocq-writable"
+          cp verification/rocq/V6Candidate.v "$RUNNER_TEMP/v6-rocq-writable/V6Candidate.v"
+          chmod 0777 "$RUNNER_TEMP/v6-rocq-writable"
           docker run --rm --entrypoint /bin/sh \
-            -v "$PWD:/workspace" -w /workspace \
+            -v "$RUNNER_TEMP/v6-rocq-writable:/proof" -w /proof \
             rocq/rocq-prover:9.2 -c \
-            'opam exec -- rocq --version && opam exec -- rocq compile verification/rocq/V6Candidate.v'
+            'opam exec -- rocq --version && opam exec -- rocq compile V6Candidate.v'
+          test -s "$RUNNER_TEMP/v6-rocq-writable/V6Candidate.vo"
