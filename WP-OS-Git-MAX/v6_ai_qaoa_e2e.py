@@ -28,7 +28,7 @@ def validate(path):
         if int(rows[i][0])>=int(rows[i+1][0]):raise ValueError("draw order")
     return rows
 
-def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False):
+def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,ising_qubo_check=False):
     """Finish deterministic QAOA-inspired selection from supplied scores."""
     five=rows[-5:];ten=rows[-10:]
     if set(scores) != set(range(1, 39)) or any(not math.isfinite(scores[n]) for n in scores):
@@ -66,6 +66,30 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,us
     from v6_exact_search import compare_selection
     optimization_layer=compare_selection(pool,scores,best[1])
     best=(optimization_layer["exact_score"],tuple(optimization_layer["exact_selection"]))
+    ising_layer={"enabled":False,"executed":False,"nvidia_native_solver_executed":False}
+    if ising_qubo_check:
+        # Independent CPU QUBO reference: fail closed on any objective/pool mismatch.
+        root=Path(__file__).resolve().parents[1]
+        verification_dir=str(root / "verification")
+        if verification_dir not in sys.path:sys.path.insert(0, verification_dir)
+        from v6_ising_qubo_reference import exact_six, check_solver_output
+        ordered_scores=[float(scores[n]) for n in pool]
+        qresult=exact_six(ordered_scores)
+        chosen=[pool[i] for i in qresult["indices"]]
+        bits=[int(i in qresult["indices"]) for i in range(8)]
+        check=check_solver_output(bits,ordered_scores)
+        if (qresult["combinations_checked"]!=28 or not check["optimal"]
+                or not math.isclose(sum(scores[n] for n in chosen),
+                                    optimization_layer["exact_score"],rel_tol=1e-10,abs_tol=1e-8)):
+            raise RuntimeError("Ising/QUBO CPU reference disagrees with exact-search objective")
+        ising_layer={"enabled":True,"executed":True,"backend":"python-cpu-qubo-reference",
+                     "combinations_checked":28,"pool":list(pool),"reference_selection":chosen,
+                     "reference_energy":qresult["energy"],
+                     "same_optimal_score":True,
+                     "same_selection":sorted(chosen)==sorted(optimization_layer["exact_selection"]),
+                     "nvidia_native_solver_executed":False,
+                     "rocq_runtime_proof":False,
+                     "predictive_advantage_verified":False}
     second=max(range(1,9),key=lambda n:(.6*sum(x[2]==n for x in five)+.4*sum(x[2]==n for x in ten),-n))
     fidelity_layer={"enabled":False,"scope":"not requested"}
     if high_fidelity_verify:
@@ -84,10 +108,11 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,us
       "openfe_feature_layer":feature_layer,
       "high_fidelity_layer":fidelity_layer,
       "cudaq_layer":cudaq_layer,
+      "ising_qubo_layer":ising_layer,
       "exact_optimization_layer":optimization_layer,
       "status":"Research simulation; no evidence of predictive advantage"}
 
-def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,pytorch_three_views=False,pytorch_weight=0.5):
+def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,pytorch_three_views=False,pytorch_weight=0.5,ising_qubo_check=False):
     if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
     if not 0<=pytorch_weight<=1:raise ValueError("pytorch_weight must be between 0 and 1")
     if pytorch_three_views and not openfe_three_views:
@@ -126,7 +151,7 @@ def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fi
         base={n:(scores[n]-base_low)/base_span for n in scores}
         scores={n:(1-openfe_weight)*base[n]+openfe_weight*learned[n] for n in scores}
         feature_layer={"enabled":True,"weight":openfe_weight,**metadata}
-    return complete_result(path,rows,scores,feature_layer,high_fidelity_verify,use_cudaq,require_cudaq)
+    return complete_result(path,rows,scores,feature_layer,high_fidelity_verify,use_cudaq,require_cudaq,ising_qubo_check)
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--csv",required=True);p.add_argument("--output")
@@ -140,8 +165,9 @@ def main():
                    help="use optional NVIDIA CUDA-Q qpp-cpu local simulator; never a real QPU")
     p.add_argument("--require-cudaq",action="store_true",
                    help="fail instead of falling back when CUDA-Q is unavailable")
+    p.add_argument("--ising-qubo-check",action="store_true",help="run fail-closed CPU QUBO reference against production exact-search score; not NVIDIA native solver")
     a=p.parse_args()
-    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify,a.cudaq or a.require_cudaq,a.require_cudaq,a.pytorch_three_views,a.pytorch_weight)
+    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify,a.cudaq or a.require_cudaq,a.require_cudaq,a.pytorch_three_views,a.pytorch_weight,a.ising_qubo_check)
     out=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
     if a.output:Path(a.output).write_text(out,encoding="utf-8")
     print(out)

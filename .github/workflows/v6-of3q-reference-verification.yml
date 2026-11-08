@@ -57,28 +57,16 @@ jobs:
     timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
-      - name: Install opam prerequisites
-        run: sudo apt-get update && sudo apt-get install -y opam build-essential m4 pkg-config libgmp-dev
-      - name: Initialize opam and OCaml switch
-        timeout-minutes: 25
+      - name: Pull prebuilt Rocq 9.2 toolchain
+        run: docker pull rocq/rocq-prover:9.2
+      - name: Verify Rocq and compile actual candidate proof
         run: |
-          set -euxo pipefail
-          opam init --disable-sandboxing -y --bare
-          opam switch create v6-rocq ocaml-base-compiler.5.2.1 -y
-          opam exec --switch=v6-rocq -- ocamlc -version
-      - name: Install Rocq prover
-        timeout-minutes: 30
-        run: |
-          set -euxo pipefail
-          opam install --switch=v6-rocq -y rocq-prover rocq-stdlib
-      - name: Verify Rocq installation
-        timeout-minutes: 3
-        run: |
-          set -euxo pipefail
-          opam exec --switch=v6-rocq -- rocq --version
-          opam exec --switch=v6-rocq -- rocq compile -help
-      - name: Compile Rocq candidate proof
-        timeout-minutes: 5
-        run: |
-          set -euxo pipefail
-          opam exec --switch=v6-rocq -- rocq compile verification/rocq/V6Candidate.v
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v6-rocq-writable"
+          cp verification/rocq/V6Candidate.v "$RUNNER_TEMP/v6-rocq-writable/V6Candidate.v"
+          chmod 0777 "$RUNNER_TEMP/v6-rocq-writable"
+          docker run --rm --entrypoint /bin/sh \
+            -v "$RUNNER_TEMP/v6-rocq-writable:/proof" -w /proof \
+            rocq/rocq-prover:9.2 -c \
+            'opam exec -- rocq --version && opam exec -- rocq compile V6Candidate.v'
+          test -s "$RUNNER_TEMP/v6-rocq-writable/V6Candidate.vo"
