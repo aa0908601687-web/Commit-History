@@ -61,7 +61,22 @@ jobs:
         run: |
           python - <<'PY'
           import json, math
-          p=json.load(open('nemotron-integrated-e2e.json'))
+          # CUDA-Q / OpenFE may print progress before the final JSON object.
+          # Decode the last complete JSON payload rather than assuming stdout starts with '{'.
+          text=open('nemotron-integrated-e2e.json', encoding='utf-8').read()
+          decoder=json.JSONDecoder()
+          found=[]
+          for i, char in enumerate(text):
+              if char!='{':
+                  continue
+              try:
+                  obj, consumed=decoder.raw_decode(text, i)
+              except json.JSONDecodeError:
+                  continue
+              if isinstance(obj, dict) and 'nemotron_audit' in obj:
+                  found.append(obj)
+          assert len(found)==1, f"Expected one final V6 result JSON object, found {len(found)}"
+          p=found[0]
           audit=p['nemotron_audit']
           assert audit['status']=='matched_canonical_csv' and audit['checked_draws']==10
           assert audit['nemotron_model_executed'] is False
