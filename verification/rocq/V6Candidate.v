@@ -30,8 +30,9 @@ Theorem cardinality_penalty_zero_iff_six :
   forall k, six_cardinality_penalty k = 0 <-> k = 6.
 Proof.
   intro k. unfold six_cardinality_penalty. split.
-  - destruct (Nat.eqb k 6) eqn:H; simpl; try discriminate.
-    apply Nat.eqb_eq. exact H.
+  - destruct (Nat.eqb k 6) eqn:Heq.
+    + intro _. apply Nat.eqb_eq in Heq. exact Heq.
+    + intro Hfalse. discriminate Hfalse.
   - intro H. subst k. reflexivity.
 Qed.
 
@@ -39,8 +40,9 @@ Theorem valid_selection_zero_penalty :
   forall xs, valid_selection xs ->
   six_cardinality_penalty (length xs) = 0.
 Proof.
-  intros xs H. apply cardinality_penalty_zero_iff_six.
-  apply valid_selection_has_six. exact H.
+  intros xs H. unfold six_cardinality_penalty.
+  rewrite (valid_selection_has_six xs H).
+  reflexivity.
 Qed.
 
 (* Actual QUBO coefficient mapping, float arithmetic, solver bit endianness,
