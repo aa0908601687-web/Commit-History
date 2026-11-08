@@ -83,12 +83,12 @@ jobs:
     timeout-minutes: 70
     steps:
       - uses: actions/checkout@v5
-      - name: Install Rocq through opam
+      - name: Pull prebuilt Rocq 9.2 toolchain
+        run: docker pull rocq/rocq-prover:9.2
+      - name: Verify Rocq and compile actual candidate proof
         run: |
-          sudo apt-get update
-          sudo apt-get install -y opam build-essential m4 pkg-config libgmp-dev
-          opam init --disable-sandboxing -y --bare
-          opam switch create v6-rocq ocaml-base-compiler.5.2.1 -y
-          opam install --switch=v6-rocq -y rocq-prover rocq-stdlib
-      - name: Compile candidate and cardinality consistency proof
-        run: opam exec --switch=v6-rocq -- rocq compile verification/rocq/V6Candidate.v
+          set -euo pipefail
+          docker run --rm --entrypoint /bin/sh \
+            -v "$PWD:/workspace" -w /workspace \
+            rocq/rocq-prover:9.2 -c \
+            'rocq --version && rocq compile verification/rocq/V6Candidate.v'
