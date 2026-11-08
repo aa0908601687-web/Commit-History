@@ -1,0 +1,39 @@
+name: V6 semantic release after E2E
+on:
+  workflow_run:
+    workflows:
+      - V6 no-cache OpenFE CUDA-Q end-to-end verification
+    types: [completed]
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+concurrency:
+  group: v6-semantic-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Ensure verified commit is still main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          MAIN_SHA="$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')"
+          test "$MAIN_SHA" = "$VERIFIED_SHA" || { echo "main moved since E2E; skip release"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned release toolchain
+        run: npm install --no-save --package-lock=false semantic-release@24 @semantic-release/commit-analyzer@13 @semantic-release/release-notes-generator@14 @semantic-release/github@11
+      - name: Publish GitHub release only
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
