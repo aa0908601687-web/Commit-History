@@ -1,0 +1,111 @@
+name: V6 Nemotron extraction audit (offline)
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_nemotron_ingest.py'
+      - 'WP-OS-Git-MAX/test_v6_nemotron_ingest.py'
+      - '.github/workflows/v6-nemotron-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  nemotron-audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check adapter syntax
+        run: python -m py_compile WP-OS-Git-MAX/v6_nemotron_ingest.py
+      - name: Run extraction verification tests
+        run: python -m unittest discover -v -s WP-OS-Git-MAX -p 'test_v6_nemotron_ingest.py'
+      - name: Compile and mock-test NVIDIA Nemotron vision API client
+        run: |
+          python -m py_compile .github/scripts/v6_nemotron_vision_client.py
+          python -m unittest discover -v -s .github/scripts -p 'test_v6_nemotron_vision_client.py'
+      - name: Describe assurance boundary
+        run: |
+          echo '## Nemotron structured-extraction audit' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Offline parser/CSV-match tests only. No NVIDIA model was loaded or called; no live visual inference or full V6 E2E is certified.' >> "$GITHUB_STEP_SUMMARY"
+
+  integrated-v6-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install actual CPU scoring and optimization dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install --disable-pip-version-check 'openfe==0.0.12' 'matplotlib>=3.9,<4' 'cudaq==0.16.0'
+      - name: Build deterministic structured-extraction fixture from repository CSV
+        run: |
+          python - <<'PY'
+          import csv, json
+          path='WP-OS-Git-MAX/historical_archive.csv'
+          with open(path, encoding='utf-8-sig', newline='') as f:
+              rows=list(csv.DictReader(f))
+          selected=rows[-10:]
+          assert len(selected)==10
+          draws=[{'draw_id':r['draw_id'], 'first':[int(x) for x in r['first'].split()], 'second':int(r['second'])} for r in selected]
+          with open('nemotron-extraction-fixture.json','w') as f:
+              json.dump({'source':'fixture:repository-csv-not-real-vision-model','draws':draws},f)
+          PY
+      - name: Run actual OpenFE LightGBM PyTorch CUDA-Q and QUBO adapter path
+        run: |
+          python WP-OS-Git-MAX/v6_nemotron_ingest.py \
+            --csv WP-OS-Git-MAX/historical_archive.csv \
+            --nemotron-extraction nemotron-extraction-fixture.json \
+            --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 \
+            --require-cudaq --ising-qubo-check > nemotron-integrated-e2e.json
+      - name: Verify audit, actual backend, optimization and legal final ticket
+        run: |
+          python - <<'PY'
+          import json, math
+          # CUDA-Q / OpenFE may print progress before the final JSON object.
+          # Decode the last complete JSON payload rather than assuming stdout starts with '{'.
+          text=open('nemotron-integrated-e2e.json', encoding='utf-8').read()
+          decoder=json.JSONDecoder()
+          found=[]
+          for i, char in enumerate(text):
+              if char!='{':
+                  continue
+              try:
+                  obj, consumed=decoder.raw_decode(text, i)
+              except json.JSONDecodeError:
+                  continue
+              if isinstance(obj, dict) and 'nemotron_audit' in obj:
+                  found.append(obj)
+          assert len(found)==1, f"Expected one final V6 result JSON object, found {len(found)}"
+          p=found[0]
+          audit=p['nemotron_audit']
+          assert audit['status']=='matched_canonical_csv' and audit['checked_draws']==10
+          assert audit['nemotron_model_executed'] is False
+          feature=p['openfe_feature_layer']
+          assert feature['enabled'] and 'PyTorch' in feature.get('engine','')
+          assert feature['fusion_weights']=={'lightgbm':0.5,'pytorch':0.5}
+          cudaq=p['cudaq_layer']
+          assert cudaq['executed'] is True and cudaq['qpu'] is False
+          assert p['ising_qubo_layer']['executed'] is True
+          assert p['ising_qubo_layer']['combinations_checked']==28
+          assert p['ising_qubo_layer']['same_optimal_score'] is True
+          assert len(p['candidate_pool'])==8 and len(set(p['candidate_pool']))==8
+          first=p['first_zone']
+          assert len(first)==6 and len(set(first))==6 and all(1<=x<=38 for x in first)
+          assert 1<=p['second_zone']<=8
+          assert p['exact_optimization_layer']
+          print('Structured extraction -> V6 real scoring -> CPU CUDA-Q -> QUBO/exact: PASS')
+          print('No NVIDIA Nemotron visual model or real QPU invoked')
+          PY
+      - name: Upload integrated V6 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-nemotron-adapter-integrated-e2e
+          path: |
+            nemotron-integrated-e2e.json
+            nemotron-extraction-fixture.json
+          if-no-files-found: warn
