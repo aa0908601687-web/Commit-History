@@ -31,7 +31,7 @@ Theorem cardinality_penalty_zero_iff_six :
 Proof.
   intro k. unfold six_cardinality_penalty. split.
   - destruct (Nat.eqb k 6) eqn:Heq.
-    + intro _. apply Nat.eqb_eq in Heq. exact Heq.
+    + intro Hzero. apply Nat.eqb_eq in Heq. exact Heq.
     + intro Hfalse. discriminate Hfalse.
   - intro H. subst k. reflexivity.
 Qed.
