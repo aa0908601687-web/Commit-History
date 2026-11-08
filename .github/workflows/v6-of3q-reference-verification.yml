@@ -65,4 +65,4 @@ jobs:
           docker run --rm --entrypoint /bin/sh \
             -v "$PWD:/workspace" -w /workspace \
             rocq/rocq-prover:9.2 -c \
-            'rocq --version && rocq compile verification/rocq/V6Candidate.v'
+            'opam exec -- rocq --version && opam exec -- rocq compile verification/rocq/V6Candidate.v'
