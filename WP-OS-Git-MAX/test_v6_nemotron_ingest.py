@@ -52,5 +52,64 @@ class NemotronIngestTests(unittest.TestCase):
             audit_extraction(self.csv_path, self.json_path)
 
 
+    def test_malformed_payloads_fail_closed(self):
+        valid = self.draws[0]
+        cases = [
+            ([], "nonempty"), ({}, "nonempty"),
+            ({"draws": []}, "nonempty"),
+            ({"source": "s", "draws": "not-list"}, "nonempty"),
+            ({"source": "", "draws": [valid]}, "source"),
+            ({"source": 7, "draws": [valid]}, "source"),
+            ({"source": "s", "draws": [None]}, "exactly"),
+            ({"source": "s", "draws": [dict(valid, extra=1)]}, "exactly"),
+            ({"source": "s", "draws": [dict(valid, draw_id=5)]}, "draw_id"),
+            ({"source": "s", "draws": [dict(valid, draw_id="1")]}, "draw_id"),
+            ({"source": "s", "draws": [dict(valid, draw_id="abcdefghi")]}, "draw_id"),
+            ({"source": "s", "draws": [dict(valid, first="1 2 3 4 5 6")]}, "lottery"),
+            ({"source": "s", "draws": [dict(valid, first=[1,2])]}, "lottery"),
+            ({"source": "s", "draws": [dict(valid, first=[1,1,2,3,4,5])]}, "lottery"),
+            ({"source": "s", "draws": [dict(valid, first=[0,2,3,4,5,6])]}, "lottery"),
+            ({"source": "s", "draws": [dict(valid, first=[True,2,3,4,5,6])]}, "lottery"),
+            ({"source": "s", "draws": [dict(valid, second=True)]}, "lottery"),
+            ({"source": "s", "draws": [dict(valid, second=9)]}, "lottery"),
+            ({"source": "s", "draws": [dict(valid, second=0)]}, "lottery"),
+        ]
+        for payload, msg in cases:
+            with self.subTest(payload=payload):
+                self.save(payload)
+                with self.assertRaisesRegex(ValueError, msg):
+                    audit_extraction(self.csv_path, self.json_path)
+
+    def test_main_passes_verified_audit_to_v6_without_changing_scores(self):
+        from unittest.mock import patch
+        from contextlib import redirect_stdout
+        import io
+        import v6_nemotron_ingest
+        self.save({"source": "fixture", "draws": self.draws})
+        args = ["prog", "--csv", str(self.csv_path),
+                "--nemotron-extraction", str(self.json_path),
+                "--openfe-three-views", "--pytorch-three-views",
+                "--pytorch-weight", "0.3", "--require-cudaq",
+                "--ising-qubo-check"]
+        output = io.StringIO()
+        with patch.object(sys, "argv", args), patch.object(
+            v6_nemotron_ingest, "run", return_value={"candidate_pool": list(range(1,9))}
+        ) as mocked, redirect_stdout(output):
+            v6_nemotron_ingest.main()
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["nemotron_audit"]["status"], "matched_canonical_csv")
+        mocked.assert_called_once_with(
+            str(self.csv_path), openfe_three_views=True,
+            pytorch_three_views=True, pytorch_weight=0.3,
+            use_cudaq=True, require_cudaq=True, ising_qubo_check=True)
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["prog", "--csv", str(self.csv_path),
+             "--nemotron-extraction", str(self.json_path), "--cudaq"]), patch.object(
+             v6_nemotron_ingest, "run", return_value={}
+        ) as mocked, redirect_stdout(output):
+            v6_nemotron_ingest.main()
+        self.assertTrue(mocked.call_args.kwargs["use_cudaq"])
+
+
 if __name__ == "__main__":
     unittest.main()
