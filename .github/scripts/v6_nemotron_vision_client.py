@@ -29,7 +29,7 @@ def parse_completion(message):
     if not isinstance(message, str):
         raise ValueError("non-text VLM completion")
     cleaned = message.strip()
-    cleaned = re.sub(r"^\\s*```(?:json)?\\s*|\\s*```\\s*$", "", cleaned)
+    cleaned = re.sub(r"^\s*```(?:json)?\s*|\s*```\s*$", "", cleaned)
     data = json.loads(cleaned)
     if not isinstance(data, dict) or not isinstance(data.get("draws"), list):
         raise ValueError("Nemotron response must contain draws array")
@@ -77,7 +77,7 @@ def main():
     parser.add_argument("--model", default=MODEL)
     args = parser.parse_args()
     result = extract(args.image, os.environ.get("NVIDIA_API_KEY", ""), args.model)
-    Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("Wrote extracted JSON; cross-check against trusted CSV before running V6.")
 
 
