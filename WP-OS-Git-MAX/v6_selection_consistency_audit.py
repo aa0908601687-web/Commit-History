@@ -43,12 +43,12 @@ def audit(result):
         raise ValueError("exact-search score inconsistent")
     approx = opt["approximate_selection"]
     if len(approx) != 6 or len(set(approx)) != 6 or not set(approx).issubset(pool):
-        raise ValueError("invalid QAOA/CUDA-Q approximate selection")
+        raise ValueError("invalid CUDA-Q diagnostic selection")
     approx_score = sum(scores[n] for n in approx)
     if not math.isclose(opt["approximate_score"], approx_score, rel_tol=1e-10, abs_tol=1e-10):
         raise ValueError("approximate score inconsistent")
     if not math.isclose(opt["score_gap"], max(0, expected_score-approx_score), rel_tol=1e-10, abs_tol=1e-10):
-        raise ValueError("QAOA/exact score gap inconsistent")
+        raise ValueError("diagnostic/exact score gap inconsistent")
     if not isinstance(result["second_zone"], int) or not 1 <= result["second_zone"] <= 8:
         raise ValueError("invalid second-zone selection")
     if result["views"]["full_archive"]["rows"] < 12:
