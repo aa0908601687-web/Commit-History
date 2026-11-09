@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import v6_ai_qaoa_e2e as v6
+import v6_ai_exact_e2e as v6
 
 def synthetic_csv(path, count=14):
     with path.open("w", newline="", encoding="utf-8") as f:

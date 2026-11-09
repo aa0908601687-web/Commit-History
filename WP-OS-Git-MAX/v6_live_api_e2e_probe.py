@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only official-API -> three-model -> local QAOA integration probe.
+"""Read-only official-API -> three-model -> local EXACT integration probe.
 
 It never changes repository CSV, model weights or production predictions.
 Live API success is reported only after a verified HTTP response and full bridge run.
@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 
 import update_official_data as official
-from v6_three_model_qaoa_bridge import run as bridge_run
+from v6_three_model_exact_bridge import run as bridge_run
 
 
 def previous_month(month):
@@ -97,7 +97,7 @@ def probe(month=None, archive_path=None, fetcher=None, bridge=None, merged_outpu
         "merged_cutoff": merged[-1][0],
         "merged_rows": len(merged),
         "verified_merged_sha256": digest,
-        "three_model_qaoa_comparison": result,
+        "three_model_exact_comparison": result,
         "repository_archive_modified": False,
         "trained_ai_verified": False,
         "predictive_advantage_verified": False,
