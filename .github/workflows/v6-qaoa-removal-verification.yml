@@ -1,0 +1,58 @@
+name: V6 QAOA removal and exact search verification
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_*.py'
+      - 'WP-OS-Git-MAX/test_v6_*.py'
+      - '.github/workflows/v6-qaoa-removal-verification.yml'
+  push:
+    branches:
+      - remove/v6-of3q-qaoa-20261109
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qaoa-removal-and-exact-search:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Ensure no QAOA-named paths or active implementations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          files = list(Path('WP-OS-Git-MAX').glob('v6_*.py'))
+          files += list(Path('WP-OS-Git-MAX').glob('test_v6_*.py'))
+          files += list(Path('.github/workflows').glob('v6-*.yml'))
+          # This guard explicitly allows its own filename and non-executable statements.
+          found = [str(p) for p in files if 'qaoa' in p.name.lower()
+                   and p.name != 'v6-qaoa-removal-verification.yml']
+          assert not found, f"QAOA paths remain: {found}"
+          core = Path('WP-OS-Git-MAX/v6_ai_exact_e2e.py').read_text()
+          assert 'QAOA' not in core.upper()
+          assert 'v6_exact_search' in core
+          assert 'combinations_checked' in core
+          print('PASS: no QAOA implementation paths; exact optimizer wired')
+          PY
+      - name: Run dependency-free exact-search and core contract tests
+        run: |
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_exact_search.py' -v
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_ai_exact_e2e.py' -v
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_cudaq_backend.py' -v
+      - name: Verify 28 combinations and deterministic selection
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, 'WP-OS-Git-MAX')
+          from v6_exact_search import exact_select
+          p=list(range(1,9))
+          scores={n:float(n) for n in p}
+          selected, score, count=exact_select(p,scores)
+          assert count == 28
+          assert selected == [3,4,5,6,7,8]
+          assert score == sum(selected)
+          print('SUCCESS: 28 exact choices, unique highest-scoring six')
+          PY
