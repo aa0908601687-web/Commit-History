@@ -15,12 +15,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Audit bundled 20-row fixture (NOT full history)
+      - name: Audit current bundled 20-row fixture boundaries (NOT official full-history verification)
         run: |
-          python WP-OS-Git-MAX/v6_three_view_archive_audit.py --csv WP-OS-Git-MAX/historical_latest_20.csv --expected-first-draw 115000070 --expected-last-draw 115000089 --expected-count 20 --output v6-three-view-audit.json
+          python WP-OS-Git-MAX/v6_three_view_archive_audit.py --csv WP-OS-Git-MAX/historical_latest_20.csv --expected-first-draw 115000071 --expected-last-draw 115000090 --expected-count 20 --output v6-three-view-audit.json
       - name: Reject false full-history assertion
         run: |
-          if python WP-OS-Git-MAX/v6_three_view_archive_audit.py --csv WP-OS-Git-MAX/historical_latest_20.csv --expected-first-draw 115000001 --expected-last-draw 115000089 --expected-count 89; then
+          if python WP-OS-Git-MAX/v6_three_view_archive_audit.py --csv WP-OS-Git-MAX/historical_latest_20.csv --expected-first-draw 115000001 --expected-last-draw 115000090 --expected-count 90; then
             echo 'ERROR: incomplete archive incorrectly passed'; exit 1
           fi
       - uses: actions/upload-artifact@v4
