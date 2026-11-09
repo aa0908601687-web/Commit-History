@@ -1,4 +1,4 @@
-name: V6 AI QAOA local simulation verification
+name: V6 AI exact-selection local simulation verification
 on:
   workflow_dispatch:
   pull_request:
@@ -44,7 +44,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v6-ai-qaoa-validation
+          name: v6-ai-exact-selection-validation
           path: |
             v6-e2e-result.json
             v6-coverage.json
