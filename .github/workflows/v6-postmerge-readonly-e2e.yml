@@ -28,7 +28,7 @@ jobs:
           import importlib.util
           import inspect
           from pathlib import Path
-          path = Path("WP-OS-Git-MAX/v6_ai_qaoa_e2e.py")
+          path = Path("WP-OS-Git-MAX/v6_ai_exact_e2e.py")
           spec = importlib.util.spec_from_file_location("v6_no_cache", path)
           module = importlib.util.module_from_spec(spec)
           spec.loader.exec_module(module)
@@ -70,7 +70,7 @@ jobs:
           PY
       - name: Execute V6 selection with required CUDA-Q backend
         run: |
-          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py --csv WP-OS-Git-MAX/historical_latest_20.csv --openfe-three-views --high-fidelity-verify --require-cudaq --output v6-cudaq-selection.json
+          python WP-OS-Git-MAX/v6_ai_exact_e2e.py --csv WP-OS-Git-MAX/historical_latest_20.csv --openfe-three-views --require-cudaq --output v6-cudaq-selection.json
           python - <<'PY'
           import json
           result = json.load(open("v6-cudaq-selection.json"))
@@ -78,8 +78,8 @@ jobs:
           assert result["openfe_feature_layer"]["weight"] == 1.0
           assert result["openfe_feature_layer"]["v3_cache_features_used"] is False
           assert result["openfe_feature_layer"]["view_weights"] == {"latest_5":1/3,"latest_10":1/3,"full_archive":1/3}
-          assert result["high_fidelity_layer"]["enabled"] is True
-          assert result["high_fidelity_layer"]["minimum_observed_fidelity"] >= 0.99999
+          assert result["high_fidelity_layer"]["removed"] is True
+          assert result["high_fidelity_layer"]["enabled"] is False
           assert result["cudaq_layer"]["executed"] is True
           opt = result["exact_optimization_layer"]
           assert opt["globally_optimal_within_pool"] is True
@@ -96,13 +96,13 @@ jobs:
         run: python WP-OS-Git-MAX/v6_selection_consistency_audit.py --result v6-cudaq-selection.json --output v6-selection-consistency.json
       - name: Three-model historical parity (offline)
         run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json
-      - name: Three-model and local QAOA comparison
-        run: python WP-OS-Git-MAX/v6_three_model_qaoa_bridge.py > v6-model-qaoa.json
+      - name: Three-model and exact-selection comparison
+        run: python WP-OS-Git-MAX/v6_three_model_exact_bridge.py > v6-model-exact.json
       - name: Official API live read-only merge and comparison
         run: python WP-OS-Git-MAX/v6_live_api_e2e_probe.py --output v6-live-api-e2e.json --merged-csv-output v6-live-merged-verified.csv
       - name: Full V6 OpenFE CUDA-Q exact selection on verified live-merged draws
         run: |
-          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py --csv v6-live-merged-verified.csv --openfe-three-views --high-fidelity-verify --require-cudaq --output v6-live-full-selection.json
+          python WP-OS-Git-MAX/v6_ai_exact_e2e.py --csv v6-live-merged-verified.csv --openfe-three-views --require-cudaq --output v6-live-full-selection.json
           python - <<'PY'
           import csv, hashlib, json
           from pathlib import Path
@@ -127,11 +127,11 @@ jobs:
           python - <<'PY'
           import json
           a=json.load(open('v6-readiness.json'))
-          b=json.load(open('v6-model-qaoa.json'))
+          b=json.load(open('v6-model-exact.json'))
           c=json.load(open('v6-live-api-e2e.json'))
           assert a['three_model_parity']=='pass'
           assert a['data']['cutoff']==b['cutoff']
-          assert c['merged_cutoff']==c['three_model_qaoa_comparison']['cutoff']
+          assert c['merged_cutoff']==c['three_model_exact_comparison']['cutoff']
           assert c['repository_archive_modified'] is False
           assert c['trained_ai_verified'] is False
           assert c['production_main_deployed'] is False
@@ -145,7 +145,7 @@ jobs:
             v6-cudaq-selection.json
             v6-selection-consistency.json
             v6-readiness.json
-            v6-model-qaoa.json
+            v6-model-exact.json
             v6-live-api-e2e.json
             v6-live-merged-verified.csv
             v6-live-full-selection.json

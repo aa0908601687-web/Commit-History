@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""V6 local QAOA simulator with optional OpenFE feature modes.
+"""V6 exact six-of-eight selection with optional OpenFE feature modes.
 
 No QPU, ABE, Bayesian calibration layer, or V3 cache dependency. --openfe preserves the 30% fusion mode.
 --openfe-three-views uses OpenFE/LightGBM scores from latest-5, latest-10 and
-full-archive training views (all selection features capped at 10 draws) at 100%, before the local statevector combination search.
+full-archive training views (all selection features capped at 10 draws) at 100%, before deterministic exhaustive six-of-eight search.
 """
 import argparse,csv,hashlib,json,math,sys
 from pathlib import Path
@@ -29,43 +29,23 @@ def validate(path):
     return rows
 
 def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,ising_qubo_check=False):
-    """Finish deterministic QAOA-inspired selection from supplied scores."""
+    """Finish deterministic exact selection from supplied scores."""
     five=rows[-5:];ten=rows[-10:]
     if set(scores) != set(range(1, 39)) or any(not math.isfinite(scores[n]) for n in scores):
         raise ValueError("first-zone feature scores must be finite for every number 1..38")
     pool=sorted(scores,key=lambda n:(-scores[n],n))[:8]
-    costs=[]
-    for mask in range(256):
-        selected=[pool[i] for i in range(8) if mask>>i&1]
-        costs.append(sum(scores[n] for n in selected) if len(selected)==6 else -10)
-    best=None;fidelity_samples=[]
-    for j in range(1,17):
-        gamma=j*math.pi/32;beta=j*math.pi/64
-        if high_fidelity_verify:
-            from v6_high_fidelity_simulator import verified_statevector
-            state,evidence=verified_statevector(costs,gamma,beta)
-            fidelity_samples.append(evidence)
-        else:
-            state=[complex(math.cos(-gamma*c),math.sin(-gamma*c))/16 for c in costs]
-            for bit in range(8):
-                c=math.cos(beta);t=-1j*math.sin(beta)
-                for z in range(256):
-                    if not z>>bit&1:
-                        other=z|(1<<bit);x,y=state[z],state[other]
-                        state[z]=c*x+t*y;state[other]=t*x+c*y
-        mask=max((z for z in range(256) if z.bit_count()==6),key=lambda z:(abs(state[z])**2,costs[z]))
-        selected=sorted(pool[i] for i in range(8) if mask>>i&1)
-        cand=(sum(scores[n] for n in selected),tuple(selected))
-        if best is None or cand[0]>best[0]:best=cand
+    # The final six-of-eight selection is exact, not a variational/quantum search.
+    from v6_exact_search import exact_select, compare_selection
+    exact, optimum, combinations_checked = exact_select(pool, scores)
+    optimization_layer = compare_selection(pool, scores, exact)
+    best = (optimum, tuple(exact))
     cudaq_layer={"enabled":False,"executed":False,"qpu":False}
     if use_cudaq or require_cudaq:
         from v6_cudaq_backend import select_six
-        cudaq_selected,cudaq_layer=select_six(pool,scores,required=require_cudaq)
-        if cudaq_selected is not None:
-            best=(sum(scores[n] for n in cudaq_selected),tuple(cudaq_selected))
-    from v6_exact_search import compare_selection
-    optimization_layer=compare_selection(pool,scores,best[1])
-    best=(optimization_layer["exact_score"],tuple(optimization_layer["exact_selection"]))
+        diagnostic_selection,cudaq_layer=select_six(pool,scores,required=require_cudaq)
+        if diagnostic_selection is not None:
+            cudaq_layer["same_selection"]=sorted(diagnostic_selection)==exact
+            cudaq_layer["diagnostic_only"]=True
     ising_layer={"enabled":False,"executed":False,"nvidia_native_solver_executed":False}
     if ising_qubo_check:
         # Independent CPU QUBO reference: fail closed on any objective/pool mismatch.
@@ -91,20 +71,15 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,us
                      "rocq_runtime_proof":False,
                      "predictive_advantage_verified":False}
     second=max(range(1,9),key=lambda n:(.6*sum(x[2]==n for x in five)+.4*sum(x[2]==n for x in ten),-n))
-    fidelity_layer={"enabled":False,"scope":"not requested"}
-    if high_fidelity_verify:
-        fidelity_layer={"enabled":True,"backend":"local deterministic statevector cross-check",
-          "minimum_observed_fidelity":min(x["fidelity"] for x in fidelity_samples),
-          "maximum_norm_error":max(abs(x["state_norm"]-1.0) for x in fidelity_samples),
-          "threshold":0.99999,"qpu":False,"jupiter_nvidia_connected":False,
-          "meaning":"numerical simulation fidelity; not lottery hit rate"}
+    fidelity_layer={"enabled":False,"removed":True,
+                    "meaning":"Previous variational statevector verification removed; exact enumeration is authoritative"}
     return {"candidate_pool":pool,"first_zone":list(best[1]),"second_zone":second,"last_draw":rows[-1][0],
       "views":{"latest_5":{"rows":5,"from":five[0][0],"to":five[-1][0]},
                "latest_10":{"rows":10,"from":ten[0][0],"to":ten[-1][0]},
                "complete_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]},
                "full_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]}},
       "sha256":hashlib.sha256(Path(path).read_bytes()).hexdigest(),
-      "model":"optional OpenFE/LightGBM/PyTorch three-history-view scoring + 8-qubit p=1 QAOA-inspired statevector; NOT QPU",
+      "model":"optional OpenFE/LightGBM/PyTorch three-history-view scoring + exact 8-choose-6 enumeration; NOT QPU",
       "openfe_feature_layer":feature_layer,
       "high_fidelity_layer":fidelity_layer,
       "cudaq_layer":cudaq_layer,
@@ -160,7 +135,7 @@ def main():
     p.add_argument("--pytorch-three-views",action="store_true",help="train CPU PyTorch on past-only three-view features and fuse with LightGBM")
     p.add_argument("--pytorch-weight",type=float,default=0.5,help="research fusion weight for PyTorch, 0..1")
     p.add_argument("--high-fidelity-verify",action="store_true",
-                   help="run local numerical statevector fidelity checks; not QPU/JUPITER")
+                   help="retired option: statevector selection was removed; exact selection always runs")
     p.add_argument("--cudaq",action="store_true",
                    help="use optional NVIDIA CUDA-Q qpp-cpu local simulator; never a real QPU")
     p.add_argument("--require-cudaq",action="store_true",

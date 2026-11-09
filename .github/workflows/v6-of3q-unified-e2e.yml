@@ -44,7 +44,7 @@ jobs:
           python -m unittest discover -v -s .github/scripts -p 'test_v6_nemotron_vision_client.py'
       - name: Run one combined OpenFE LightGBM PyTorch CUDA-Q Ising and exact-search invocation
         run: |
-          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+          python WP-OS-Git-MAX/v6_ai_exact_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
             --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 \
             --require-cudaq --ising-qubo-check \

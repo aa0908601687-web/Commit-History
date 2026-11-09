@@ -1,13 +1,13 @@
-"""Additional integrity tests for V6's archive parser and QAOA research selection."""
+"""Additional integrity tests for V6's archive parser and EXACT research selection."""
 import csv
 import tempfile
 import unittest
 from pathlib import Path
 
-import v6_ai_qaoa_e2e as v6
+import v6_ai_exact_e2e as v6
 
 
-class V6QAOABoundaryTests(unittest.TestCase):
+class V6EXACTBoundaryTests(unittest.TestCase):
     def make_archive(self, count=10):
         tmp = tempfile.TemporaryDirectory()
         path = Path(tmp.name) / "draws.csv"

@@ -19,7 +19,7 @@ jobs:
           python-version: '3.11'
       - name: Fail-closed offline contract tests
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_live_api_e2e_probe.py' -v
-      - name: Live official API to models to local QAOA (read-only)
+      - name: Live official API to models to local EXACT (read-only)
         run: python WP-OS-Git-MAX/v6_live_api_e2e_probe.py --output v6-live-api-e2e.json
       - name: Upload verified evidence
         if: success()

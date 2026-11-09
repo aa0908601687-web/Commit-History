@@ -6,30 +6,21 @@ from unittest.mock import patch
 import v6_cudaq_backend as backend
 
 
-class _FakeState:
-    def __getitem__(self, index):
-        # A deterministic maximum at one valid six-bit mask.
-        return 1.0 if index == 0b00111111 else 0.001
-
+class _FakeKernel:
+    def qalloc(self):return 0
+    def h(self,q):pass
+    def mz(self,q):pass
 
 class _FakeCudaQ(types.SimpleNamespace):
-    __version__ = "test"
-
+    __version__="test"
     def __init__(self):
         super().__init__()
-        self.target = None
-        self.seed = None
-        self.kernel = lambda function: function
-
-    def set_target(self, target):
-        self.target = target
-
-    def set_random_seed(self, seed):
-        self.seed = seed
-
-    def get_state(self, *args):
-        return _FakeState()
-
+        self.target=None
+        self.seed=None
+    def set_target(self,target):self.target=target
+    def set_random_seed(self,seed):self.seed=seed
+    def make_kernel(self):return _FakeKernel()
+    def sample(self,kernel,shots_count):return {"0":8,"1":8}
 
 class CudaQBackendTests(unittest.TestCase):
     def setUp(self):
@@ -62,7 +53,7 @@ class CudaQBackendTests(unittest.TestCase):
         fake = _FakeCudaQ()
         with patch.dict(sys.modules, {"cudaq": fake}):
             selected, metadata = backend.select_six(self.pool, self.scores, required=True)
-        self.assertEqual(selected, [1, 2, 3, 4, 5, 6])
+        self.assertEqual(selected, [3, 4, 5, 6, 7, 8])
         self.assertTrue(metadata["executed"])
         self.assertEqual(metadata["backend"], "qpp-cpu")
         self.assertEqual(fake.target, "qpp-cpu")
@@ -82,6 +73,17 @@ class CudaQBackendTests(unittest.TestCase):
             selected, metadata = backend.select_six(self.pool, self.scores, required=True)
         self.assertEqual(len(selected), 6)
         self.assertTrue(metadata["executed"])
+
+    def test_local_diagnostic_rejects_invalid_shot_count(self):
+        fake = _FakeCudaQ()
+        fake.sample = lambda kernel, shots_count: {"0": 15}
+        with patch.dict(sys.modules, {"cudaq": fake}):
+            with self.assertRaisesRegex(RuntimeError, "invalid shot count"):
+                backend.select_six(self.pool, self.scores, required=True)
+
+    def test_rejects_non_eight_pool(self):
+        with self.assertRaises(ValueError):
+            backend.select_six(self.pool[:7], self.scores)
 
     def test_rejects_invalid_pool_and_missing_score(self):
         with self.assertRaises(ValueError):

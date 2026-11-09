@@ -14,7 +14,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0,str(HERE))
-spec = importlib.util.spec_from_file_location("v6_ai_qaoa_e2e", HERE / "v6_ai_qaoa_e2e.py")
+spec = importlib.util.spec_from_file_location("v6_ai_exact_e2e", HERE / "v6_ai_exact_e2e.py")
 v6 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(v6)
 
@@ -48,11 +48,11 @@ class V6ValidationTests(unittest.TestCase):
         with tmp:
             result=v6.run(path,high_fidelity_verify=True)
             layer=result["high_fidelity_layer"]
-            self.assertTrue(layer["enabled"])
-            self.assertGreaterEqual(layer["minimum_observed_fidelity"],layer["threshold"])
-            self.assertFalse(layer["qpu"])
-            self.assertFalse(layer["jupiter_nvidia_connected"])
-            self.assertIn("not lottery hit rate",layer["meaning"])
+            self.assertFalse(layer["enabled"])
+            self.assertTrue(layer["removed"])
+            self.assertIn("exact enumeration",layer["meaning"])
+            
+            
 
     def test_cudaq_result_replaces_local_candidate(self):
         tmp, path = self.make_csv()
@@ -96,7 +96,7 @@ class V6ValidationTests(unittest.TestCase):
         with tmp:
             output = Path(tmp.name) / "output.json"
             proc = subprocess.run(
-                [sys.executable, str(HERE / "v6_ai_qaoa_e2e.py"), "--csv", str(path), "--output", str(output)],
+                [sys.executable, str(HERE / "v6_ai_exact_e2e.py"), "--csv", str(path), "--output", str(output)],
                 check=True, capture_output=True, text=True
             )
             self.assertEqual(json.loads(proc.stdout), json.loads(output.read_text()))
@@ -106,7 +106,7 @@ class V6ValidationTests(unittest.TestCase):
         tmp, path = self.make_csv()
         with tmp:
             proc = subprocess.run(
-                [sys.executable, str(HERE / "v6_ai_qaoa_e2e.py"), "--csv", str(path)],
+                [sys.executable, str(HERE / "v6_ai_exact_e2e.py"), "--csv", str(path)],
                 check=True, capture_output=True, text=True
             )
             self.assertEqual(json.loads(proc.stdout)["views"]["latest_10"]["rows"], 10)
@@ -151,7 +151,7 @@ class V6ValidationTests(unittest.TestCase):
         with tmp:
             buf = io.StringIO()
             with patch.object(sys, "argv", ["v6", "--csv", str(path)]), redirect_stdout(buf):
-                runpy.run_path(str(HERE / "v6_ai_qaoa_e2e.py"), run_name="__main__")
+                runpy.run_path(str(HERE / "v6_ai_exact_e2e.py"), run_name="__main__")
             self.assertEqual(json.loads(buf.getvalue())["last_draw"], "115000012")
 
     def test_rejects_too_few_rows(self):

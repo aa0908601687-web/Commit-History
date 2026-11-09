@@ -4,13 +4,13 @@ on:
   pull_request:
     paths:
       - 'WP-OS-Git-MAX/v6_cudaq_backend.py'
-      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/v6_ai_exact_e2e.py'
       - 'WP-OS-Git-MAX/test_v6_cudaq_backend.py'
       - '.github/workflows/v6-cudaq-local.yml'
   push:
     paths:
       - 'WP-OS-Git-MAX/v6_cudaq_backend.py'
-      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/v6_ai_exact_e2e.py'
       - 'WP-OS-Git-MAX/test_v6_cudaq_backend.py'
       - '.github/workflows/v6-cudaq-local.yml'
 permissions:
@@ -26,7 +26,7 @@ jobs:
           python-version: '3.11'
       - name: Run dependency-independent contract tests
         working-directory: WP-OS-Git-MAX
-        run: python -m unittest -v test_v6_cudaq_backend.py test_v6_ai_qaoa_e2e.py
+        run: python -m unittest -v test_v6_cudaq_backend.py test_v6_ai_exact_e2e.py
 
   cudaq-local:
     runs-on: ubuntu-latest
@@ -42,7 +42,7 @@ jobs:
           python -m pip install 'cudaq==0.16.0' 'openfe==0.0.12' 'matplotlib>=3.9,<4'
       - name: Run V6 through required local CUDA-Q backend
         run: |
-          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+          python WP-OS-Git-MAX/v6_ai_exact_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
             --openfe-three-views --cudaq --require-cudaq --output v6-cudaq-result.json
           python - <<'PY'

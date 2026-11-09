@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "V6: Exact-search unit tests",
+      "type": "shell",
+      "command": "python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_exact_search.py' -v",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "V6: QAOA-removal and core regression tests",
+      "type": "shell",
+      "command": "python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_ai_exact_e2e.py' -v && python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_cudaq_backend.py' -v",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "V6: Syntax check core Python modules",
+      "type": "shell",
+      "command": "python -m py_compile WP-OS-Git-MAX/v6_ai_exact_e2e.py WP-OS-Git-MAX/v6_exact_search.py WP-OS-Git-MAX/v6_cudaq_backend.py",
+      "problemMatcher": [],
+      "group": "test"
+    }
+  ]
+}
