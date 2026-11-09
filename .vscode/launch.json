@@ -2,21 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "V6 OF3Q: Debug exact 8-to-6 selection",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/WP-OS-Git-MAX/v6_ai_exact_e2e.py",
-      "args": [
-        "--csv",
-        "${workspaceFolder}/WP-OS-Git-MAX/historical_archive.csv",
-        "--output",
-        "${workspaceFolder}/v6-vscode-local-result.json"
-      ],
-      "console": "integratedTerminal",
-      "justMyCode": true
-    },
-    {
-      "name": "V6 OF3Q: Debug exact selection tests",
+      "name": "V6: Debug 8-to-6 exhaustive search tests",
       "type": "debugpy",
       "request": "launch",
       "module": "unittest",
@@ -26,6 +12,22 @@
         "WP-OS-Git-MAX",
         "-p",
         "test_v6_exact_search.py",
+        "-v"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "V6: Debug all V6 regression tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "unittest",
+      "args": [
+        "discover",
+        "-s",
+        "WP-OS-Git-MAX",
+        "-p",
+        "test_v6_*.py",
         "-v"
       ],
       "cwd": "${workspaceFolder}",
