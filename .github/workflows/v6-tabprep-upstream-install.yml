@@ -1,0 +1,38 @@
+name: V6 TabPrep real upstream install smoke
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/v6-tabprep-upstream-install.yml'
+      - 'WP-OS-Git-MAX/v6_tabprep_bridge.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upstream-tabprep-install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install real AutoGluon feature dependencies and LightGBM
+        run: |
+          python -m pip install --disable-pip-version-check "autogluon.features" "lightgbm" "pandas" "scikit-learn"
+      - name: Obtain upstream TabPrep source
+        run: |
+          git clone --depth 1 https://github.com/atschalz/tabprep.git /tmp/tabprep-upstream
+          test -f /tmp/tabprep-upstream/tabprep.py
+      - name: Verify actual upstream import and package versions
+        env:
+          PYTHONPATH: /tmp/tabprep-upstream
+        run: |
+          python - <<'PY'
+          import importlib.metadata as m
+          import pandas, lightgbm
+          from tabprep import TabPrepFeatureGenerator
+          print('TabPrep upstream import PASS:', TabPrepFeatureGenerator.__module__)
+          for pkg in ['autogluon.features', 'lightgbm', 'pandas', 'scikit-learn']:
+              print(pkg, m.version(pkg))
+          print('SUCCESS: real TabPrep upstream import verified; model fit/inference NOT tested by this job')
+          PY

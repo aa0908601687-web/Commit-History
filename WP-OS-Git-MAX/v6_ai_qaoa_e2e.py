@@ -112,9 +112,11 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,us
       "exact_optimization_layer":optimization_layer,
       "status":"Research simulation; no evidence of predictive advantage"}
 
-def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,pytorch_three_views=False,pytorch_weight=0.5,ising_qubo_check=False):
+def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,pytorch_three_views=False,pytorch_weight=0.5,ising_qubo_check=False,tabprep_three_views=False):
     if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
     if not 0<=pytorch_weight<=1:raise ValueError("pytorch_weight must be between 0 and 1")
+    if tabprep_three_views and (openfe_three_views or use_openfe or pytorch_three_views):
+        raise ValueError("--tabprep-three-views is an isolated experimental alternative to OpenFE/PyTorch fusion")
     if pytorch_three_views and not openfe_three_views:
         raise ValueError("--pytorch-three-views requires --openfe-three-views")
     rows=validate(path);five=rows[-5:];ten=rows[-10:]
@@ -123,7 +125,11 @@ def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fi
         a=sum(n in x[1] for x in five);b=sum(n in x[1] for x in ten)
         scores[n]=.6*(a+1)/(5+38/6)+.4*(b+1)/(10+38/6)
     feature_layer={"enabled":False,"weight":0.0}
-    if openfe_three_views:
+    if tabprep_three_views:
+        from v6_tabprep_bridge import score_three_history_views_tabprep
+        scores, metadata = score_three_history_views_tabprep(rows)
+        feature_layer = {"enabled": True, "weight": 1.0, **metadata}
+    elif openfe_three_views:
         from v6_openfe_bridge import score_three_history_views
         scores,metadata=score_three_history_views(rows,n_jobs=1)
         feature_layer={"enabled":True,"weight":1.0,**metadata}
@@ -157,6 +163,7 @@ def main():
     p=argparse.ArgumentParser();p.add_argument("--csv",required=True);p.add_argument("--output")
     p.add_argument("--openfe",action="store_true");p.add_argument("--openfe-weight",type=float,default=.30)
     p.add_argument("--openfe-three-views",action="store_true")
+    p.add_argument("--tabprep-three-views",action="store_true",help="experimental TabPrep+LightGBM alternative; requires upstream TabPrep/AutoGluon installation")
     p.add_argument("--pytorch-three-views",action="store_true",help="train CPU PyTorch on past-only three-view features and fuse with LightGBM")
     p.add_argument("--pytorch-weight",type=float,default=0.5,help="research fusion weight for PyTorch, 0..1")
     p.add_argument("--high-fidelity-verify",action="store_true",
@@ -167,7 +174,7 @@ def main():
                    help="fail instead of falling back when CUDA-Q is unavailable")
     p.add_argument("--ising-qubo-check",action="store_true",help="run fail-closed CPU QUBO reference against production exact-search score; not NVIDIA native solver")
     a=p.parse_args()
-    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify,a.cudaq or a.require_cudaq,a.require_cudaq,a.pytorch_three_views,a.pytorch_weight,a.ising_qubo_check)
+    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify,a.cudaq or a.require_cudaq,a.require_cudaq,a.pytorch_three_views,a.pytorch_weight,a.ising_qubo_check,a.tabprep_three_views)
     out=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
     if a.output:Path(a.output).write_text(out,encoding="utf-8")
     print(out)

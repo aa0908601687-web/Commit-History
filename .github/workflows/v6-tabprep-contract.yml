@@ -1,0 +1,26 @@
+name: V6 TabPrep optional adapter offline contract
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_tabprep_bridge.py'
+      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/test_v6_tabprep_bridge.py'
+      - 'docs/V6_TABPREP_SETUP.md'
+      - '.github/workflows/v6-tabprep-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tabprep-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile adapter and CLI
+        run: python -m py_compile WP-OS-Git-MAX/v6_tabprep_bridge.py WP-OS-Git-MAX/v6_ai_qaoa_e2e.py
+      - name: Run offline TabPrep isolation tests
+        run: python -m unittest discover -v -s WP-OS-Git-MAX -p 'test_v6_tabprep_bridge.py'
+      - name: Disclose execution boundary
+        run: echo 'PASS means optional adapter contract only. Upstream TabPrep/AutoGluon execution is NOT verified.' >> "$GITHUB_STEP_SUMMARY"
