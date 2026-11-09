@@ -3,7 +3,7 @@ name: V6 exact-selection E2E regression verification
 on:
   pull_request:
     paths:
-      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/v6_ai_exact_e2e.py'
       - '.github/workflows/v6-high-fidelity-e2e.yml'
   workflow_dispatch:
 
@@ -20,10 +20,10 @@ jobs:
         with:
           python-version: '3.11'
       - name: Unit and integration tests
-        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_ai_qaoa_e2e.py' -v && python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_exact_search.py' -v
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_ai_exact_e2e.py' -v && python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_exact_search.py' -v
       - name: Execute deterministic exact-selection pipeline
         run: |
-          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+          python WP-OS-Git-MAX/v6_ai_exact_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
             --output /tmp/v6-high-fidelity-evidence.json
           python - <<'PY'
@@ -37,7 +37,7 @@ jobs:
           
           assert len(data['first_zone']) == 6
           assert 1 <= data['second_zone'] <= 8
-          print('Exact six-of-eight enumerator verified; no QAOA or QPU')
+          print('Exact six-of-eight enumerator verified; no EXACT or QPU')
           PY
       - uses: actions/upload-artifact@v6
         with:
