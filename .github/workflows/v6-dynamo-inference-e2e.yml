@@ -1,0 +1,33 @@
+name: V6 Dynamo inference integration E2E
+on:
+  workflow_dispatch:
+    inputs:
+      dynamo_url:
+        description: 'OpenAI-compatible Dynamo inference endpoint URL (leave empty for contract-only test)'
+        required: false
+        type: string
+        default: ''
+  pull_request:
+    paths:
+      - '.github/workflows/v6-dynamo-inference-e2e.yml'
+      - 'WP-OS-Git-MAX/v6_dynamo_e2e.py'
+permissions:
+  contents: read
+jobs:
+  dynamo-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run inference contract tests
+        run: python WP-OS-Git-MAX/v6_dynamo_e2e.py --contract-only
+      - name: Run live Dynamo E2E if endpoint configured
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dynamo_url != '' }}
+        env:
+          DYNAMO_URL: ${{ inputs.dynamo_url }}
+          DYNAMO_API_KEY: ${{ secrets.DYNAMO_API_KEY }}
+          DYNAMO_MODEL: ${{ vars.DYNAMO_MODEL }}
+        run: python WP-OS-Git-MAX/v6_dynamo_e2e.py --live
