@@ -1,5 +1,11 @@
 """Verify that GPU unavailability is never misreported as GPU PASS."""
 import unittest
+import runpy
+import json
+import tempfile
+from unittest.mock import patch
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -48,6 +54,28 @@ class TestDeviceAudit(unittest.TestCase):
         r = verify(Torch(True),require_gpu=True)
         self.assertEqual(r["gpu"]["status"],"PASS")
         self.assertTrue(r["gpu"]["same_selection"])
+
+    def test_gpu_numeric_disagreement_fails_closed(self):
+        class BadGpuTorch(Torch):
+            def arange(self, a, b, dtype, device):
+                if device == "cuda:0":
+                    return Tensor(range(b-1, a-1, -1))
+                return super().arange(a, b, dtype, device)
+        with self.assertRaisesRegex(AssertionError,"CPU/GPU result differs"):
+            verify(BadGpuTorch(True),require_gpu=True)
+
+    def test_command_line_writes_explicit_cpu_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = str(Path(directory) / "evidence.json")
+            script = str(Path(__file__).resolve().parent / "v6_cpu_gpu_audit.py")
+            with patch.dict(sys.modules, {"torch": Torch(False)}):
+                with patch.object(sys, "argv", [script, "--output", output]):
+                    with redirect_stdout(StringIO()):
+                        runpy.run_path(script, run_name="__main__")
+            report = json.loads(Path(output).read_text(encoding="utf-8"))
+            self.assertEqual(report["cpu"]["status"], "PASS")
+            self.assertEqual(report["cpu"]["combinations"], 28)
+            self.assertEqual(report["gpu"]["status"], "NOT_TESTED")
 
 if __name__ == "__main__":
     unittest.main()
