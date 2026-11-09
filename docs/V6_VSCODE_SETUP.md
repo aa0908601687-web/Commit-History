@@ -1,11 +1,11 @@
-# V6 OF3Q VS Code development setup
+# V6 OF3Q VS Code workspace
 
-These workspace files provide recommended extensions, debugger profiles, Python unittest discovery, and local test tasks. VS Code is a development editor; it does not score lottery numbers or change hit probabilities.
+This is an editor configuration, not an installation of VS Code or model dependencies. Works with the existing `main` branch, independently of the pending QAOA removal PR #57.
 
-1. Install VS Code and Python 3.11+ locally. Open the repository root in VS Code and accept the recommended extensions.
-2. Select the intended Python interpreter; install the project test and optional AI dependencies in your environment separately.
-3. Run **Terminal > Run Task > V6: Exact-search unit tests** for dependency-free exact-combination tests.
-4. Run **V6 OF3Q: Debug exact 8-to-6 selection** to step through the current exact-selection entrypoint. This reads a repository historical CSV and writes a local result JSON; do not assume it is a live official draw prediction.
-5. GitHub CI on PR #57 remains the source for integration verification; local editor configuration does not mean GitHub tests have passed or the PR is merged.
+1. Install VS Code and Python 3.11+ on your computer and open the repository folder.
+2. Use the recommended extensions and choose an interpreter.
+3. Run **Terminal > Run Task > V6: Exact-search unit tests** to test the exhaustive 8-choose-6 optimizer.
+4. Use **Run and Debug > V6: Debug 8-to-6 exhaustive search tests** to step through unit tests.
+5. The full V6 regression task may require additional external AI dependencies; success or failure should be checked in GitHub Actions as well.
 
-**Current intended architecture:** OpenFE/LightGBM/PyTorch candidate scoring -> top-eight pool -> Python exhaustive 28-combination choice; Ising/QUBO and Rocq remain independent validation. CUDA-Q may be used for local diagnostics, not QAOA selection.
+The V6 selection modernization is tracked separately in PR #57. Only that PR can remove QAOA from the executable application. Workspace settings alone neither deploy the new algorithm nor improve fair lottery winning odds.
