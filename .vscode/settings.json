@@ -1,0 +1,21 @@
+{
+  "python.defaultInterpreterPath": "python3",
+  "python.testing.unittestEnabled": true,
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "WP-OS-Git-MAX",
+    "-p",
+    "test_v6_*.py"
+  ],
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/WP-OS-Git-MAX",
+    "${workspaceFolder}/verification"
+  ],
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  },
+  "editor.formatOnSave": false
+}
