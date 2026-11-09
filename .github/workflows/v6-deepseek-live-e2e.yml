@@ -1,0 +1,29 @@
+name: V6 DeepSeek live API opt-in E2E
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deepseek-live-inference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      V6_DEEPSEEK_ENDPOINT: ${{ vars.V6_DEEPSEEK_ENDPOINT }}
+      V6_DEEPSEEK_MODEL: ${{ vars.V6_DEEPSEEK_MODEL }}
+      V6_DEEPSEEK_API_KEY: ${{ secrets.V6_DEEPSEEK_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Require configured credentials and perform real inference
+        run: |
+          python - <<'PY'
+          import os, sys
+          sys.path.insert(0, "WP-OS-Git-MAX")
+          from v6_deepseek_adapter import analyze
+          assert all(os.environ.get(x) for x in ("V6_DEEPSEEK_ENDPOINT", "V6_DEEPSEEK_MODEL", "V6_DEEPSEEK_API_KEY")), "DeepSeek configuration missing"
+          reply = analyze("Reply with the single word READY.")
+          assert isinstance(reply, str) and reply.strip(), "Empty model reply"
+          print("LIVE_DEEPSEEK_INFERENCE_PASS: nonempty response received")
+          PY
