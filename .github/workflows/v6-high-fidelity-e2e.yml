@@ -1,4 +1,4 @@
-name: V6 local high-fidelity E2E verification
+name: V6 exact-selection E2E regression verification
 
 on:
   pull_request:
@@ -22,25 +22,24 @@ jobs:
         with:
           python-version: '3.11'
       - name: Unit and integration tests
-        run: python -m unittest WP-OS-Git-MAX/test_v6_high_fidelity_simulator.py WP-OS-Git-MAX/test_v6_ai_qaoa_e2e.py -v
-      - name: Execute local high-fidelity pipeline
+        run: python -m unittest WP-OS-Git-MAX/test_v6_exact_search.py WP-OS-Git-MAX/test_v6_ai_qaoa_e2e.py -v
+      - name: Execute deterministic exact-selection pipeline
         run: |
           python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
-            --high-fidelity-verify \
             --output /tmp/v6-high-fidelity-evidence.json
           python - <<'PY'
           import json
           from pathlib import Path
           data=json.loads(Path('/tmp/v6-high-fidelity-evidence.json').read_text())
           layer=data['high_fidelity_layer']
-          assert layer['enabled'] is True
-          assert layer['minimum_observed_fidelity'] >= layer['threshold']
-          assert layer['qpu'] is False
-          assert layer['jupiter_nvidia_connected'] is False
+          assert layer['enabled'] is False and layer['removed'] is True
+          assert data['exact_optimization_layer']['searched_combinations'] == 28
+          assert data['first_zone'] == data['exact_optimization_layer']['exact_selection']
+          
           assert len(data['first_zone']) == 6
           assert 1 <= data['second_zone'] <= 8
-          print('Local numerical high-fidelity layer verified; no QPU/JUPITER claim')
+          print('Exact six-of-eight enumerator verified; no QAOA or QPU')
           PY
       - uses: actions/upload-artifact@v6
         with:
