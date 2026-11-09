@@ -1,0 +1,76 @@
+name: V6 CPU GPU hardware consistency E2E
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_cpu_gpu_audit.py'
+      - 'WP-OS-Git-MAX/test_v6_cpu_gpu_audit.py'
+      - '.github/workflows/v6-cpu-gpu-e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'WP-OS-Git-MAX/v6_cpu_gpu_audit.py'
+      - 'WP-OS-Git-MAX/test_v6_cpu_gpu_audit.py'
+      - '.github/workflows/v6-cpu-gpu-e2e.yml'
+  workflow_dispatch:
+    inputs:
+      enable_gpu:
+        description: 'Enable physical NVIDIA GPU validation; requires configured self-hosted GPU runner'
+        required: false
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  cpu-baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test CPU GPU detection and guardrails
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_cpu_gpu_audit.py' -v
+      - name: Install CPU PyTorch
+        run: python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu torch
+      - name: Execute real CPU and record GPU as NOT_TESTED
+        run: |
+          python WP-OS-Git-MAX/v6_cpu_gpu_audit.py --output v6-cpu-gpu-evidence.json
+          python - <<'PY'
+          import json
+          d=json.load(open("v6-cpu-gpu-evidence.json"))
+          assert d["cpu"]["status"] == "PASS"
+          assert d["cpu"]["combinations"] == 28
+          assert d["gpu"]["status"] == "NOT_TESTED"
+          print("SUCCESS: real CPU PASS, GPU NOT_TESTED")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v6-real-cpu-evidence
+          path: v6-cpu-gpu-evidence.json
+          if-no-files-found: error
+  gpu-hardware-opt-in:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_gpu == true }}
+    runs-on: [self-hosted, linux, x64, gpu]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compare actual CUDA GPU to CPU in float64
+        run: |
+          python WP-OS-Git-MAX/v6_cpu_gpu_audit.py --require-gpu --output v6-cpu-gpu-evidence.json
+          python - <<'PY'
+          import json
+          d=json.load(open("v6-cpu-gpu-evidence.json"))
+          assert d["gpu"]["status"] == "PASS"
+          assert d["gpu"]["same_selection"] is True
+          assert d["gpu"]["combinations"] == 28
+          print("SUCCESS: physical CUDA GPU verified")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v6-physical-gpu-evidence
+          path: v6-cpu-gpu-evidence.json
+          if-no-files-found: error
