@@ -74,6 +74,17 @@ class CudaQBackendTests(unittest.TestCase):
         self.assertEqual(len(selected), 6)
         self.assertTrue(metadata["executed"])
 
+    def test_local_diagnostic_rejects_invalid_shot_count(self):
+        fake = _FakeCudaQ()
+        fake.sample = lambda kernel, shots_count: {"0": 15}
+        with patch.dict(sys.modules, {"cudaq": fake}):
+            with self.assertRaisesRegex(RuntimeError, "invalid shot count"):
+                backend.select_six(self.pool, self.scores, required=True)
+
+    def test_rejects_non_eight_pool(self):
+        with self.assertRaises(ValueError):
+            backend.select_six(self.pool[:7], self.scores)
+
     def test_rejects_invalid_pool_and_missing_score(self):
         with self.assertRaises(ValueError):
             backend.select_six([1] * 8, self.scores)
