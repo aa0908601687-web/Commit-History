@@ -1,0 +1,89 @@
+name: V6 real TabPrep three-view inference E2E
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_tabprep_bridge.py'
+      - 'WP-OS-Git-MAX/v6_openfe_bridge.py'
+      - 'WP-OS-Git-MAX/v6_exact_search.py'
+      - '.github/workflows/v6-tabprep-real-e2e.yml'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'WP-OS-Git-MAX/v6_tabprep_bridge.py'
+      - 'WP-OS-Git-MAX/v6_openfe_bridge.py'
+      - 'WP-OS-Git-MAX/v6_exact_search.py'
+      - '.github/workflows/v6-tabprep-real-e2e.yml'
+permissions:
+  contents: read
+jobs:
+  real-tabprep-three-view-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install actual TabPrep requirements
+        run: |
+          python -m pip install --disable-pip-version-check "autogluon.features" "lightgbm" "pandas" "scikit-learn"
+          git clone --depth 1 https://github.com/atschalz/tabprep.git /tmp/tabprep-upstream
+          test -f /tmp/tabprep-upstream/tabprep.py
+      - name: Import real upstream code
+        env:
+          PYTHONPATH: /tmp/tabprep-upstream
+        run: |
+          python - <<'PY'
+          from tabprep import TabPrepFeatureGenerator
+          print('Imported real upstream TabPrep:', TabPrepFeatureGenerator.__module__)
+          PY
+      - name: Fit real three-view TabPrep and verify 28 exact candidates
+        env:
+          PYTHONPATH: /tmp/tabprep-upstream
+        run: |
+          python - <<'PY'
+          import json, math, sys
+          from pathlib import Path
+          sys.path.insert(0, 'WP-OS-Git-MAX')
+          from v6_ai_qaoa_e2e import validate
+          from v6_tabprep_bridge import score_three_history_views_tabprep
+          from v6_exact_search import compare_selection
+          rows = validate('WP-OS-Git-MAX/historical_archive.csv')
+          scores, meta = score_three_history_views_tabprep(rows)
+          assert meta['tabprep_executed'] is True
+          assert meta['history_views'] == ['latest_5', 'latest_10', 'full_archive']
+          assert meta['feature_window'] == [5, 10]
+          assert set(scores) == set(range(1,39))
+          assert all(math.isfinite(s) and 0 <= s <= 1 for s in scores.values())
+          assert all(set(meta['per_view_scores'][v]) == set(range(1,39)) for v in meta['history_views'])
+          pool = sorted(scores, key=lambda n:(-scores[n],n))[:8]
+          starting = sorted(pool[:6])
+          exact = compare_selection(pool,scores,starting)
+          assert exact['searched_combinations'] == 28
+          assert len(set(exact['exact_selection'])) == 6
+          assert all(n in pool for n in exact['exact_selection'])
+          assert math.isclose(sum(scores[n] for n in exact['exact_selection']),exact['exact_score'],abs_tol=1e-8)
+          evidence = {
+              'backend':'real-upstream-tabprep-cpu',
+              'tabprep_executed': True,
+              'three_views':meta['history_views'],
+              'scores_per_view':{k:len(v) for k,v in meta['per_view_scores'].items()},
+              'feature_window':meta['feature_window'],
+              'pool':pool, 'exact_selection':exact['exact_selection'],
+              'searched_combinations':exact['searched_combinations'],
+              'predictive_advantage_verified':False,
+              'qaoa_executed':False,
+              'nvidia_gpu_executed':False,
+              'cudaq_executed':False
+          }
+          Path('v6-tabprep-three-view-evidence.json').write_text(json.dumps(evidence,indent=2))
+          print('SUCCESS: real TabPrep train + three-view inference + 28 exact candidates')
+          PY
+      - name: Upload real execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-tabprep-three-view-evidence
+          path: v6-tabprep-three-view-evidence.json
+          if-no-files-found: warn
