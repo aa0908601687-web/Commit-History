@@ -195,10 +195,10 @@ class LiveProbeContractTests(unittest.TestCase):
     def test_script_entrypoint_with_mocked_api_and_bridge(self):
         """Exercise __main__ without external network or repository writes."""
         import sys
-        import v6_three_model_qaoa_bridge
+        import v6_three_model_exact_bridge
         with patch.object(probe.official, "HISTORY", self.archive), \
              patch.object(probe.official, "fetch", side_effect=lambda month: self.records[-4:]), \
-             patch.object(v6_three_model_qaoa_bridge, "run", side_effect=self.bridge), \
+             patch.object(v6_three_model_exact_bridge, "run", side_effect=self.bridge), \
              patch.object(sys, "argv", ["v6_live_api_e2e_probe.py"]), \
              redirect_stdout(io.StringIO()) as output:
             runpy.run_path(str(Path(probe.__file__)), run_name="__main__")
