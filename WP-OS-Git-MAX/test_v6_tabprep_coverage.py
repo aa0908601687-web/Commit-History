@@ -13,6 +13,7 @@ class FakeFrame:
         self.rows = list(rows)
         self.columns = list(self.rows[0]) if self.rows and isinstance(self.rows[0],dict) else ["feature"]
         self.shape = (len(self.rows), len(self.columns))
+    def __len__(self): return len(self.rows)
 
 class FakeProbabilities:
     def __init__(self, values): self.values = values
