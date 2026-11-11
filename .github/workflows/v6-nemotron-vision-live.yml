@@ -58,7 +58,7 @@ jobs:
           python -m pip install --disable-pip-version-check 'openfe==0.0.12' 'matplotlib>=3.9,<4' 'cudaq==0.16.0'
       - name: Run full V6 scoring and optimization after authenticated vision audit
         run: |
-          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+          python WP-OS-Git-MAX/v6_ai_exact_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
             --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 \
             --require-cudaq --ising-qubo-check \
