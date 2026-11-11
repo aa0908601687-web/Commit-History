@@ -38,7 +38,7 @@ jobs:
           assert len(d['first_zone'])==len(set(d['first_zone']))==6
           assert all(1<=n<=38 for n in d['first_zone'])
           assert 1<=d['second_zone']<=8
-          print('V6 local simulator and archive checks passed')
+          print('V6 exact selection and archive checks passed')
           PY
       - name: Upload test report
         if: always()
