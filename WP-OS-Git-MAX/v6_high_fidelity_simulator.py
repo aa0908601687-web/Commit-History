@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local numerical-fidelity verification for the V6 QAOA-inspired solver.
+"""Local numerical-fidelity verification for the V6 exact-inspired solver.
 
 This is a deterministic statevector cross-check, not NVIDIA/JUPITER access,
 not a QPU, and not evidence of lottery prediction accuracy.
