@@ -34,13 +34,13 @@ jobs:
           from pathlib import Path
           data=json.loads(Path('/tmp/v6-high-fidelity-evidence.json').read_text())
           layer=data['high_fidelity_layer']
-          assert layer['enabled'] is True
-          assert layer['minimum_observed_fidelity'] >= layer['threshold']
-          assert layer['qpu'] is False
-          assert layer['jupiter_nvidia_connected'] is False
+          assert layer['enabled'] is False
+          assert 'removed' in layer['scope']
+          assert 'qpu' not in layer
+          assert 'jupiter_nvidia_connected' not in layer
           assert len(data['first_zone']) == 6
           assert 1 <= data['second_zone'] <= 8
-          print('Local numerical high-fidelity layer verified; no QPU/JUPITER claim')
+          print('Deprecated statevector option safely disabled; exact selection verified')
           PY
       - uses: actions/upload-artifact@v6
         with:
