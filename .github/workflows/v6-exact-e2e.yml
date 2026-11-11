@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'WP-OS-Git-MAX/v6_ai_exact_e2e.py'
+      - 'WP-OS-Git-MAX/v6_exact_e2e.py'
       - '.github/workflows/v6-ai-exact-e2e.yml'
   push:
     paths:
-      - 'WP-OS-Git-MAX/v6_ai_exact_e2e.py'
+      - 'WP-OS-Git-MAX/v6_exact_e2e.py'
       - '.github/workflows/v6-ai-exact-e2e.yml'
 permissions:
   contents: read
@@ -24,13 +24,13 @@ jobs:
         run: python -m pip install 'coverage>=7,<8'
       - name: Run focused V6 unit tests and measure coverage
         run: |
-          python -m coverage run --branch --include='*/v6_ai_exact_e2e.py' -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_ai_exact_e2e.py' -v
-          python -m coverage report -m --include='*/v6_ai_exact_e2e.py'
+          python -m coverage run --branch --include='*/v6_exact_e2e.py' -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_exact_e2e.py' -v
+          python -m coverage report -m --include='*/v6_exact_e2e.py'
           python -m coverage json -o v6-coverage.json
       - name: Validate repository archive and run three-view V6 simulator
         run: |
-          python -m py_compile WP-OS-Git-MAX/v6_ai_exact_e2e.py
-          python WP-OS-Git-MAX/v6_ai_exact_e2e.py --csv WP-OS-Git-MAX/historical_archive.csv --output v6-e2e-result.json
+          python -m py_compile WP-OS-Git-MAX/v6_exact_e2e.py
+          python WP-OS-Git-MAX/v6_exact_e2e.py --csv WP-OS-Git-MAX/historical_archive.csv --output v6-e2e-result.json
           python - <<'PY'
           import json
           d=json.load(open('v6-e2e-result.json'))

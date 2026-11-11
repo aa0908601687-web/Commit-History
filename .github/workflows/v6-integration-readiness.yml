@@ -20,7 +20,7 @@ jobs:
       - name: V6 exact and official API contract tests (offline)
         run: |
           python -m unittest discover -s WP-OS-Git-MAX -p 'test_official_api_v6_contract.py'
-          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_ai_exact_e2e.py'
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_exact_e2e.py'
           python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_three_model_exact_bridge.py'
       - name: Three-model historical data parity and evidence report
         run: python WP-OS-Git-MAX/v6_integration_readiness.py > v6-readiness.json

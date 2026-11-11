@@ -25,7 +25,7 @@ jobs:
         run: python -m unittest discover -s verification -p 'test_v6_ising_*.py' -v
       - name: Run upstream trained fusion with mandatory CUDA-Q
         run: |
-          python WP-OS-Git-MAX/v6_ai_exact_e2e.py --csv WP-OS-Git-MAX/historical_archive.csv --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 --require-cudaq --output v6-ising-upstream.json
+          python WP-OS-Git-MAX/v6_exact_e2e.py --csv WP-OS-Git-MAX/historical_archive.csv --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 --require-cudaq --output v6-ising-upstream.json
       - name: Audit real upstream fused scores against Ising and exact search
         run: python verification/v6_ising_fusion_audit.py v6-ising-upstream.json v6-ising-audit.json
       - uses: actions/upload-artifact@v6
