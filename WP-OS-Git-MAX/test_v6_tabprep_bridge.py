@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from v6_ai_qaoa_e2e import run
+from v6_exact_e2e import run
 
 
 class TabPrepContractTests(unittest.TestCase):

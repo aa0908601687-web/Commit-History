@@ -6,7 +6,7 @@ Status: specification only; no proof completion or end-to-end success claimed.
 1. OpenFE: feature schema, timestamp cutoffs, and no future-draw leakage.
 2. LightGBM: input/output contract, finite scores and stable candidate identifiers.
 3. CUDA-Q: 8-qubit bit order, shot decoding, and valid candidate indices.
-4. QAOA: objective and constraints must match the exact-search reference.
+4. non-variational CUDA-Q: objective and constraints must match the exact-search reference.
 5. Eight-candidate pool: unique first-zone values in 1..38, stable bijection from bit indices to candidate numbers.
 6. Exact search: enumerate all 6-of-8 subsets (28 combinations) and certify argmax under the *same* scoring function and constraints.
 7. Three-layer pipeline: typed interfaces, provenance and no stale V3 cache dependencies.
@@ -16,7 +16,7 @@ Status: specification only; no proof completion or end-to-end success claimed.
 - Candidate uniqueness and range invariants.
 - 8-bit mask popcount = 6; decoding preserves selected numbers.
 - Exact search returns a feasible solution with score >= every feasible 6-of-8 combination.
-- QAOA and exact search use the same objective encoding, coefficient scaling, penalty terms and endianness.
+- non-variational CUDA-Q and exact search use the same objective encoding, coefficient scaling, penalty terms and endianness.
 - Data feature timestamps are strictly earlier than the target draw.
 - Output validation rejects malformed or missing second-zone predictions.
 

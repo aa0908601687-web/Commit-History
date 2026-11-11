@@ -115,13 +115,13 @@ V6 can optionally run its eight-candidate score-phase research step with the ope
 ```bash
 python -m pip install --upgrade 'pip>=24'
 python -m pip install 'cudaq==0.16.0'
-python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+python WP-OS-Git-MAX/v6_exact_e2e.py \
   --csv WP-OS-Git-MAX/historical_archive.csv \
   --cudaq --require-cudaq
 ```
 
 - The backend is explicitly fixed to CUDA-Q `qpp-cpu`, a free local simulator.
 - It does not connect to a real QPU, NVIDIA cloud service, JUPITER, or any remote quantum provider.
-- `--cudaq` falls back to the existing Python statevector when CUDA-Q is unavailable. `--require-cudaq` fails closed and is used by CI to prove that CUDA-Q actually executed.
+- `--cudaq` falls back to Python 28-combination exact selection when CUDA-Q is unavailable. `--require-cudaq` fails closed and is used by CI to prove that CUDA-Q actually executed.
 - The CUDA-Q step uses a deterministic 8-qubit score-phase ansatz and classically post-selects valid six-of-eight states. OpenFE/LightGBM scoring and the existing last-5/last-10 data boundaries are unchanged.
 - CUDA-Q may improve implementation flexibility or simulator performance; it does not change the theoretical lottery odds or establish predictive advantage.

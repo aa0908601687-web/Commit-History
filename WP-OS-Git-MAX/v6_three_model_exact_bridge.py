@@ -1,24 +1,24 @@
-"""Read-only three-model -> V6 QAOA research comparison (not production inference)."""
+"""Read-only three-model -> V6 exact-search comparison (not production inference)."""
 import hashlib
 import json
 from pathlib import Path
 
 from wp_os_git_max import load
 from modular_selection_pipeline import run as run_three
-from v6_ai_qaoa_e2e import run as run_qaoa
+from v6_exact_e2e import run as run_exact
 
 
 def run(csv_path):
     path = Path(csv_path)
     draws = load(str(path))
     trio = run_three(draws)
-    qaoa = run_qaoa(str(path))
+    exact = run_exact(str(path))
     cutoff = draws[-1]["draw_id"]
-    if trio["through_draw"] != qaoa["last_draw"] or cutoff != qaoa["last_draw"]:
-        raise ValueError("QAOA and three-model cutoffs disagree")
+    if trio["through_draw"] != exact["last_draw"] or cutoff != exact["last_draw"]:
+        raise ValueError("Exact-search and three-model cutoffs disagree")
     names = ("main_5_10", "control_10_20", "fusion_5_10_20")
     comparisons = {}
-    qfirst = set(qaoa["first_zone"])
+    efirst = set(exact["first_zone"])
     for name in names:
         prediction = trio["predictions"][name]
         first = prediction["first"]
@@ -28,15 +28,15 @@ def run(csv_path):
         if not isinstance(second, int) or not 1 <= second <= 8:
             raise ValueError("Invalid second-zone output")
         comparisons[name] = {
-            "first_zone_overlap": sorted(qfirst.intersection(first)),
-            "first_zone_overlap_count": len(qfirst.intersection(first)),
-            "second_zone_equal": second == qaoa["second_zone"],
+            "first_zone_overlap": sorted(efirst.intersection(first)),
+            "first_zone_overlap_count": len(efirst.intersection(first)),
+            "second_zone_equal": second == exact["second_zone"],
         }
     return {
         "cutoff": cutoff, "source_archive_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "models": {name: {"first": trio["predictions"][name]["first"],
                            "second": trio["predictions"][name]["second"]} for name in names},
-        "qaoa_research": {"first": qaoa["first_zone"], "second": qaoa["second_zone"]},
+        "exact_search_research": {"first": exact["first_zone"], "second": exact["second_zone"]},
         "comparison": comparisons,
         "production_selection_unchanged": True,
         "live_official_api_verified": False,

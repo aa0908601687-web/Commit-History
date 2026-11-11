@@ -9,7 +9,7 @@ import v6_cudaq_backend as backend
 class _FakeState:
     def __getitem__(self, index):
         # A deterministic maximum at one valid six-bit mask.
-        return 1.0 if index == 0b00111111 else 0.001
+        return 1.0 if index == 1 else 0.001
 
 
 class _FakeCudaQ(types.SimpleNamespace):
@@ -62,7 +62,7 @@ class CudaQBackendTests(unittest.TestCase):
         fake = _FakeCudaQ()
         with patch.dict(sys.modules, {"cudaq": fake}):
             selected, metadata = backend.select_six(self.pool, self.scores, required=True)
-        self.assertEqual(selected, [1, 2, 3, 4, 5, 6])
+        self.assertEqual(selected, [3, 4, 5, 6, 7, 8])
         self.assertTrue(metadata["executed"])
         self.assertEqual(metadata["backend"], "qpp-cpu")
         self.assertEqual(fake.target, "qpp-cpu")
@@ -70,6 +70,7 @@ class CudaQBackendTests(unittest.TestCase):
         self.assertFalse(metadata["real_qpu_connected"])
         self.assertFalse(metadata["remote_service_connected"])
         self.assertFalse(metadata["predictive_advantage_verified"])
+        self.assertEqual(metadata["combinations_checked"], 28)
 
     def test_equal_scores_and_runtime_without_seed_api(self):
         self.assertEqual(backend._normalise(self.pool, {n: 1.0 for n in self.pool}), [0.5] * 8)
@@ -89,6 +90,23 @@ class CudaQBackendTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             backend.select_six(self.pool, {1: 0.1})
 
+
+
+    def test_simulator_probe_rejects_invalid_state(self):
+        fake = _FakeCudaQ()
+        fake.get_state = lambda *args: [1.0, 0.0]
+        with patch.dict(sys.modules, {"cudaq": fake}):
+            with self.assertRaisesRegex(RuntimeError, "simulator probe failed"):
+                backend.select_six(self.pool, self.scores, required=True)
+
+    def test_cudaq_exact_count_mismatch_fails_closed(self):
+        fake = _FakeCudaQ()
+        with patch.dict(sys.modules, {"cudaq": fake}), patch(
+            "v6_exact_search.exact_select",
+            return_value=([3, 4, 5, 6, 7, 8], 3.3, 27),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "did not enumerate 28 combinations"):
+                backend.select_six(self.pool, self.scores, required=True)
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,7 @@ name: V6 integrated Ising QUBO and Rocq joint E2E
 on:
   pull_request:
     paths:
-      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/v6_exact_e2e.py'
       - 'WP-OS-Git-MAX/test_v6_ising_pipeline.py'
       - 'verification/v6_ising_*.py'
       - 'verification/rocq/V6Candidate.v'
@@ -10,7 +10,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/v6_exact_e2e.py'
       - 'WP-OS-Git-MAX/test_v6_ising_pipeline.py'
       - 'verification/v6_ising_*.py'
       - 'verification/rocq/V6Candidate.v'
@@ -37,7 +37,7 @@ jobs:
           python -m unittest discover -s verification -p 'test_v6_ising_*.py' -v
       - name: Execute OpenFE PyTorch CUDA-Q Ising QUBO and exact in one call
         run: |
-          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+          python WP-OS-Git-MAX/v6_exact_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
             --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 \
             --require-cudaq --ising-qubo-check \

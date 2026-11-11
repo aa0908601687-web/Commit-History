@@ -9,13 +9,13 @@ Also install `lightgbm`, `pandas`, and `scikit-learn`. Upstream installations ar
 
 ## Usage
 ```bash
-python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+python WP-OS-Git-MAX/v6_exact_e2e.py \
   --csv WP-OS-Git-MAX/historical_archive.csv \
   --tabprep-three-views \
   --output v6-tabprep-experiment.json
 ```
 
-This is an **isolated alternative**: `--tabprep-three-views` cannot combine with `--openfe-three-views`, `--openfe` or `--pytorch-three-views` in the first experiment. The existing OpenFE/PyTorch default and their fusion weights remain unchanged. This workflow's historical filename remains for backward compatibility, and is **not** proof that QAOA is removed.
+This is an **isolated alternative**: `--tabprep-three-views` cannot combine with `--openfe-three-views`, `--openfe` or `--pytorch-three-views` in the first experiment. The existing OpenFE/PyTorch default and their fusion weights remain unchanged. This workflow's historical filename remains for backward compatibility, and is **not** proof that non-variational CUDA-Q is removed.
 
 ## Validation and safety
 - Source generation and `fit_transform` use only completed historical draws before each training target, with only the preceding 5/10 draws used for feature calculations.

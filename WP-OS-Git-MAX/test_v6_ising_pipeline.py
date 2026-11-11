@@ -7,7 +7,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "WP-OS-Git-MAX"))
 sys.path.insert(0, str(ROOT / "verification"))
-from v6_ai_qaoa_e2e import run
+from v6_exact_e2e import run
 from v6_ising_qubo_reference import check_solver_output
 
 class TestIsingProduction(unittest.TestCase):
