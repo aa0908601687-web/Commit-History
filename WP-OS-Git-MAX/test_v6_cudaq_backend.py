@@ -91,5 +91,22 @@ class CudaQBackendTests(unittest.TestCase):
             backend.select_six(self.pool, {1: 0.1})
 
 
+
+    def test_simulator_probe_rejects_invalid_state(self):
+        fake = _FakeCudaQ()
+        fake.get_state = lambda *args: [1.0, 0.0]
+        with patch.dict(sys.modules, {"cudaq": fake}):
+            with self.assertRaisesRegex(RuntimeError, "simulator probe failed"):
+                backend.select_six(self.pool, self.scores, required=True)
+
+    def test_cudaq_exact_count_mismatch_fails_closed(self):
+        fake = _FakeCudaQ()
+        with patch.dict(sys.modules, {"cudaq": fake}), patch(
+            "v6_exact_search.exact_select",
+            return_value=([3, 4, 5, 6, 7, 8], 3.3, 27),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "did not enumerate 28 combinations"):
+                backend.select_six(self.pool, self.scores, required=True)
+
 if __name__ == "__main__":
     unittest.main()
