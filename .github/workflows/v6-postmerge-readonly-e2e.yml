@@ -78,8 +78,8 @@ jobs:
           assert result["openfe_feature_layer"]["weight"] == 1.0
           assert result["openfe_feature_layer"]["v3_cache_features_used"] is False
           assert result["openfe_feature_layer"]["view_weights"] == {"latest_5":1/3,"latest_10":1/3,"full_archive":1/3}
-          assert result["high_fidelity_layer"]["enabled"] is True
-          assert result["high_fidelity_layer"]["minimum_observed_fidelity"] >= 0.99999
+          assert result["high_fidelity_layer"]["enabled"] is False
+          assert "removed" in result["high_fidelity_layer"]["scope"]
           assert result["cudaq_layer"]["executed"] is True
           opt = result["exact_optimization_layer"]
           assert opt["globally_optimal_within_pool"] is True
