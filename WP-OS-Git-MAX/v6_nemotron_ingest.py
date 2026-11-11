@@ -11,7 +11,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from v6_ai_exact_e2e import run, validate
+from v6_exact_e2e import run, validate
 
 
 def audit_extraction(csv_path, extraction_path):

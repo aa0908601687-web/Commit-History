@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import v6_ai_exact_e2e as v6
+import v6_exact_e2e as v6
 
 
 class V6EXACTBoundaryTests(unittest.TestCase):

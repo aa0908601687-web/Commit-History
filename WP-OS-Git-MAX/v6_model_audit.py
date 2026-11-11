@@ -112,7 +112,7 @@ def leave_one_recent_draw_out(rows, scorer):
 
 
 def main():
-    from v6_ai_exact_e2e import validate
+    from v6_exact_e2e import validate
     from v6_openfe_bridge import score_three_history_views
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True)

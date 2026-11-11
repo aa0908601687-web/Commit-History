@@ -115,7 +115,7 @@ V6 can optionally run its eight-candidate score-phase research step with the ope
 ```bash
 python -m pip install --upgrade 'pip>=24'
 python -m pip install 'cudaq==0.16.0'
-python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+python WP-OS-Git-MAX/v6_exact_e2e.py \
   --csv WP-OS-Git-MAX/historical_archive.csv \
   --cudaq --require-cudaq
 ```

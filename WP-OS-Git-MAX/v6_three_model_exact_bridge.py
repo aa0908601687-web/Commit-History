@@ -5,7 +5,7 @@ from pathlib import Path
 
 from wp_os_git_max import load
 from modular_selection_pipeline import run as run_three
-from v6_ai_exact_e2e import run as run_exact
+from v6_exact_e2e import run as run_exact
 
 
 def run(csv_path):

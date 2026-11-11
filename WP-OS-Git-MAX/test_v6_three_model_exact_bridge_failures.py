@@ -38,7 +38,7 @@ class V6BridgeFailures(unittest.TestCase):
                         bridge.run(self.archive)
 
     def test_exact_draw_cutoff_mismatch_fails_closed(self):
-        from v6_ai_exact_e2e import run as original
+        from v6_exact_e2e import run as original
         def altered(path):
             result = original(path)
             result["last_draw"] = "000000000"
