@@ -157,5 +157,36 @@ class OpenFECoverageTests(unittest.TestCase):
             with self.assertRaisesRegex(OSError, "synthetic enter failure"):
                 exact.validate("unreadable.csv")
 
+
+    def test_exact_candidate_count_mismatch_fails_closed(self):
+        import v6_exact_e2e as exact
+        with tempfile.TemporaryDirectory() as td:
+            csv = Path(td) / "draws.csv"
+            csv.write_text("draw_id,first,second\\n" + "".join(
+                f"115000{i:03d},1 2 3 4 5 6,1\\n" for i in range(1, 11)
+            ), encoding="utf-8")
+            rows = exact.validate(csv)
+            scores = {n: float(n) / 38 for n in range(1, 39)}
+            with patch("v6_exact_search.exact_select", return_value=([1, 2, 3, 4, 5, 6], 0.0, 27)):
+                with self.assertRaisesRegex(RuntimeError, "unexpected exact-search candidate count"):
+                    exact.complete_result(csv, rows, scores, {"enabled": False})
+
+    def test_isolated_tabprep_three_view_scoring_path(self):
+        import v6_exact_e2e as exact
+        with tempfile.TemporaryDirectory() as td:
+            csv = Path(td) / "draws.csv"
+            csv.write_text("draw_id,first,second\\n" + "".join(
+                f"115000{i:03d},1 2 3 4 5 6,1\\n" for i in range(1, 11)
+            ), encoding="utf-8")
+            learned = {n: float(n) / 38 for n in range(1, 39)}
+            with patch("v6_tabprep_bridge.score_three_history_views_tabprep",
+                       return_value=(learned, {"tabprep_executed": True})):
+                result = exact.run(csv, tabprep_three_views=True)
+            self.assertEqual(result["exact_optimization_layer"]["searched_combinations"], 28)
+            self.assertTrue(result["openfe_feature_layer"]["enabled"])
+            self.assertEqual(result["openfe_feature_layer"]["weight"], 1.0)
+            self.assertTrue(result["openfe_feature_layer"]["tabprep_executed"])
+            self.assertEqual(result["first_zone"], [33, 34, 35, 36, 37, 38])
+
 if __name__ == "__main__":
     unittest.main()
