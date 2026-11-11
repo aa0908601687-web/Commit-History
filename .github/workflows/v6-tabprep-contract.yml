@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - 'WP-OS-Git-MAX/v6_tabprep_bridge.py'
-      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/v6_ai_exact_e2e.py'
       - 'WP-OS-Git-MAX/test_v6_tabprep_bridge.py'
       - 'docs/V6_TABPREP_SETUP.md'
       - '.github/workflows/v6-tabprep-contract.yml'
@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Compile adapter and CLI
-        run: python -m py_compile WP-OS-Git-MAX/v6_tabprep_bridge.py WP-OS-Git-MAX/v6_ai_qaoa_e2e.py
+        run: python -m py_compile WP-OS-Git-MAX/v6_tabprep_bridge.py WP-OS-Git-MAX/v6_ai_exact_e2e.py
       - name: Run offline TabPrep isolation tests
         run: python -m unittest discover -v -s WP-OS-Git-MAX -p 'test_v6_tabprep_bridge.py'
       - name: Disclose execution boundary
