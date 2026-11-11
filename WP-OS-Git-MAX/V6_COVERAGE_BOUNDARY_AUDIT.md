@@ -5,7 +5,7 @@
 - PR #25 commit `40fd4e9ec48638761f6d9ba167929e913fa5f444`; [Actions coverage run 41479960938](https://github.com/aa0908601687-web/Commit-History/actions/runs/41479960938).
 - 325 unit tests executed; **100.00% overall statement and branch coverage** for the repository coverage command: 1,867 statements, 0 missed; 542 branches, 0 missed.
 - Some legacy ABE execution paths were covered via mock or inert test doubles. They are **not** live neural training, pretrained inference, or V6 integration.
-- Existing V6 research workflow tested a Bayesian-style heuristic and local 8-qubit QAOA-inspired simulation. This does not establish a predictive advantage, deployed trained AI, or production E2E readiness.
+- Existing V6 research workflow tested a Bayesian-style heuristic and local 8-qubit obsolete variational simulation. This does not establish a predictive advantage, deployed trained AI, or production E2E readiness.
 
 ## Historical context
 
@@ -19,4 +19,4 @@ The live official API probe remains read-only and does not persist predictions o
 
 ## Acceptance criteria
 
-For the revised PR head, independently check: coverage, full suite, official API read-only probe, three-model cutoff/parity, local QAOA comparison, and artifacts. Mark any missing/failed validation explicitly and do not claim production readiness from unit coverage alone.
+For the revised PR head, independently check: coverage, full suite, official API read-only probe, three-model cutoff/parity, local non-variational CUDA-Q comparison, and artifacts. Mark any missing/failed validation explicitly and do not claim production readiness from unit coverage alone.
