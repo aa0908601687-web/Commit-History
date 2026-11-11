@@ -46,7 +46,7 @@ jobs:
           import json, math, sys
           from pathlib import Path
           sys.path.insert(0, 'WP-OS-Git-MAX')
-          from v6_ai_exact_e2e import validate
+          from v6_exact_e2e import validate
           from v6_tabprep_bridge import score_three_history_views_tabprep
           from v6_exact_search import compare_selection
           rows = validate('WP-OS-Git-MAX/historical_archive.csv')

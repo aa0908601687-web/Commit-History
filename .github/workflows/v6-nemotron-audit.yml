@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths:
       - 'WP-OS-Git-MAX/v6_nemotron_ingest.py'
-      - 'WP-OS-Git-MAX/v6_ai_exact_e2e.py'
+      - 'WP-OS-Git-MAX/v6_exact_e2e.py'
       - 'WP-OS-Git-MAX/test_v6_nemotron_ingest.py'
       - '.github/scripts/v6_nemotron_vision_client.py'
       - '.github/scripts/test_v6_nemotron_vision_client.py'

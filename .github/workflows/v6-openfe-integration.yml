@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - 'WP-OS-Git-MAX/v6_openfe_bridge.py'
-      - 'WP-OS-Git-MAX/v6_ai_exact_e2e.py'
+      - 'WP-OS-Git-MAX/v6_exact_e2e.py'
       - 'WP-OS-Git-MAX/test_v6_openfe_integration.py'
       - '.github/workflows/v6-openfe-integration.yml'
   workflow_dispatch:
@@ -27,7 +27,7 @@ jobs:
         run: python -m unittest WP-OS-Git-MAX/test_v6_openfe_integration.py -v
       - name: Execute real three-history-view OpenFE to local exact pipeline
         run: |
-          python WP-OS-Git-MAX/v6_ai_exact_e2e.py \
+          python WP-OS-Git-MAX/v6_exact_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
             --openfe-three-views \
             --output /tmp/v6-openfe-three-views-evidence.json
