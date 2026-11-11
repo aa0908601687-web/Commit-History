@@ -1,7 +1,7 @@
 """Optional NVIDIA CUDA-Q qpp-cpu capability verification for V6.
 
 The backend runs a non-variational single-qubit simulator probe and delegates
-candidate selection to the exhaustive 8-choose-6 Python optimizer. No QAOA,
+candidate selection to the exhaustive 8-choose-6 Python optimizer. No exact,
 parameterized mixer, QPU or remote execution.
 """
 from __future__ import annotations
