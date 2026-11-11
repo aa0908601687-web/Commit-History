@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 import sys
-import v6_ai_exact_e2e as v6
+import v6_exact_e2e as v6
 from v6_exact_search import exact_select, compare_selection
 
 class ExactSearchTests(unittest.TestCase):

@@ -92,7 +92,7 @@ class ScoreAuditTests(unittest.TestCase):
             destination = str(Path(directory) / "audit.json")
             args = ["v6_model_audit.py", "--csv", "fake.csv", "--output", destination,
                     "--max-steps", "2", "--skip-sensitivity"]
-            with patch.dict(sys.modules, {"v6_ai_exact_e2e": fake_v6, "v6_openfe_bridge": fake_bridge}), \
+            with patch.dict(sys.modules, {"v6_exact_e2e": fake_v6, "v6_openfe_bridge": fake_bridge}), \
                  patch.object(sys, "argv", args), redirect_stdout(io.StringIO()):
                 audit.main()
             report = json.loads(Path(destination).read_text(encoding="utf-8"))
@@ -104,7 +104,7 @@ class ScoreAuditTests(unittest.TestCase):
         fake_v6 = SimpleNamespace(validate=lambda path: rows)
         fake_bridge = SimpleNamespace(score_three_history_views=lambda history, n_jobs=1: scorer(history))
         args = ["v6_model_audit.py", "--csv", "fake.csv", "--max-steps", "1"]
-        with patch.dict(sys.modules, {"v6_ai_exact_e2e": fake_v6, "v6_openfe_bridge": fake_bridge}), \
+        with patch.dict(sys.modules, {"v6_exact_e2e": fake_v6, "v6_openfe_bridge": fake_bridge}), \
              patch.object(sys, "argv", args), redirect_stdout(io.StringIO()) as output:
             runpy.run_path(str(Path(__file__).parent / "v6_model_audit.py"), run_name="__main__")
         report = json.loads(output.getvalue())

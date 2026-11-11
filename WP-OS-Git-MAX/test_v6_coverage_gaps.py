@@ -113,18 +113,18 @@ class OpenFECoverageTests(unittest.TestCase):
         self.assertEqual(len(y), len(x))
 
     def test_exact_module_entrypoint(self):
-        import v6_ai_exact_e2e as exact
+        import v6_exact_e2e as exact
         with tempfile.TemporaryDirectory() as td:
             csv = Path(td) / "draws.csv"
             csv.write_text("draw_id,first,second\n" + "".join(
                 f"115000{i:03d},1 2 3 4 5 6,{i % 8 + 1}\n" for i in range(1, 11)
             ), encoding="utf-8")
-            with patch.object(sys, "argv", ["v6_ai_exact_e2e.py", "--csv", str(csv)]):
+            with patch.object(sys, "argv", ["v6_exact_e2e.py", "--csv", str(csv)]):
                 runpy.run_path(exact.__file__, run_name="__main__")
 
 
     def test_exact_csv_reader_exceptional_exit(self):
-        import v6_ai_exact_e2e as exact
+        import v6_exact_e2e as exact
         with tempfile.TemporaryDirectory() as td:
             csv = Path(td) / "draws.csv"
             csv.write_text("draw_id,first,second\n" + "".join(
@@ -149,7 +149,7 @@ class OpenFECoverageTests(unittest.TestCase):
 
 
     def test_exact_csv_file_context_enter_failure(self):
-        import v6_ai_exact_e2e as exact
+        import v6_exact_e2e as exact
         from unittest.mock import mock_open
         source = mock_open(read_data="draw_id,first,second\n")()
         source.__enter__.side_effect = OSError("synthetic enter failure")

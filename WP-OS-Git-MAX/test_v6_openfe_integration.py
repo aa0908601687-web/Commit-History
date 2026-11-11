@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT=Path(__file__).parent
-spec=importlib.util.spec_from_file_location("v6_ai_exact_e2e",ROOT/"v6_ai_exact_e2e.py")
+spec=importlib.util.spec_from_file_location("v6_exact_e2e",ROOT/"v6_exact_e2e.py")
 mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
 
 class V6OpenFEIntegrationTests(unittest.TestCase):
