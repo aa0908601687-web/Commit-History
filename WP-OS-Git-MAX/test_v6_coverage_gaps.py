@@ -162,8 +162,8 @@ class OpenFECoverageTests(unittest.TestCase):
         import v6_exact_e2e as exact
         with tempfile.TemporaryDirectory() as td:
             csv = Path(td) / "draws.csv"
-            csv.write_text("draw_id,first,second\\n" + "".join(
-                f"115000{i:03d},1 2 3 4 5 6,1\\n" for i in range(1, 11)
+            csv.write_text("draw_id,first,second\n" + "".join(
+                f"115000{i:03d},1 2 3 4 5 6,1\n" for i in range(1, 11)
             ), encoding="utf-8")
             rows = exact.validate(csv)
             scores = {n: float(n) / 38 for n in range(1, 39)}
@@ -175,8 +175,8 @@ class OpenFECoverageTests(unittest.TestCase):
         import v6_exact_e2e as exact
         with tempfile.TemporaryDirectory() as td:
             csv = Path(td) / "draws.csv"
-            csv.write_text("draw_id,first,second\\n" + "".join(
-                f"115000{i:03d},1 2 3 4 5 6,1\\n" for i in range(1, 11)
+            csv.write_text("draw_id,first,second\n" + "".join(
+                f"115000{i:03d},1 2 3 4 5 6,1\n" for i in range(1, 11)
             ), encoding="utf-8")
             learned = {n: float(n) / 38 for n in range(1, 39)}
             with patch("v6_tabprep_bridge.score_three_history_views_tabprep",
