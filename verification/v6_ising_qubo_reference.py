@@ -1,6 +1,6 @@
 """CPU reference for V6 OF3Q 8-to-6 Ising/QUBO objective.
 
-No NVIDIA solver, QAOA, or predictive model is invoked here.
+No NVIDIA solver, exact, or predictive model is invoked here.
 All scores are supplied by the upstream caller.
 """
 from itertools import combinations
