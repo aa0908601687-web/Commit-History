@@ -1,4 +1,4 @@
-"""Focused regression tests for cache-free V6 OpenFE bridge and QAOA.
+"""Focused regression tests for cache-free V6 OpenFE bridge and exact.
 
 Dependency-heavy feature training is mocked; integration is tested separately.
 """
@@ -112,25 +112,25 @@ class OpenFECoverageTests(unittest.TestCase):
         self.assertEqual(len(x), 15 * 2 * 38)
         self.assertEqual(len(y), len(x))
 
-    def test_qaoa_module_entrypoint(self):
-        import v6_ai_qaoa_e2e as qaoa
+    def test_exact_module_entrypoint(self):
+        import v6_ai_exact_e2e as exact
         with tempfile.TemporaryDirectory() as td:
             csv = Path(td) / "draws.csv"
             csv.write_text("draw_id,first,second\n" + "".join(
                 f"115000{i:03d},1 2 3 4 5 6,{i % 8 + 1}\n" for i in range(1, 11)
             ), encoding="utf-8")
-            with patch.object(sys, "argv", ["v6_ai_qaoa_e2e.py", "--csv", str(csv)]):
-                runpy.run_path(qaoa.__file__, run_name="__main__")
+            with patch.object(sys, "argv", ["v6_ai_exact_e2e.py", "--csv", str(csv)]):
+                runpy.run_path(exact.__file__, run_name="__main__")
 
 
-    def test_qaoa_csv_reader_exceptional_exit(self):
-        import v6_ai_qaoa_e2e as qaoa
+    def test_exact_csv_reader_exceptional_exit(self):
+        import v6_ai_exact_e2e as exact
         with tempfile.TemporaryDirectory() as td:
             csv = Path(td) / "draws.csv"
             csv.write_text("draw_id,first,second\n" + "".join(
                 f"115000{i:03d},1 2 3 4 5 6,1\n" for i in range(1, 11)
             ), encoding="utf-8")
-            original = qaoa.csv.DictReader
+            original = exact.csv.DictReader
             def failing_reader(file):
                 reader = original(file)
                 def iterate():
@@ -143,19 +143,19 @@ class OpenFECoverageTests(unittest.TestCase):
                         return iterate()
                 return FailingReader()
             # The context manager must close its file when the CSV reader raises.
-            with patch.object(qaoa.csv, "DictReader", side_effect=failing_reader):
+            with patch.object(exact.csv, "DictReader", side_effect=failing_reader):
                 with self.assertRaises(RuntimeError):
-                    qaoa.validate(csv)
+                    exact.validate(csv)
 
 
-    def test_qaoa_csv_file_context_enter_failure(self):
-        import v6_ai_qaoa_e2e as qaoa
+    def test_exact_csv_file_context_enter_failure(self):
+        import v6_ai_exact_e2e as exact
         from unittest.mock import mock_open
         source = mock_open(read_data="draw_id,first,second\n")()
         source.__enter__.side_effect = OSError("synthetic enter failure")
         with patch("builtins.open", return_value=source):
             with self.assertRaisesRegex(OSError, "synthetic enter failure"):
-                qaoa.validate("unreadable.csv")
+                exact.validate("unreadable.csv")
 
 if __name__ == "__main__":
     unittest.main()
