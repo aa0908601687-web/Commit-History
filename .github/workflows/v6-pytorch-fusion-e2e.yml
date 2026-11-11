@@ -4,14 +4,14 @@ on:
     branches: [main]
     paths:
       - 'WP-OS-Git-MAX/v6_pytorch_bridge.py'
-      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/v6_ai_exact_e2e.py'
       - 'WP-OS-Git-MAX/v6_openfe_bridge.py'
       - 'WP-OS-Git-MAX/test_v6_pytorch_fusion.py'
       - '.github/workflows/v6-pytorch-fusion-e2e.yml'
   pull_request:
     paths:
       - 'WP-OS-Git-MAX/v6_pytorch_bridge.py'
-      - 'WP-OS-Git-MAX/v6_ai_qaoa_e2e.py'
+      - 'WP-OS-Git-MAX/v6_ai_exact_e2e.py'
       - 'WP-OS-Git-MAX/test_v6_pytorch_fusion.py'
       - '.github/workflows/v6-pytorch-fusion-e2e.yml'
   workflow_dispatch:
@@ -34,7 +34,7 @@ jobs:
         run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_pytorch_fusion.py' -v
       - name: Execute full OpenFE LightGBM PyTorch -> 8 pool -> exact search -> valid ticket
         run: |
-          python WP-OS-Git-MAX/v6_ai_qaoa_e2e.py \
+          python WP-OS-Git-MAX/v6_ai_exact_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
             --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 \
             --output /tmp/v6-pytorch-fusion-evidence.json
