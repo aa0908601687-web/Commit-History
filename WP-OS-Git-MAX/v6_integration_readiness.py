@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail-closed, non-mutating V6 integration readiness audit.
 
-A successful three-model audit is NOT a claim of live API or QAOA integration.
+A successful three-model audit is NOT a claim of live API or exact integration.
 """
 import argparse
 import hashlib
@@ -40,7 +40,7 @@ def check():
                  "sha256": hashlib.sha256(data.read_bytes()).hexdigest()},
         "three_model_parity": "pass",
         "official_api": "offline contract test only; live fetch not checked",
-        "qaoa": "not verified in main; PR #23 requires separate review",
+        "exact": "not verified in main; PR #23 requires separate review",
         "trained_ai": "not verified",
         "full_e2e": False,
     }
@@ -54,7 +54,7 @@ def main():
     report = check()
     print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
     if args.strict_v6 and not report["full_e2e"]:
-        raise SystemExit("V6 strict gate NOT READY: live API + QAOA + trained AI unverified")
+        raise SystemExit("V6 strict gate NOT READY: live API + exact + trained AI unverified")
 
 
 if __name__ == "__main__":
