@@ -1,6 +1,6 @@
 """V6 Dynamo inference contract and optional live endpoint smoke test.
 
-Dynamo is a serving layer, not a lottery scoring model. No QAOA.
+Dynamo is a serving layer, not a lottery scoring model. No exact.
 """
 import argparse
 import json
