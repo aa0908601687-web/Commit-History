@@ -48,11 +48,11 @@ class V6ValidationTests(unittest.TestCase):
         with tmp:
             result=v6.run(path,high_fidelity_verify=True)
             layer=result["high_fidelity_layer"]
-            self.assertTrue(layer["enabled"])
-            self.assertGreaterEqual(layer["minimum_observed_fidelity"],layer["threshold"])
-            self.assertFalse(layer["qpu"])
-            self.assertFalse(layer["jupiter_nvidia_connected"])
-            self.assertIn("not lottery hit rate",layer["meaning"])
+            self.assertFalse(layer["enabled"])
+            self.assertIn("removed", layer["scope"])
+            self.assertNotIn("qpu", layer)
+            self.assertNotIn("jupiter_nvidia_connected", layer)
+            self.assertNotIn("meaning", layer)
 
     def test_cudaq_result_replaces_local_candidate(self):
         tmp, path = self.make_csv()
