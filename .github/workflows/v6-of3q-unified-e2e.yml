@@ -31,6 +31,46 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Reject references to retired optimizer
+        run: |
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+
+          retired = 'qa' + 'oa'
+          tracked = subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0')
+          findings = []
+          for raw_path in filter(None, tracked):
+              path = Path(raw_path)
+              name = path.as_posix().lower()
+              relevant = (
+                  (name.startswith('wp-os-git-max/') and (
+                      path.name.startswith(('v6_', 'test_v6_')) or
+                      path.name in ('README.md', 'V6_COVERAGE_BOUNDARY_AUDIT.md')
+                  ))
+                  or (name.startswith('.github/workflows/v6-') and name.endswith(('.yml', '.yaml')))
+                  or (name.startswith('.github/scripts/') and 'v6_' in path.name)
+                  or (name.startswith('docs/') and path.name.lower().startswith('v6'))
+                  or (name.startswith('verification/') and (
+                      path.name.startswith('v6_') or
+                      name.startswith('verification/rocq/')
+                  ))
+              )
+              if not relevant:
+                  continue
+              if retired in name:
+                  findings.append(f'{raw_path}: retired name')
+                  continue
+              try:
+                  content = path.read_text(encoding='utf-8').lower()
+              except (UnicodeDecodeError, OSError):
+                  continue
+              if retired in content:
+                  findings.append(f'{raw_path}: retired reference')
+          if findings:
+              raise SystemExit('Retired optimizer references remain:\n' + '\n'.join(findings))
+          print('PASS: no retired optimizer filename or reference in V6 files')
+          PY
       - name: Install CPU AI and CUDA-Q tools
         run: |
           python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu torch
