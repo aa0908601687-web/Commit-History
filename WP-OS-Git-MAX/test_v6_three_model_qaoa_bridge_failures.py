@@ -37,13 +37,13 @@ class V6BridgeFailures(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "Invalid second-zone"):
                         bridge.run(self.archive)
 
-    def test_qaoa_draw_cutoff_mismatch_fails_closed(self):
+    def test_exact_draw_cutoff_mismatch_fails_closed(self):
         from v6_ai_qaoa_e2e import run as original
         def altered(path):
             result = original(path)
             result["last_draw"] = "000000000"
             return result
-        with patch.object(bridge, "run_qaoa", side_effect=altered):
+        with patch.object(bridge, "run_exact", side_effect=altered):
             with self.assertRaisesRegex(ValueError, "cutoffs disagree"):
                 bridge.run(self.archive)
 
