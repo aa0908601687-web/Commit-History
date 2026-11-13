@@ -2,8 +2,10 @@ name: V6 live official API E2E probe (read only)
 on:
   pull_request:
     paths:
-      - 'WP-OS-Git-MAX/v6_live_api_e2e_probe.py'
-      - 'WP-OS-Git-MAX/test_v6_live_api_e2e_probe.py'
+      - 'WP-OS-Git-MAX/v6_*.py'
+      - 'WP-OS-Git-MAX/update_official_data.py'
+      - 'WP-OS-Git-MAX/historical_archive.csv'
+      - 'WP-OS-Git-MAX/test_v6_*.py'
       - '.github/workflows/v6-live-api-e2e.yml'
   workflow_dispatch:
 permissions:
