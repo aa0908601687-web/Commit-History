@@ -15,14 +15,58 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Audit current bundled 20-row fixture boundaries (NOT official full-history verification)
+      - name: Check 20-row fixture against canonical archive and audit dynamic boundaries
         run: |
-          python WP-OS-Git-MAX/v6_three_view_archive_audit.py --csv WP-OS-Git-MAX/historical_latest_20.csv --expected-first-draw 115000071 --expected-last-draw 115000090 --expected-count 20 --output v6-three-view-audit.json
+          python - <<'PY'
+          import csv
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          root = Path("WP-OS-Git-MAX")
+          with (root / "historical_archive.csv").open(encoding="utf-8-sig", newline="") as f:
+              archive = list(csv.DictReader(f))
+          with (root / "historical_latest_20.csv").open(encoding="utf-8-sig", newline="") as f:
+              fixture = list(csv.DictReader(f))
+          assert len(archive) >= 20, "Canonical archive has fewer than 20 rows"
+          assert len(fixture) == 20, "Expected exactly 20 fixture rows"
+          assert fixture == archive[-20:], "20-row fixture differs from canonical archive suffix"
+          expected_first = archive[-20]["draw_id"]
+          expected_last = archive[-1]["draw_id"]
+          subprocess.run([
+              sys.executable, str(root / "v6_three_view_archive_audit.py"),
+              "--csv", str(root / "historical_latest_20.csv"),
+              "--expected-first-draw", expected_first,
+              "--expected-last-draw", expected_last,
+              "--expected-count", "20",
+              "--output", "v6-three-view-audit.json",
+          ], check=True)
+          print("PASS: dynamic boundaries, canonical archive suffix and number validation")
+          PY
       - name: Reject false full-history assertion
         run: |
-          if python WP-OS-Git-MAX/v6_three_view_archive_audit.py --csv WP-OS-Git-MAX/historical_latest_20.csv --expected-first-draw 115000001 --expected-last-draw 115000090 --expected-count 90; then
-            echo 'ERROR: incomplete archive incorrectly passed'; exit 1
-          fi
+          python - <<'PY'
+          import csv
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          root = Path("WP-OS-Git-MAX")
+          with (root / "historical_archive.csv").open(encoding="utf-8-sig", newline="") as f:
+              archive = list(csv.DictReader(f))
+          assert len(archive) > 20, "Expected canonical archive to exceed fixture length"
+          result = subprocess.run([
+              sys.executable, str(root / "v6_three_view_archive_audit.py"),
+              "--csv", str(root / "historical_latest_20.csv"),
+              "--expected-first-draw", archive[0]["draw_id"],
+              "--expected-last-draw", archive[-1]["draw_id"],
+              "--expected-count", str(len(archive)),
+              "--output", "v6-three-view-negative-audit.json",
+          ], capture_output=True, text=True)
+          if result.returncode == 0:
+              raise SystemExit("ERROR: incomplete fixture incorrectly passed full-history audit")
+          print("PASS: 20-row fixture correctly rejected as full-history archive")
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: v6-three-view-fixture-audit
