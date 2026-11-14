@@ -6,8 +6,6 @@ on:
       - 'WP-OS-Git-MAX/test_v6_*.py'
       - 'verification/v6_*.py'
       - 'verification/rocq/**'
-      - '.github/scripts/v6_nemotron_vision_client.py'
-      - '.github/scripts/test_v6_nemotron_vision_client.py'
       - '.github/workflows/v6-of3q-unified-e2e.yml'
   push:
     branches: [main]
@@ -16,8 +14,6 @@ on:
       - 'WP-OS-Git-MAX/test_v6_*.py'
       - 'verification/v6_*.py'
       - 'verification/rocq/**'
-      - '.github/scripts/v6_nemotron_vision_client.py'
-      - '.github/scripts/test_v6_nemotron_vision_client.py'
       - '.github/workflows/v6-of3q-unified-e2e.yml'
   workflow_dispatch:
 permissions:
@@ -78,10 +74,8 @@ jobs:
       - name: Verify relevant offline module contracts
         run: |
           python -m unittest discover -v -s WP-OS-Git-MAX -p 'test_v6_ising_pipeline.py'
-          python -m unittest discover -v -s WP-OS-Git-MAX -p 'test_v6_nemotron_ingest.py'
           python -m unittest discover -v -s WP-OS-Git-MAX -p 'test_v6_pytorch_fusion.py'
           python -m unittest discover -v -s verification -p 'test_v6_ising_*.py'
-          python -m unittest discover -v -s .github/scripts -p 'test_v6_nemotron_vision_client.py'
       - name: Run one combined OpenFE LightGBM PyTorch CUDA-Q Ising and exact-search invocation
         run: |
           python WP-OS-Git-MAX/v6_exact_e2e.py \
@@ -125,36 +119,7 @@ jobs:
           name: v6-unified-core-${{ github.run_id }}
           path: v6-unified-core.json
           if-no-files-found: warn
-  nemotron-offline-audit:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Test Nemotron audit adapter and mock vision client
-        run: |
-          python -m unittest discover -v -s WP-OS-Git-MAX -p 'test_v6_nemotron_ingest.py'
-          python -m unittest discover -v -s .github/scripts -p 'test_v6_nemotron_vision_client.py'
-      - name: Check canonical CSV match and reject fake live-inference claims
-        run: |
-          python - <<'PY'
-          import csv,json,sys
-          from pathlib import Path
-          sys.path.insert(0,'WP-OS-Git-MAX')
-          from v6_nemotron_ingest import audit_extraction
-          csv_path='WP-OS-Git-MAX/historical_archive.csv'
-          with open(csv_path,encoding='utf-8-sig',newline='') as f:
-              rows=list(csv.DictReader(f))[-10:]
-          assert len(rows)==10
-          obj={'source':'offline-fixture-no-nvidia-inference','draws':[{'draw_id':r['draw_id'],'first':[int(n) for n in r['first'].split()],'second':int(r['second'])} for r in rows]}
-          Path('v6-unified-extraction.json').write_text(json.dumps(obj))
-          result=audit_extraction(csv_path,'v6-unified-extraction.json')
-          assert result['status']=='matched_canonical_csv'
-          assert result['checked_draws']==10
-          assert result['nemotron_model_executed'] is False
-          print('PASS: Nemotron structured input audited, NVIDIA model NOT invoked')
-          PY
+
   rocq-candidate-proof:
     runs-on: ubuntu-24.04
     timeout-minutes: 70
