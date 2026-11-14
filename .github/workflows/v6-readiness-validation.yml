@@ -1,0 +1,89 @@
+name: V6 OF3Q data integrity and 100-200-500 forward-check
+
+on:
+  pull_request:
+    paths:
+      - 'verification/v6_readiness_audit.py'
+      - 'verification/test_v6_readiness_audit.py'
+      - 'verification/v6_openfe_feature_research.py'
+      - 'verification/test_v6_openfe_feature_research.py'
+      - '.github/workflows/v6-readiness-validation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'verification/v6_readiness_audit.py'
+      - 'verification/test_v6_readiness_audit.py'
+      - 'verification/v6_openfe_feature_research.py'
+      - 'verification/test_v6_openfe_feature_research.py'
+      - '.github/workflows/v6-readiness-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install free local test and OpenFE dependencies
+        run: python -m pip install --disable-pip-version-check 'coverage>=7,<8' 'openfe==0.0.12' 'matplotlib>=3.9,<4'
+      - name: Exercise both research modules with branch-aware coverage
+        run: |
+          python -m coverage run --branch --include='*/verification/v6_openfe_feature_research.py,*/verification/v6_readiness_audit.py' -m unittest discover -s verification -p 'test_v6_openfe_feature_research.py' -v
+          python -m coverage run -a --branch --include='*/verification/v6_openfe_feature_research.py,*/verification/v6_readiness_audit.py' -m unittest discover -s verification -p 'test_v6_readiness_audit.py' -v
+          python -m coverage run -a --branch --include='*/verification/v6_openfe_feature_research.py,*/verification/v6_readiness_audit.py' verification/v6_openfe_feature_research.py --csv WP-OS-Git-MAX/historical_archive.csv --output v6-feature-preview.json
+          python -m coverage run -a --branch --include='*/verification/v6_openfe_feature_research.py,*/verification/v6_readiness_audit.py' verification/v6_readiness_audit.py --csv WP-OS-Git-MAX/historical_archive.csv --output v6-readiness-audit.json
+          python -m coverage report -m | tee v6-research-coverage.txt
+          python -m coverage json -o v6-research-coverage.json
+          python -m coverage report --fail-under=100
+      - name: Execute causal historical 100/200/500 reference walk-forward
+        run: |
+          python verification/v6_readiness_audit.py --csv WP-OS-Git-MAX/historical_archive.csv --output v6-readiness-audit.json
+      - name: Run one REAL OpenFE and LightGBM research holdout smoke test
+        run: |
+          python verification/v6_openfe_feature_research.py --csv WP-OS-Git-MAX/historical_archive.csv --walk-forward-draws 1 --modes base,all --output v6-real-openfe-smoke.json
+      - name: Assert evidence provenance and explicit non-deployment boundary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('v6-readiness-audit.json').read_text())
+          q=r['data_quality']; b=r['backtest']
+          assert q['csv_validated'] and q['row_count']>=512
+          assert q['date_and_draw_calendar_completeness_verified'] is False
+          assert q['source_verified_independently_against_official_provider'] is False
+          assert b['openfe_lightgbm_retrained_for_every_holdout'] is False
+          assert b['automatic_production_promotion'] is False
+          assert b['history_window_max']==10
+          for n in (100,200,500):
+              w=b['windows'][str(n)]
+              assert w['tested_draws']==n
+              assert w['through_draw']==q['last_draw']
+              assert set(w['variants'])=={'uniform_random','fixed_1_to_6','base','repeat','cooccur','all'}
+              for v in w['variants'].values():
+                  assert sum(v['hit_distribution'].values())==n
+          ml=json.loads(Path('v6-real-openfe-smoke.json').read_text())
+          assert set(ml['results'])=={'base','all'}
+          assert all(v['draws']==1 for v in ml['results'].values())
+          assert not ml['production_promotion_automatic']
+          assert not ml['results']['all']['activated_in_production']
+          assert not ml['results']['all']['eligible_for_manual_review']
+          print('PASS: 100/200/500 fast reference only; real OpenFE one-draw smoke; no deployed model claim')
+          PY
+      - name: Upload separate scope-aware evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-validation-coverage-and-causal-audit
+          path: |
+            v6-readiness-audit.json
+            v6-real-openfe-smoke.json
+            v6-feature-preview.json
+            v6-research-coverage.txt
+            v6-research-coverage.json
+          if-no-files-found: warn
