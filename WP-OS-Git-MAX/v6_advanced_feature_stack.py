@@ -62,7 +62,7 @@ def build_features(rows):
         n_jobs=0,
     )
     impute(ts_features)
-    ts_features = ts_features.reset_index().rename(columns={"id": "number"})
+    ts_features = ts_features.rename_axis("number").reset_index()
     base = pd.DataFrame(records)
     combined = base.merge(ts_features, on="number", how="inner", validate="one_to_one")
 
