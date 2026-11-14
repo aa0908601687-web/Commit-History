@@ -1,6 +1,6 @@
 # Independent CSV E2E verification
 
-This is a **research** extension to `verification/openfe_three_lottery_integration.py`. It is separate from the legacy V6 selection pipeline and does not add PyTorch, tsfresh, Featuretools, ABE, Nemotron, or QAOA.
+This is a **research** extension to `verification/openfe_three_lottery_integration.py`. It is separate from the legacy V6 selection pipeline and does not add tsfresh, Featuretools, ABE, Nemotron, or QAOA.
 
 Run a real historical CSV:
 
