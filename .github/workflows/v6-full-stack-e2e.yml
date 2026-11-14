@@ -1,0 +1,68 @@
+name: V6 full core plus advanced feature engineering E2E
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_full_stack_e2e.py'
+      - 'WP-OS-Git-MAX/test_v6_full_stack_e2e.py'
+      - 'WP-OS-Git-MAX/v6_advanced_feature_stack.py'
+      - 'WP-OS-Git-MAX/test_v6_advanced_feature_stack.py'
+      - 'WP-OS-Git-MAX/requirements-v6-advanced-features.txt'
+      - '.github/workflows/v6-full-stack-e2e.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  combined-full-stack-cpu-e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install actual feature and local-CPU solver dependencies
+        run: |
+          python -m pip install --disable-pip-version-check -r WP-OS-Git-MAX/requirements-v6-advanced-features.txt
+          python -m pip install --disable-pip-version-check 'openfe==0.0.12' 'matplotlib>=3.9,<4' 'cudaq==0.16.0' 'ortools>=9.10,<10'
+      - name: Run feature stack and fused-score unit contracts
+        run: |
+          cd WP-OS-Git-MAX
+          python -m unittest -v test_v6_advanced_feature_stack.py test_v6_full_stack_e2e.py
+      - name: Run one combined full core E2E with real packages
+        run: |
+          python WP-OS-Git-MAX/v6_full_stack_e2e.py \
+            --csv WP-OS-Git-MAX/historical_archive.csv \
+            --output v6-full-stack-e2e.json
+      - name: Fail closed unless all engines actually executed
+        run: |
+          python - <<'PY'
+          import json,math
+          from pathlib import Path
+          d=json.loads(Path('v6-full-stack-e2e.json').read_text())
+          f=d['openfe_feature_layer']
+          s=d['full_stack_integration']
+          assert s['executed'] and not s['production_replacement'] and not s['predictive_advantage_verified']
+          assert f['openfe']['engine']=='OpenFE+LightGBM'
+          assert f['openfe']['generated_features']>0
+          assert f['openfe']['used_features']>0
+          assert f['advanced']['executed'] and f['advanced']['engine']=='tsfresh+Featuretools'
+          assert f['advanced']['tsfresh_feature_count']>0
+          assert f['advanced']['featuretools_feature_count']>0
+          assert len(f['fused_scores'])==38
+          assert d['cudaq_layer']['executed'] and d['cudaq_layer']['backend']=='qpp-cpu' and not d['cudaq_layer']['qpu']
+          assert d['ising_qubo_layer']['executed'] and d['ising_qubo_layer']['same_optimal_score']
+          assert d['ortools_layer']['executed'] and d['ortools_layer']['same_optimal_score']
+          assert d['exact_optimization_layer']['searched_combinations']==28
+          assert d['first_zone']==d['exact_optimization_layer']['exact_selection']
+          assert len(d['first_zone'])==6 and len(set(d['first_zone']))==6
+          assert all(1<=x<=38 for x in d['first_zone']) and 1<=d['second_zone']<=8
+          print('PASS: all six feature/optimization stages executed together')
+          PY
+      - name: Upload reproducible CPU full-stack evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-full-stack-e2e-${{ github.run_id }}
+          path: v6-full-stack-e2e.json
+          if-no-files-found: warn
+          retention-days: 30
