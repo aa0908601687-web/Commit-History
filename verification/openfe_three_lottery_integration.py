@@ -25,21 +25,55 @@ def run(kind):
     maximum, count, second_max = CONFIGS[kind]
     rng = random.Random(20261114 + maximum)
     draws = [tuple(sorted(rng.sample(range(1, maximum+1), count))) for _ in range(18)]
-    x, y = [], []
-    for end in range(10, len(draws)):
+    # Three independently trained historical perspectives. Every row uses only
+    # completed draws preceding its label. The archive view uses all anchors;
+    # no prediction feature looks back beyond ten draws.
+    views = {"latest_5": 5, "latest_10": 10, "full_archive": None}
+    weights = {"latest_5": 0.35, "latest_10": 0.35, "full_archive": 0.30}
+    by_view, feature_counts, anchor_counts = {}, {}, {}
+    for view, anchor_limit in views.items():
+        ends = list(range(10, len(draws)))
+        if anchor_limit is not None:
+            ends = ends[-anchor_limit:]
+        x, y = [], []
+        for anchor in ends:
+            for number in range(1, maximum+1):
+                row = features(draws[:anchor], number, maximum)
+                # Preserve distinct 5/10 feature sets for the short views.
+                if view == "latest_5":
+                    row.pop("freq10")
+                    row.pop("gap")
+                elif view == "latest_10":
+                    row.pop("freq5")
+                x.append(row)
+                y.append(int(number in draws[anchor]))
+        train = pd.DataFrame(x)
+        labels = pd.Series(y)
+        current_rows = []
         for number in range(1, maximum+1):
-            x.append(features(draws[:end], number, maximum))
-            y.append(int(number in draws[end]))
-    train = pd.DataFrame(x)
-    labels = pd.Series(y)
-    current = pd.DataFrame([features(draws, n, maximum) for n in range(1,maximum+1)])
-    generated = OpenFE().fit(data=train,label=labels,task="classification",n_jobs=1,verbose=False)
-    chosen = generated[:3]
-    if chosen:
-        train, current = transform(train,current,chosen,n_jobs=1)
-    model = LGBMClassifier(n_estimators=25,num_leaves=7,max_depth=3,random_state=20261114,n_jobs=1,verbosity=-1)
-    model.fit(train, labels)
-    scores = model.predict_proba(current)[:,1]
+            row = features(draws, number, maximum)
+            if view == "latest_5":
+                row.pop("freq10")
+                row.pop("gap")
+            elif view == "latest_10":
+                row.pop("freq5")
+            current_rows.append(row)
+        current = pd.DataFrame(current_rows)
+        assert set(labels.unique()) == {0, 1}
+        generated = OpenFE().fit(data=train,label=labels,task="classification",n_jobs=1,verbose=False)
+        chosen = generated[:2]
+        if chosen:
+            train, current = transform(train,current,chosen,n_jobs=1)
+        model = LGBMClassifier(n_estimators=25,num_leaves=7,max_depth=3,random_state=20261114,n_jobs=1,verbosity=-1)
+        model.fit(train, labels)
+        probabilities = model.predict_proba(current)[:,1]
+        assert len(probabilities)==maximum and np.isfinite(probabilities).all()
+        by_view[view] = probabilities
+        feature_counts[view] = {"generated":len(generated),"selected":len(chosen)}
+        anchor_counts[view] = len(ends)
+    assert abs(sum(weights.values())-1.0)<1e-12
+    scores = sum(weights[view]*by_view[view] for view in views)
+    assert np.allclose(scores,0.35*by_view["latest_5"]+0.35*by_view["latest_10"]+0.30*by_view["full_archive"])
     assert len(scores)==maximum and np.isfinite(scores).all()
     pool = sorted(range(1,maximum+1),key=lambda n:(-scores[n-1],n))[:8]
     # Exact enumerated optimum under linear QUBO objective and fixed cardinality.
@@ -64,7 +98,8 @@ def run(kind):
     assert sum(counts.values())==32
     output={"game":kind,"first_zone":sorted(exact),"second_zone":1 if second_max else None,
             "history_source":"deterministic synthetic fixture","history_draws":len(draws),
-            "openfe_generated":len(generated),"openfe_selected":len(chosen),
+            "three_view_weights":weights,"view_anchor_counts":anchor_counts,
+            "view_feature_counts":feature_counts,"three_view_fusion_executed":True,
             "lightgbm_trained":True,"qubo_exact_agreement":True,
             "cudaq_cpu_executed":True,"cudaq_used_for_selection":False,
             "exact_candidates":len(candidates),"official_data_verified":False}
