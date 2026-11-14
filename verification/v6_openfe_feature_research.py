@@ -229,8 +229,7 @@ def main() -> None:
             'example': features(rows, 1, view_limit=None, mode='all'),
             'warning': 'no model trained and no walk-forward evaluation was run',
         }
-    serialized = json.dumps(result, indent=2, ensure_ascii=False) + '
-'
+    serialized = json.dumps(result, indent=2, ensure_ascii=False) + '\n'
     if args.output:
         Path(args.output).write_text(serialized, encoding='utf-8')
     print(serialized)
