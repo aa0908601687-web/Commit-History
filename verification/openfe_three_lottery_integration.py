@@ -75,6 +75,11 @@ def run(kind, csv_path=None):
         ends = list(range(10, len(draws)))
         if anchor_limit is not None:
             ends = ends[-anchor_limit:]
+        elif len(ends) > 100:
+            # Full-history *coverage*, bounded training size: evenly-spaced
+            # causal anchors across the archive, never future rows.
+            step = (len(ends) + 99) // 100
+            ends = ends[::step]
         x, y = [], []
         for anchor in ends:
             for number in range(1, maximum+1):
