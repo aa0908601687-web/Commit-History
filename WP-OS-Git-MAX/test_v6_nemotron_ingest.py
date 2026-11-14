@@ -88,8 +88,7 @@ class NemotronIngestTests(unittest.TestCase):
         self.save({"source": "fixture", "draws": self.draws})
         args = ["prog", "--csv", str(self.csv_path),
                 "--nemotron-extraction", str(self.json_path),
-                "--openfe-three-views", "--pytorch-three-views",
-                "--pytorch-weight", "0.3", "--require-cudaq",
+                "--openfe-three-views", "--require-cudaq",
                 "--ising-qubo-check"]
         output = io.StringIO()
         with patch.object(sys, "argv", args), patch.object(
@@ -100,7 +99,6 @@ class NemotronIngestTests(unittest.TestCase):
         self.assertEqual(result["nemotron_audit"]["status"], "matched_canonical_csv")
         mocked.assert_called_once_with(
             str(self.csv_path), openfe_three_views=True,
-            pytorch_three_views=True, pytorch_weight=0.3,
             use_cudaq=True, require_cudaq=True, ising_qubo_check=True)
         output = io.StringIO()
         with patch.object(sys, "argv", ["prog", "--csv", str(self.csv_path),

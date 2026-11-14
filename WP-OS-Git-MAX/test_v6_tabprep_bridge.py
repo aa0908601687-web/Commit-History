@@ -15,10 +15,6 @@ class TabPrepContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "isolated experimental"):
             run("missing.csv", openfe_three_views=True, tabprep_three_views=True)
 
-    def test_pytorch_fusion_not_silently_mixed(self):
-        with self.assertRaisesRegex(ValueError, "isolated experimental"):
-            run("missing.csv", pytorch_three_views=True, tabprep_three_views=True)
-
     def test_optional_mode_is_explicit(self):
         from v6_tabprep_bridge import score_three_history_views_tabprep
         with self.assertRaisesRegex(ValueError, "at least 12"):

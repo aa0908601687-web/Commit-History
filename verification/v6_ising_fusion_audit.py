@@ -1,4 +1,4 @@
-"""Read-only V6 fused-score -> Ising/QUBO -> exact E2E audit."""
+"""Read-only V6 LightGBM-score -> Ising/QUBO -> exact E2E audit."""
 import json
 import math
 import sys
@@ -11,20 +11,13 @@ from v6_ising_qubo_reference import build_qubo, energy, exact_six, check_solver_
 
 def audit(payload):
     f = payload["openfe_feature_layer"]
-    if f["engine"] != "OpenFE+LightGBM+PyTorch" or f["pytorch_layer"]["trained"] is not True:
-        raise ValueError("trained fusion required")
-    weights = f["fusion_weights"]
-    if weights != {"lightgbm": 0.5, "pytorch": 0.5}:
-        raise ValueError("unexpected fusion weights")
+    if f["engine"] != "OpenFE+LightGBM":
+        raise ValueError("OpenFE/LightGBM scoring required")
     fused = {int(k): float(v) for k,v in f["fused_scores"].items()}
-    light = {int(k): float(v) for k,v in f["lightgbm_scores"].items()}
-    torch = {int(k): float(v) for k,v in f["pytorch_scores"].items()}
-    if set(fused) != set(light) or set(light) != set(torch) or set(fused) != set(range(1,39)):
+    if set(fused) != set(range(1,39)):
         raise ValueError("incomplete score mapping")
-    if any(not all(math.isfinite(v) and 0 <= v <= 1 for v in (fused[n], light[n], torch[n])) or
-           not math.isclose(fused[n], 0.5*(light[n]+torch[n]), abs_tol=1e-12)
-           for n in fused):
-        raise ValueError("fusion mismatch")
+    if any(not math.isfinite(v) or not 0 <= v <= 1 for v in fused.values()):
+        raise ValueError("invalid score mapping")
     pool = sorted(fused, key=lambda n: (-fused[n], n))[:8]
     if pool != payload["candidate_pool"]:
         raise ValueError("candidate mapping mismatch")
