@@ -42,9 +42,8 @@ class AdvancedFeatureStackTests(unittest.TestCase):
             path = Path(tmp) / "history.csv"
             make_history(path, count=9)
             from v6_exact_e2e import validate
-            rows = validate(path)
             with self.assertRaisesRegex(ValueError, "at least 10"):
-                build_features(rows)
+                validate(path)
 
 
 if __name__ == "__main__":
