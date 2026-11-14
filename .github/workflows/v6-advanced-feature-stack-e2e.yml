@@ -1,0 +1,76 @@
+name: V6 advanced feature stack E2E
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_advanced_feature_stack.py'
+      - 'WP-OS-Git-MAX/test_v6_advanced_feature_stack.py'
+      - 'WP-OS-Git-MAX/v6_exact_e2e.py'
+      - 'WP-OS-Git-MAX/v6_exact_search.py'
+      - 'WP-OS-Git-MAX/historical_archive.csv'
+      - 'WP-OS-Git-MAX/requirements-v6-advanced-features.txt'
+      - '.github/workflows/v6-advanced-feature-stack-e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'WP-OS-Git-MAX/v6_advanced_feature_stack.py'
+      - 'WP-OS-Git-MAX/test_v6_advanced_feature_stack.py'
+      - 'WP-OS-Git-MAX/v6_exact_e2e.py'
+      - 'WP-OS-Git-MAX/v6_exact_search.py'
+      - 'WP-OS-Git-MAX/historical_archive.csv'
+      - 'WP-OS-Git-MAX/requirements-v6-advanced-features.txt'
+      - '.github/workflows/v6-advanced-feature-stack-e2e.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  advanced-feature-stack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned feature-engineering dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r WP-OS-Git-MAX/requirements-v6-advanced-features.txt
+      - name: Run advanced feature-stack contract tests
+        run: |
+          cd WP-OS-Git-MAX
+          python -m unittest -v test_v6_advanced_feature_stack.py
+      - name: Execute tsfresh + Featuretools -> exact 28-combination selector
+        run: |
+          python WP-OS-Git-MAX/v6_advanced_feature_stack.py \
+            --csv WP-OS-Git-MAX/historical_archive.csv \
+            --output v6-advanced-feature-stack-evidence.json
+      - name: Assert E2E evidence and legal ticket
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('v6-advanced-feature-stack-evidence.json').read_text())
+          f=d['advanced_feature_stack']
+          assert f['executed'] is True
+          assert f['engine']=='tsfresh+Featuretools'
+          assert f['feature_window']==[5,10]
+          assert f['current_feature_history_rows']==10
+          assert f['candidate_count']==38
+          assert f['tsfresh_feature_count'] > 0
+          assert f['featuretools_feature_count'] > 0
+          assert f['generated_numeric_feature_count'] >= 5
+          assert len(d['candidate_pool'])==8
+          assert len(d['first_zone'])==6 and len(set(d['first_zone']))==6
+          assert all(1 <= n <= 38 for n in d['first_zone'])
+          assert 1 <= d['second_zone'] <= 8
+          assert d['exact_optimization_layer']['searched_combinations']==28
+          assert f['predictive_advantage_verified'] is False
+          print('PASS: tsfresh + Featuretools + exact search; research-only, no predictive edge claimed')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v6-advanced-feature-stack-evidence-${{ github.run_id }}
+          path: v6-advanced-feature-stack-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
