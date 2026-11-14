@@ -4,7 +4,7 @@
 Runs real OpenFE + LightGBM and tsfresh + Featuretools candidate scoring,
 then local CUDA-Q qpp-cpu, CPU Ising/QUBO, OR-Tools CP-SAT, and exact
 8-choose-6 reference under one invocation. This is not a predictive claim.
-Uses no QAOA, real QPU, ABE, V3 cache, or unverified live inference.
+Uses only local CPU simulation; does not claim live QPU execution or external inference.
 """
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def run(csv_path, openfe_weight=0.5):
         "optimization_engines": ["CUDA-Q qpp-cpu", "CPU Ising/QUBO", "OR-Tools CP-SAT", "Python exact"],
         "production_replacement": False,
         "predictive_advantage_verified": False,
-        "qaoa": False, "real_qpu": False,
+        "real_qpu": False,
     }
     result["model"] = "V6 OF3Q combined experimental real feature and CPU optimizer E2E"
     return result
