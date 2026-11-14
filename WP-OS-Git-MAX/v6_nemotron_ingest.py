@@ -56,16 +56,12 @@ def main():
     parser.add_argument("--csv", required=True, help="trusted V6 CSV, unchanged")
     parser.add_argument("--nemotron-extraction", required=True, help="structured JSON output from external vision process")
     parser.add_argument("--openfe-three-views", action="store_true")
-    parser.add_argument("--pytorch-three-views", action="store_true")
-    parser.add_argument("--pytorch-weight", type=float, default=0.5)
     parser.add_argument("--cudaq", action="store_true")
     parser.add_argument("--require-cudaq", action="store_true")
     parser.add_argument("--ising-qubo-check", action="store_true")
     args = parser.parse_args()
     audit = audit_extraction(args.csv, args.nemotron_extraction)
     result = run(args.csv, openfe_three_views=args.openfe_three_views,
-                 pytorch_three_views=args.pytorch_three_views,
-                 pytorch_weight=args.pytorch_weight,
                  use_cudaq=args.cudaq or args.require_cudaq,
                  require_cudaq=args.require_cudaq,
                  ising_qubo_check=args.ising_qubo_check)

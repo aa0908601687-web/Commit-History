@@ -54,13 +54,12 @@ jobs:
           PY
       - name: Install production CPU AI and CUDA-Q dependencies
         run: |
-          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu torch
           python -m pip install --disable-pip-version-check 'openfe==0.0.12' 'matplotlib>=3.9,<4' 'cudaq==0.16.0'
       - name: Run full V6 scoring and optimization after authenticated vision audit
         run: |
           python WP-OS-Git-MAX/v6_exact_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
-            --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 \
+            --openfe-three-views \
             --require-cudaq --ising-qubo-check \
             --output v6-live-vision-integrated-e2e.json
       - name: Validate end-to-end output and record true live invocation
@@ -72,9 +71,7 @@ jobs:
           assert extracted['source'].startswith('nvidia-nemotron-vision:')
           assert len(extracted['draws'])>0
           result=json.loads(Path('v6-live-vision-integrated-e2e.json').read_text())
-          assert result['openfe_feature_layer']['engine']=='OpenFE+LightGBM+PyTorch'
-          assert result['openfe_feature_layer']['pytorch_layer']['trained'] is True
-          assert result['openfe_feature_layer']['fusion_weights']=={'lightgbm':0.5,'pytorch':0.5}
+          assert result['openfe_feature_layer']['engine']=='OpenFE+LightGBM'
           cuda=result['cudaq_layer']
           assert cuda['executed'] and cuda['backend']=='qpp-cpu' and not cuda['qpu']
           qubo=result['ising_qubo_layer']
@@ -107,4 +104,4 @@ jobs:
           retention-days: 7
       - name: Evidence limitations
         run: |
-          echo 'Successful live API extraction -> verified canonical CSV -> CPU OpenFE/PyTorch/CUDA-Q/QUBO/exact E2E. NVIDIA native Ising, real QPU and Rocq runtime numerical proof are NOT executed.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Successful live API extraction -> verified canonical CSV -> CPU OpenFE/LightGBM/CUDA-Q/QUBO/exact E2E. NVIDIA native Ising, real QPU and Rocq runtime numerical proof are NOT executed.' >> "$GITHUB_STEP_SUMMARY"

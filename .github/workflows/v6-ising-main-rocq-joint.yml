@@ -29,17 +29,16 @@ jobs:
           python-version: '3.11'
       - name: Install real CPU ML and CUDA-Q dependencies
         run: |
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
           python -m pip install 'openfe==0.0.12' 'matplotlib>=3.9,<4' cudaq
       - name: Run integrated Ising and QUBO unit contracts
         run: |
           python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_ising_pipeline.py' -v
           python -m unittest discover -s verification -p 'test_v6_ising_*.py' -v
-      - name: Execute OpenFE PyTorch CUDA-Q Ising QUBO and exact in one call
+      - name: Execute OpenFE LightGBM CUDA-Q Ising QUBO and exact in one call
         run: |
           python WP-OS-Git-MAX/v6_exact_e2e.py \
             --csv WP-OS-Git-MAX/historical_archive.csv \
-            --openfe-three-views --pytorch-three-views --pytorch-weight 0.5 \
+            --openfe-three-views \
             --require-cudaq --ising-qubo-check \
             --output v6-ising-production-e2e.json
       - name: Assert fused-score pool and optimizer consistency
@@ -52,9 +51,7 @@ jobs:
           i=d['ising_qubo_layer']
           o=d['exact_optimization_layer']
           c=d['cudaq_layer']
-          assert f['engine']=='OpenFE+LightGBM+PyTorch'
-          assert f['pytorch_layer']['trained'] is True
-          assert f['fusion_weights']=={'lightgbm':0.5,'pytorch':0.5}
+          assert f['engine']=='OpenFE+LightGBM'
           scores={int(n):float(v) for n,v in f['fused_scores'].items()}
           assert set(scores)==set(range(1,39))
           assert all(math.isfinite(v) and 0<=v<=1 for v in scores.values())
@@ -70,7 +67,7 @@ jobs:
           assert len(set(d['first_zone']))==6
           assert all(1<=n<=38 for n in d['first_zone'])
           assert 1<=d['second_zone']<=8
-          print('PASS: trained 38-score fusion -> top8 -> CUDA-Q -> Ising QUBO CPU reference -> exact 28 -> legal 6+1')
+          print('PASS: trained 38-score LightGBM -> top8 -> CUDA-Q -> Ising QUBO CPU reference -> exact 28 -> legal 6+1')
           PY
       - uses: actions/upload-artifact@v6
         with:

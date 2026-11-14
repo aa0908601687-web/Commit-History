@@ -1,6 +1,6 @@
 # V6 OF3Q experimental TabPrep feature engineering
 
-Upstream: https://github.com/atschalz/tabprep (Apache-2.0). This project is an **optional research alternative** to the current OpenFE + LightGBM / PyTorch path. It is not enabled by default and is not evidence of a lottery prediction advantage.
+Upstream: https://github.com/atschalz/tabprep (Apache-2.0). This project is an **optional research alternative** to the current OpenFE + LightGBM path. It is not enabled by default and is not evidence of a lottery prediction advantage.
 
 ## Installation
 Use Python 3.11 and consult the **current upstream README** before installing. TabPrep's sklearn wrapper is in the upstream `tabprep.py` and depends on the AutoGluon source feature generators. Upstream currently documents cloning `autogluon`, running `full_install.sh`, cloning `tabarena`, and installing its benchmark dependencies. Ensure `from tabprep import TabPrepFeatureGenerator` works in the V6 runner's Python environment. Do not blindly install an unrelated PyPI package named `tabprep`.
@@ -15,7 +15,7 @@ python WP-OS-Git-MAX/v6_exact_e2e.py \
   --output v6-tabprep-experiment.json
 ```
 
-This is an **isolated alternative**: `--tabprep-three-views` cannot combine with `--openfe-three-views`, `--openfe` or `--pytorch-three-views` in the first experiment. The existing OpenFE/PyTorch default and their fusion weights remain unchanged. This workflow's historical filename remains for backward compatibility, and is **not** proof that non-variational CUDA-Q is removed.
+This is an **isolated alternative**: `--tabprep-three-views` cannot combine with `--openfe-three-views`, `--openfe`  in the first experiment. The OpenFE/LightGBM pipeline remains the primary scoring path. This workflow's historical filename remains for backward compatibility, and is **not** proof that non-variational CUDA-Q is removed.
 
 ## Validation and safety
 - Source generation and `fit_transform` use only completed historical draws before each training target, with only the preceding 5/10 draws used for feature calculations.
