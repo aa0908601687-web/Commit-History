@@ -5,10 +5,20 @@ on:
     paths:
       - 'WP-OS-Git-MAX/**'
       - '.github/workflows/wp-coverage.yml'
+      - 'verification/v6_readiness_audit.py'
+      - 'verification/test_v6_readiness_audit.py'
+      - 'verification/v6_openfe_feature_research.py'
+      - 'verification/test_v6_openfe_feature_research.py'
+      - '.github/workflows/v6-readiness-validation.yml'
   pull_request:
     paths:
       - 'WP-OS-Git-MAX/**'
       - '.github/workflows/wp-coverage.yml'
+      - 'verification/v6_readiness_audit.py'
+      - 'verification/test_v6_readiness_audit.py'
+      - 'verification/v6_openfe_feature_research.py'
+      - 'verification/test_v6_openfe_feature_research.py'
+      - '.github/workflows/v6-readiness-validation.yml'
   workflow_dispatch:
   schedule:
     - cron: '15 0 * * *' # Daily at 08:15 Asia/Taipei (UTC+8)
