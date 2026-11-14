@@ -1,5 +1,6 @@
 """Integrated CP-SAT verification on real archived V6 rows and first-zone scores."""
 import pathlib
+import importlib.util
 import sys
 import unittest
 from unittest.mock import patch
@@ -10,6 +11,7 @@ import v6_exact_e2e as e2e
 
 
 class IntegratedOrtoolsTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec('ortools') is not None, 'OR-Tools optional dependency unavailable')
     def test_ortools_enabled_and_disabled(self):
         csv_path = HERE / "historical_archive.csv"
         rows = e2e.validate(csv_path)
