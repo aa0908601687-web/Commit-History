@@ -1,0 +1,41 @@
+name: V6 optional five-star stack smoke
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/v6_five_star_stack.py'
+      - '.github/workflows/v6-five-star-stack.yml'
+  workflow_dispatch:
+jobs:
+  stdlib-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run independent 8-choose-6 smoke
+        run: |
+          python WP-OS-Git-MAX/v6_five_star_stack.py > five-star-smoke.json
+          python - <<'PY'
+          import json
+          d=json.load(open('five-star-smoke.json'))
+          assert d['exact_reference']['combinations']==28
+          assert len(d['exact_reference']['selection'])==6
+          assert d['production_model_executed'] is False
+          PY
+  ortools-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install 'ortools>=9.10,<10'
+      - run: |
+          python WP-OS-Git-MAX/v6_five_star_stack.py > five-star-ortools.json
+          python - <<'PY'
+          import json
+          d=json.load(open('five-star-ortools.json'))
+          assert d['available']['ortools']
+          assert d['ortools']['matches_reference_score']
+          PY
