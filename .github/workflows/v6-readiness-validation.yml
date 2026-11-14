@@ -37,9 +37,10 @@ jobs:
           python -m coverage run --branch --include='*/verification/v6_openfe_feature_research.py,*/verification/v6_readiness_audit.py' -m unittest discover -s verification -p 'test_v6_openfe_feature_research.py' -v
           python -m coverage run -a --branch --include='*/verification/v6_openfe_feature_research.py,*/verification/v6_readiness_audit.py' -m unittest discover -s verification -p 'test_v6_readiness_audit.py' -v
           python -m coverage run -a --branch --include='*/verification/v6_openfe_feature_research.py,*/verification/v6_readiness_audit.py' verification/v6_openfe_feature_research.py --csv WP-OS-Git-MAX/historical_archive.csv --output v6-feature-preview.json
+          python -m coverage run -a --branch --include='*/verification/v6_openfe_feature_research.py,*/verification/v6_readiness_audit.py' verification/v6_readiness_audit.py --csv WP-OS-Git-MAX/historical_archive.csv --output v6-readiness-audit.json
           python -m coverage report -m | tee v6-research-coverage.txt
           python -m coverage json -o v6-research-coverage.json
-          python -m coverage report --fail-under=80
+          python -m coverage report --fail-under=100
       - name: Execute causal historical 100/200/500 reference walk-forward
         run: |
           python verification/v6_readiness_audit.py --csv WP-OS-Git-MAX/historical_archive.csv --output v6-readiness-audit.json
