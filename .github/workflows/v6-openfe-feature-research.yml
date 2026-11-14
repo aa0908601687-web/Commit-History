@@ -1,0 +1,52 @@
+name: V6 OpenFE candidate feature research (opt-in)
+
+on:
+  pull_request:
+    paths:
+      - 'verification/v6_openfe_feature_research.py'
+      - 'verification/test_v6_openfe_feature_research.py'
+      - 'verification/V6_OPENFE_FEATURE_RESEARCH.md'
+      - '.github/workflows/v6-openfe-feature-research.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install OpenFE research CPU dependencies
+        run: python -m pip install --disable-pip-version-check 'openfe==0.0.12' 'matplotlib>=3.9,<4'
+      - name: Test causal 5/10 feature boundaries and validation governance
+        run: python -m unittest discover -s verification -p 'test_v6_openfe_feature_research.py' -v
+      - name: Run actual OpenFE + LightGBM one-draw prequential smoke test
+        run: |
+          python verification/v6_openfe_feature_research.py \
+            --csv WP-OS-Git-MAX/historical_archive.csv \
+            --walk-forward-draws 1 --modes base,all \
+            --output v6-openfe-candidate-research.json
+          python - <<'PY'
+          import json
+          r = json.load(open('v6-openfe-candidate-research.json', encoding='utf-8'))
+          assert r['training_features_max_completed_draws'] == 10
+          assert r['production_selector_unchanged'] is True
+          assert r['production_promotion_automatic'] is False
+          assert set(r['results']) == {'base', 'all'}
+          assert all(z['draws'] == 1 for z in r['results'].values())
+          assert r['results']['all']['activated_in_production'] is False
+          assert r['results']['all']['eligible_for_manual_review'] is False
+          print('PASS: research-only prequential smoke test; NO evidence of predictive advantage')
+          PY
+      - name: Upload research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6-openfe-feature-research-${{ github.run_id }}
+          path: v6-openfe-candidate-research.json
+          if-no-files-found: warn
