@@ -71,7 +71,9 @@ jobs:
           PY
       - name: Three-lottery integrated synthetic E2E (OpenFE LightGBM QUBO CUDA-Q exact)
         run: |
-          python verification/openfe_three_lottery_integration.py | tee three_view_e2e.json
+          python verification/openfe_three_lottery_integration.py > three_view_raw.log
+          tail -n 1 three_view_raw.log > three_view_e2e.json
+          cat three_view_e2e.json
           python - <<'PY'
           import json
           results=json.load(open('three_view_e2e.json'))
