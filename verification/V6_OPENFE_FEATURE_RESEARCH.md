@@ -1,6 +1,6 @@
 # V6 OF3Q OpenFE candidate features: independent research
 
-This is **opt-in, offline and research-only**. It does not change the production V6 OF3Q selector, current `main` model or output, default weights, CUDA-Q CPU backend, Ising/QUBO, Rocq, or second-zone selection. QAOA, PyTorch, ABE and physical QPU are **not** enabled.
+This is **opt-in, offline and research-only**. It does not change the production V6 OF3Q selector, current `main` model or output, default weights, CUDA-Q CPU backend, Ising/QUBO, Rocq, or second-zone selection. Previously retired ML backends, QAOA, ABE and physical QPU are **not** enabled.
 
 ## Features
 
