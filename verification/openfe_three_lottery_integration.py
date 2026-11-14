@@ -1,8 +1,12 @@
 """Independent synthetic-data integration test for three lottery configurations.
 Not a prediction accuracy or live official data verification.
 """
+import argparse
+import csv
+import hashlib
 import json
 import random
+from pathlib import Path
 from itertools import combinations
 import numpy as np
 import pandas as pd
@@ -21,10 +25,46 @@ def features(history, n, max_number):
             "odd": float(n % 2),
             "gap": float(next((i for i,d in enumerate(reversed(last10),1) if n in d),11))}
 
-def run(kind):
+def read_real_csv(csv_path, kind):
+    """Validate chronology and legal lottery zones. Does not certify provenance."""
     maximum, count, second_max = CONFIGS[kind]
-    rng = random.Random(20261114 + maximum)
-    draws = [tuple(sorted(rng.sample(range(1, maximum+1), count))) for _ in range(18)]
+    rows, second_rows = [], []
+    previous = -1
+    with open(csv_path, newline="", encoding="utf-8-sig") as handle:
+        reader = csv.DictReader(handle)
+        required = {"draw_id", "first"} | ({"second"} if second_max else set())
+        if not reader.fieldnames or not required.issubset(reader.fieldnames):
+            raise ValueError(f"required CSV columns: {sorted(required)}")
+        for line, row in enumerate(reader, start=2):
+            try:
+                draw_id = int(row["draw_id"])
+                first = tuple(sorted(int(v) for v in row["first"].replace(",", " ").split()))
+                second = int(row["second"]) if second_max else None
+            except (ValueError, TypeError, AttributeError) as exc:
+                raise ValueError(f"invalid CSV on line {line}") from exc
+            if draw_id <= previous:
+                raise ValueError(f"non-increasing draw ID on line {line}")
+            if len(first) != count or len(set(first)) != count or not all(1 <= n <= maximum for n in first):
+                raise ValueError(f"invalid first-zone numbers on line {line}")
+            if second_max and not (1 <= second <= second_max):
+                raise ValueError(f"invalid second-zone number on line {line}")
+            rows.append(first)
+            if second_max:
+                second_rows.append(second)
+            previous = draw_id
+    if len(rows) < 16:
+        raise ValueError("at least 16 completed draws are needed to train all views")
+    return rows, second_rows, str(previous)
+
+
+def run(kind, csv_path=None):
+    maximum, count, second_max = CONFIGS[kind]
+    if csv_path:
+        draws, second_history, cutoff = read_real_csv(csv_path, kind)
+    else:
+        rng = random.Random(20261114 + maximum)
+        draws = [tuple(sorted(rng.sample(range(1, maximum+1), count))) for _ in range(18)]
+        second_history, cutoff = [], None
     # Three independently trained historical perspectives. Every row uses only
     # completed draws preceding its label. The archive view uses all anchors;
     # no prediction feature looks back beyond ten draws.
@@ -96,8 +136,16 @@ def run(kind):
     kernel.h(q)
     counts=cudaq.sample(kernel,shots_count=32)
     assert sum(counts.values())==32
-    output={"game":kind,"first_zone":sorted(exact),"second_zone":1 if second_max else None,
-            "history_source":"deterministic synthetic fixture","history_draws":len(draws),
+    second_pick = None
+    if second_max:
+        # This independent second-zone baseline is data-driven, not a trained OpenFE model.
+        second_pick = max(range(1, second_max+1),
+            key=lambda n: (0.6*sum(v == n for v in second_history[-5:]) +
+                           0.4*sum(v == n for v in second_history[-10:]), -n)) if csv_path else 1
+    output={"game":kind,"first_zone":sorted(exact),"second_zone":second_pick,
+            "history_source":"supplied CSV, independent source verification pending" if csv_path else "deterministic synthetic fixture",
+            "data_cutoff":cutoff,"data_sha256":hashlib.sha256(Path(csv_path).read_bytes()).hexdigest() if csv_path else None,
+            "synthetic_data":not bool(csv_path),"history_draws":len(draws),
             "three_view_weights":weights,"view_anchor_counts":anchor_counts,
             "view_feature_counts":feature_counts,"three_view_fusion_executed":True,
             "lightgbm_trained":True,"qubo_exact_agreement":True,
@@ -109,4 +157,11 @@ def run(kind):
     return output
 
 if __name__=="__main__":
-    print(json.dumps([run(name) for name in CONFIGS],ensure_ascii=False))
+    parser = argparse.ArgumentParser(description="Independent three-lottery research; real-CSV inputs are not certified")
+    parser.add_argument("--game", choices=tuple(CONFIGS), help="One lottery; required with --csv")
+    parser.add_argument("--csv", help="Historical CSV to analyze in chronological draw order")
+    args = parser.parse_args()
+    if bool(args.game) != bool(args.csv):
+        parser.error("--game and --csv must be supplied together")
+    selected = [run(args.game, args.csv)] if args.game else [run(name) for name in CONFIGS]
+    print(json.dumps(selected,ensure_ascii=False))
