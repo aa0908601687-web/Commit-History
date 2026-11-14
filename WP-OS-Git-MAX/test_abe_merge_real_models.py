@@ -20,4 +20,12 @@ class MergeTests(unittest.TestCase):
         a,b=self.fixture()
         del b["models"]["t0_gamma"]
         with self.assertRaises(ValueError): merge(a,b)
+    def test_cli_entrypoint_argument_guard(self):
+        import runpy
+        from unittest.mock import patch
+        with patch.object(sys, "argv", ["abe_merge_real_models.py"]):
+            with self.assertRaises(SystemExit) as err:
+                runpy.run_path(str(pathlib.Path(__file__).with_name("abe_merge_real_models.py")), run_name="__main__")
+        self.assertEqual(err.exception.code, 2)
+
 if __name__=="__main__": unittest.main()

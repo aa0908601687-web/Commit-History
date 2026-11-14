@@ -1,0 +1,60 @@
+name: V6 retired ML dependency audit
+on:
+  pull_request:
+    paths:
+      - 'WP-OS-Git-MAX/**'
+      - '.github/workflows/**'
+      - 'docs/**'
+      - 'verification/**'
+  push:
+    branches: [main]
+    paths:
+      - 'WP-OS-Git-MAX/**'
+      - '.github/workflows/**'
+      - 'docs/**'
+      - 'verification/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-retired-ml-dependency:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Scan tracked repository files and fail on removed backend
+        run: |
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+          tokens = ('py'+'tor'+'ch', 'tor'+'ch', 'tor'+'ch'+'vision', 'tor'+'ch'+'audio')
+          names = subprocess.check_output(['git','ls-files','-z']).decode('utf-8').split('\0')
+          findings = []
+          count = 0
+          for name in filter(None,names):
+              path = Path(name)
+              if path.is_dir():
+                  continue
+              count += 1
+              if any(token in name.casefold() for token in tokens):
+                  findings.append(f'{name}: obsolete filename')
+                  continue
+              try:
+                  content = path.read_text(encoding='utf-8').casefold()
+              except (UnicodeDecodeError, OSError):
+                  continue
+              if any(token in content for token in tokens):
+                  findings.append(f'{name}: obsolete code or dependency')
+          if findings:
+              raise SystemExit('Removed backend still referenced:\n'+'\n'.join(findings))
+          print(f'PASS: scanned {count} tracked files without obsolete dependency refs')
+          PY
+      - name: Compile retained V6 Python modules
+        run: |
+          python -m py_compile WP-OS-Git-MAX/v6_exact_e2e.py WP-OS-Git-MAX/v6_openfe_bridge.py WP-OS-Git-MAX/v6_nemotron_ingest.py
+      - name: Run dependency-free selection contracts
+        run: |
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_exact_e2e.py' -v
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_nemotron_ingest.py' -v
