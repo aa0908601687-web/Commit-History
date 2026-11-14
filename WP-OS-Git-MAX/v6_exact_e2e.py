@@ -28,7 +28,7 @@ def validate(path):
         if int(rows[i][0])>=int(rows[i+1][0]):raise ValueError("draw order")
     return rows
 
-def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,ising_qubo_check=False):
+def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,ising_qubo_check=False,ortools_check=False):
     """Finish deterministic exact-search selection from supplied scores."""
     five=rows[-5:];ten=rows[-10:]
     if set(scores) != set(range(1, 39)) or any(not math.isfinite(scores[n]) for n in scores):
@@ -73,6 +73,16 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,us
                      "nvidia_native_solver_executed":False,
                      "rocq_runtime_proof":False,
                      "predictive_advantage_verified":False}
+    ortools_layer={"enabled":False,"executed":False}
+    if ortools_check:
+        from v6_five_star_stack import ortools_six
+        selected, value = ortools_six(pool, scores)
+        if not math.isclose(value, optimization_layer["exact_score"], rel_tol=1e-10, abs_tol=1e-6):
+            raise RuntimeError("OR-Tools CP-SAT disagrees with exact enumeration score")
+        ortools_layer={"enabled":True,"executed":True,"backend":"ortools-cp-sat-cpu",
+                       "selection":selected,"score":value,"same_optimal_score":True,
+                       "same_selection":selected==list(optimization_layer["exact_selection"]),
+                       "objective_scaled_to_integer":True}
     second=max(range(1,9),key=lambda n:(.6*sum(x[2]==n for x in five)+.4*sum(x[2]==n for x in ten),-n))
     fidelity_layer={"enabled":False,"scope":"legacy statevector verification removed"}
     return {"candidate_pool":pool,"first_zone":list(best[1]),"second_zone":second,"last_draw":rows[-1][0],
@@ -86,10 +96,11 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,us
       "high_fidelity_layer":fidelity_layer,
       "cudaq_layer":cudaq_layer,
       "ising_qubo_layer":ising_layer,
+      "ortools_layer":ortools_layer,
       "exact_optimization_layer":optimization_layer,
       "status":"Research simulation; no evidence of predictive advantage"}
 
-def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,ising_qubo_check=False,tabprep_three_views=False):
+def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,ising_qubo_check=False,tabprep_three_views=False,ortools_check=False):
     if not 0<=openfe_weight<=1:raise ValueError("openfe_weight must be between 0 and 1")
     if tabprep_three_views and (openfe_three_views or use_openfe ):
         raise ValueError("--tabprep-three-views is an isolated experimental alternative to OpenFE scoring")
@@ -117,7 +128,7 @@ def run(path,use_openfe=False,openfe_weight=.30,openfe_three_views=False,high_fi
         base={n:(scores[n]-base_low)/base_span for n in scores}
         scores={n:(1-openfe_weight)*base[n]+openfe_weight*learned[n] for n in scores}
         feature_layer={"enabled":True,"weight":openfe_weight,**metadata}
-    return complete_result(path,rows,scores,feature_layer,high_fidelity_verify,use_cudaq,require_cudaq,ising_qubo_check)
+    return complete_result(path,rows,scores,feature_layer,high_fidelity_verify,use_cudaq,require_cudaq,ising_qubo_check,ortools_check)
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--csv",required=True);p.add_argument("--output")
@@ -131,8 +142,9 @@ def main():
     p.add_argument("--require-cudaq",action="store_true",
                    help="fail instead of falling back when CUDA-Q is unavailable")
     p.add_argument("--ising-qubo-check",action="store_true",help="run fail-closed CPU QUBO reference against production exact-search score; not NVIDIA native solver")
+    p.add_argument("--ortools-check",action="store_true",help="run OR-Tools CP-SAT CPU against exact reference; requires ortools")
     a=p.parse_args()
-    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify,a.cudaq or a.require_cudaq,a.require_cudaq,a.ising_qubo_check,a.tabprep_three_views)
+    result=run(a.csv,a.openfe,a.openfe_weight,a.openfe_three_views,a.high_fidelity_verify,a.cudaq or a.require_cudaq,a.require_cudaq,a.ising_qubo_check,a.tabprep_three_views,a.ortools_check)
     out=json.dumps(result,ensure_ascii=False,indent=2)+"\n"
     if a.output:Path(a.output).write_text(out,encoding="utf-8")
     print(out)
