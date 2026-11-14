@@ -66,5 +66,13 @@ class LegacyPartialBridgeOfflineTests(unittest.TestCase):
                              "abe_lstm_gru_partial_with_uniform_reserve")
 
 
+    def test_cli_entrypoint_argument_guard(self):
+        import runpy
+        source = Path(legacy.__file__)
+        with patch.object(sys, "argv", [str(source)]):
+            with self.assertRaises(SystemExit) as err:
+                runpy.run_path(str(source), run_name="__main__")
+        self.assertEqual(err.exception.code, 2)
+
 if __name__=="__main__":
     unittest.main()

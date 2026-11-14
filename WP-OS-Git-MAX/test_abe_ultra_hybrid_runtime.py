@@ -41,5 +41,26 @@ class TestHybrid(unittest.TestCase):
             run([])
 
 
+    def test_disabled_core_and_cli_guard(self):
+        import runpy
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        import abe_ultra_hybrid_max as hybrid
+        draws = [{"draw_id": str(i), "first": [1,2,3,4,5,6], "second": 1}
+                 for i in range(1,21)]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/"config.json"
+            data = json.loads(hybrid.CONFIG.read_text(encoding="utf-8"))
+            data["components"]["abe_bayesian"] = "disabled"
+            path.write_text(json.dumps(data), encoding="utf-8")
+            with patch.object(hybrid, "CONFIG", path):
+                with self.assertRaisesRegex(RuntimeError, "ABE core unavailable"):
+                    hybrid.run(draws)
+        with patch.object(sys, "argv", [str(hybrid.__file__)]):
+            with self.assertRaises(SystemExit) as err:
+                runpy.run_path(str(hybrid.__file__), run_name="__main__")
+        self.assertEqual(err.exception.code, 2)
+
 if __name__ == "__main__":
     unittest.main()
