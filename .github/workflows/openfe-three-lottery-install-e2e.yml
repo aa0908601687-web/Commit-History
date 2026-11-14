@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/openfe-three-lottery-install-e2e.yml'
+      - 'verification/openfe_three_lottery_integration.py'
 jobs:
   install-and-smoke:
     runs-on: ubuntu-22.04
@@ -69,4 +70,23 @@ jobs:
           print("Three lottery legality smoke PASS; no historical data/model integration tested")
           PY
       - name: Three-lottery integrated synthetic E2E (OpenFE LightGBM QUBO CUDA-Q exact)
-        run: python verification/openfe_three_lottery_integration.py
+        run: |
+          python verification/openfe_three_lottery_integration.py | tee three_view_e2e.json
+          python - <<'PY'
+          import json
+          results=json.load(open('three_view_e2e.json'))
+          assert len(results)==3
+          for result in results:
+              assert result['three_view_fusion_executed']
+              assert result['three_view_weights']=={'latest_5':0.35,'latest_10':0.35,'full_archive':0.30}
+              assert result['qubo_exact_agreement'] and result['cudaq_cpu_executed']
+              assert not result['official_data_verified']
+          print('Three-view synthetic E2E assertions PASS')
+          PY
+      - name: Upload independent three-view E2E evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openfe-three-view-${{ matrix.python-version }}
+          path: three_view_e2e.json
+          if-no-files-found: ignore
