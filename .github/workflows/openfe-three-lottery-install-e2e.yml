@@ -68,3 +68,5 @@ jobs:
           assert 1<=1<=8
           print("Three lottery legality smoke PASS; no historical data/model integration tested")
           PY
+      - name: Three-lottery integrated synthetic E2E (OpenFE LightGBM QUBO CUDA-Q exact)
+        run: python verification/openfe_three_lottery_integration.py
