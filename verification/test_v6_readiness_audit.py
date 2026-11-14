@@ -6,6 +6,8 @@ import sys
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
+import v6_openfe_feature_research as research
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -117,6 +119,36 @@ class ReadinessAuditTests(unittest.TestCase):
             report = json.loads(output.read_text())
             self.assertEqual(report['data_quality']['last_draw'], rows(515)[-1][0])
             self.assertFalse(report['backtest']['openfe_lightgbm_retrained_for_every_holdout'])
+
+
+    def test_research_training_anchors_are_bounded(self):
+        self.assertEqual(len(research._anchors(150, max_anchors=4)), 4)
+        with self.assertRaises(ValueError):
+            research._anchors(150, max_anchors=1)
+
+    def test_research_rejects_wrong_shape_and_invalid_probability(self):
+        with patch('v6_openfe_bridge._fit_and_score', return_value=([.1] * 113, 12, 12)):
+            with self.assertRaises(RuntimeError):
+                research.score_three_views(rows(15), 'all')
+        with patch('v6_openfe_bridge._fit_and_score', return_value=([float('nan')] * 114, 12, 12)):
+            with self.assertRaises(RuntimeError):
+                research.score_three_views(rows(15), 'all')
+
+    def test_research_default_scorer_calls_the_real_scoring_entrypoint(self):
+        scores = {n: .15 for n in range(1, 39)}
+        with patch.object(research, 'score_three_views', return_value=scores) as scorer:
+            result = research.walk_forward(rows(15), draws=1, modes=('base',))
+        scorer.assert_called_once()
+        self.assertEqual(result['results']['base']['draws'], 1)
+
+    def test_research_cli_walk_forward_without_output_file(self):
+        dummy = SimpleNamespace(validate=lambda _path: rows(15))
+        with patch.dict(sys.modules, {'v6_exact_e2e': dummy}):
+            with patch.object(research, 'walk_forward', return_value={'research': True}) as run:
+                with patch.object(sys, 'argv', ['research', '--csv', 'unused.csv', '--walk-forward-draws', '1',
+                                                '--modes', 'base']):
+                    research.main()
+        run.assert_called_once()
 
 
 if __name__ == '__main__':
