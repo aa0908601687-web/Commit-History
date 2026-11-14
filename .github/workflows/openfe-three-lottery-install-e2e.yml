@@ -63,7 +63,7 @@ jobs:
           for n,k in [(38,6),(49,6),(39,5)]:
               pool=list(range(1,k+3))
               choices=list(combinations(pool,k))
-              assert len(choices)==28 if k==6 else len(choices)==56
+              assert len(choices)==28 if k==6 else len(choices)==21
               assert all(len(set(x))==k and all(1<=v<=n for v in x) for x in choices)
           assert 1<=1<=8
           print("Three lottery legality smoke PASS; no historical data/model integration tested")
