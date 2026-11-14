@@ -29,7 +29,7 @@ jobs:
           python - <<'PY'
           import subprocess
           from pathlib import Path
-          tokens = ('py'+'torch', 'tor'+'ch', 'tor'+'chvision', 'tor'+'chaudio')
+          tokens = ('py'+'tor'+'ch', 'tor'+'ch', 'tor'+'ch'+'vision', 'tor'+'ch'+'audio')
           names = subprocess.check_output(['git','ls-files','-z']).decode('utf-8').split('\0')
           findings = []
           count = 0
