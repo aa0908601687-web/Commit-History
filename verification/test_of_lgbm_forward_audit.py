@@ -54,20 +54,20 @@ class ForwardAuditTests(unittest.TestCase):
                 audit.audit_history(path, "power")
 
     def test_holdout_never_sees_future_draw(self):
-        ids = list(range(115000001, 115000021))
-        draws = [tuple(range(1, 7))] * 20
-        seconds = [(i % 8) + 1 for i in range(20)]
+        ids = list(range(115000001, 115000031))
+        draws = [tuple(range(1, 7))] * 30
+        seconds = [(i % 8) + 1 for i in range(30)]
         observed = []
         def stub(prior, prior_seconds, game):
             observed.append((len(prior), len(prior_seconds), game))
             return (tuple(range(1, 7)), 1)
         with patch.object(audit, "predict_one", side_effect=stub):
             result = audit.walk_forward(ids, draws, seconds, "power", folds=2)
-        self.assertEqual(observed, [(18, 18, "power"), (19, 19, "power")])
+        self.assertEqual(observed, [(28, 28, "power"), (29, 29, "power")])
         self.assertEqual([r["target_id"] for r in result["outcomes"]],
-                         ["115000019", "115000020"])
+                         ["115000029", "115000030"])
         self.assertEqual([r["cutoff_id"] for r in result["outcomes"]],
-                         ["115000018", "115000019"])
+                         ["115000028", "115000029"])
         self.assertEqual(result["distribution"]["6"], 2)
         self.assertFalse(result["predictive_advantage_verified"])
 

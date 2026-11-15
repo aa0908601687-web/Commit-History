@@ -63,8 +63,9 @@ jobs:
           assert w["mode"]=="actual OpenFE+LightGBM refit for each held-out draw"
           assert w["folds"]==5 and len(w["outcomes"])==5
           assert all(r["target_id"]!=r["cutoff_id"] for r in w["outcomes"])
-          assert w["feature_window_lengths"]==[5,10]
-          assert w["view_weights"]=={"latest_5":.35,"latest_10":.35,"full_archive":.30}
+          assert w["feature_window_lengths"]==[10,20]
+          assert w["full_archive_anchor_policy"]=="all_eligible_completed_draws"
+          assert w["view_weights"]=={"latest_10":.35,"latest_20":.35,"full_archive":.30}
           assert not w["official_data_verified"] and not w["predictive_advantage_verified"]
           print("PASS: genuine five-draw walk-forward ML refits; forecasting advantage NOT verified")
           PY

@@ -13,35 +13,49 @@ class AllOperatorsContractTests(unittest.TestCase):
         self.rng = random.Random(20261115)
         self.draws = [
             tuple(sorted(self.rng.sample(range(1, 39), 6)))
-            for _ in range(20)
+            for _ in range(50)
         ]
 
     def test_registry_is_exactly_23(self):
         self.assertEqual(len(system.supported_operators()), 23)
 
     def test_all_windows_strictly_causal(self):
-        for view in system.VIEW_ANCHORS:
-            features = system.row_features(self.draws, 1, 38, view)
-            changed_past = list(self.draws)
-            changed_past[0] = (1, 2, 3, 4, 5, 6)
-            self.assertEqual(features, system.row_features(changed_past, 1, 38, view))
-        five = system.row_features(self.draws, 1, 38, "latest_5")
+        changed_far_past = list(self.draws)
+        # Flip membership of 1 only in a draw older than the last 20.
+        changed_far_past[0] = ((2, 3, 4, 5, 6, 7)
+                               if 1 in self.draws[0] else (1, 2, 3, 4, 5, 6))
+        for view in ("latest_10", "latest_20"):
+            self.assertEqual(
+                system.row_features(self.draws, 1, 38, view),
+                system.row_features(changed_far_past, 1, 38, view),
+            )
+        self.assertNotEqual(
+            system.row_features(self.draws, 1, 38, "full_archive")["historical_count"],
+            system.row_features(changed_far_past, 1, 38, "full_archive")["historical_count"],
+        )
         ten = system.row_features(self.draws, 1, 38, "latest_10")
+        twenty = system.row_features(self.draws, 1, 38, "latest_20")
         archive = system.row_features(self.draws, 1, 38, "full_archive")
-        self.assertNotIn("freq10", five)
-        self.assertNotIn("freq5", ten)
+        self.assertNotIn("freq20", ten)
+        self.assertIn("freq10", ten)
+        self.assertNotIn("freq10", twenty)
+        self.assertIn("freq20", twenty)
         self.assertIn("freq10", archive)
-        self.assertIn("freq5", archive)
-        self.assertIn("decay10", archive)
+        self.assertIn("freq20", archive)
+        self.assertIn("decay20", archive)
+        self.assertEqual(archive["historical_draws"], float(len(self.draws)))
 
     def test_three_view_fusion_weights(self):
         self.assertAlmostEqual(sum(system.VIEW_WEIGHTS.values()), 1.0)
         self.assertEqual(set(system.VIEW_WEIGHTS), set(system.VIEW_ANCHORS))
 
     def test_chronological_anchor_boundaries(self):
-        self.assertEqual(system.anchors(20, "latest_5"), [15, 16, 17, 18, 19])
-        self.assertEqual(system.anchors(20, "latest_10"), list(range(10, 20)))
-        self.assertEqual(system.anchors(20, "full_archive"), list(range(10, 20)))
+        self.assertEqual(system.anchors(50, "latest_10"), list(range(40, 50)))
+        self.assertEqual(system.anchors(50, "latest_20"), list(range(30, 50)))
+        self.assertEqual(system.anchors(50, "full_archive"), list(range(20, 50)))
+        # Verify full-history training never silently shrinks to a 100-anchor sample.
+        self.assertEqual(system.anchors(250, "full_archive"), list(range(20, 250)))
+        self.assertEqual(system.anchors(20, "full_archive"), [])
 
     def test_categorical_columns_are_real_categories(self):
         frame = system.feature_frame([
