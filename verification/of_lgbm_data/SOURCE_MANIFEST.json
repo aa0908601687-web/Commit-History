@@ -1,0 +1,29 @@
+{
+  "source_kind": "third-party GitHub mirror of official API; not official authentication",
+  "upstream_repository": "https://github.com/oomao/Lottery_Taiwan",
+  "upstream_commit": "12cec5a6995259a54b43f68c29a3e6291f69aba3",
+  "official_reference": "https://www.taiwanlottery.com/lotto/history/result_download/",
+  "record_by_record_officially_authenticated": false,
+  "datasets": {
+    "539": {
+      "rows": 1116,
+      "first": "112000103",
+      "last": "115000276",
+      "path": "verification/of_lgbm_data/539_history_mirror.csv",
+      "source": "public/data/539/raw.json"
+    },
+    "lotto": {
+      "rows": 411,
+      "first": "112000047",
+      "last": "115000105",
+      "path": "verification/of_lgbm_data/lotto_history_mirror.csv",
+      "source": "public/data/lotto649/raw.json"
+    },
+    "power": {
+      "rows": 1963,
+      "cutoff": "115000091",
+      "third_party_matching_overlap": 370,
+      "source": "prior repository archive, not authenticated against full official data"
+    }
+  }
+}
