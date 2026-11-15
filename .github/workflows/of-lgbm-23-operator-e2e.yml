@@ -1,20 +1,15 @@
 name: OF-LGBM Standalone CPU E2E (OpenFE + LightGBM)
-
 on:
   pull_request:
     paths:
-      - 'verification/of_lgbm_all_operator_e2e.py'
-      - 'verification/test_of_lgbm_all_operator_e2e.py'
-      - 'verification/test_of_lgbm_isolation.py'
-      - 'verification/of_lgbm_requirements.txt'
+      - 'verification/of_lgbm_*'
       - 'verification/of_lgbm_data/**'
+      - 'verification/test_of_lgbm_*'
       - 'verification/OF_LGBM_STANDALONE.md'
       - '.github/workflows/of-lgbm-23-operator-e2e.yml'
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   of-lgbm-standalone:
     name: OF-LGBM only / ${{ matrix.game }} / 23 ops / Python 3.11
@@ -24,62 +19,60 @@ jobs:
       fail-fast: false
       matrix:
         game: [power, lotto, '539']
+    env:
+      GAME: ${{ matrix.game }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install standalone OpenFE and LightGBM CPU requirements
+      - name: Install dedicated OpenFE and LightGBM CPU requirements
+        run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
+      - name: Check isolation and historical CSV data gates
         run: |
-          python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
+          python -m unittest verification/test_of_lgbm_isolation.py verification/test_of_lgbm_all_operator_e2e.py verification/test_of_lgbm_real_history_gate.py -v
+      - name: Execute real-history 23 OpenFE operator and LightGBM E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$GAME" in
+            power) HIST=verification/of_lgbm_data/power_history_archive.csv ;;
+            lotto) HIST=verification/of_lgbm_data/lotto_history_mirror.csv ;;
+            539) HIST=verification/of_lgbm_data/539_history_mirror.csv ;;
+            *) exit 2 ;;
+          esac
+          python verification/of_lgbm_real_history_gate.py --game "$GAME" --csv "$HIST" --output history-audit.json > history-audit.log
+          python verification/of_lgbm_all_operator_e2e.py --game "$GAME" --csv "$HIST" --output of-lgbm-evidence.json > of-lgbm-run.log
           python - <<'PY'
-          import openfe
-          import lightgbm
-          print("OF-LGBM standalone dependency import PASS")
-          PY
-
-      - name: Verify no imports from other lottery model stacks
-        run: |
-          python -m unittest verification/test_of_lgbm_isolation.py -v
-          python -m unittest verification/test_of_lgbm_all_operator_e2e.py -v
-
-      - name: Run standalone 23-operator model and exact combinatorial search
-        run: |
-          if [ "${{ matrix.game }}" = "power" ]; then
-            python verification/of_lgbm_all_operator_e2e.py --game power --csv verification/of_lgbm_data/power_history_archive.csv --output of-lgbm-evidence.json > of-lgbm-run.log
-          else
-            python verification/of_lgbm_all_operator_e2e.py --game "${{ matrix.game }}" --output of-lgbm-evidence.json > of-lgbm-run.log
-          fi
-          python - <<'PY'
-          import json
+          import os,json
           from pathlib import Path
-          d = json.loads(Path("of-lgbm-evidence.json").read_text(encoding="utf-8"))
-          assert d["openfe_23_operator_candidate_enablement"]
-          assert d["openfe_23_operator_execution_verified"]
-          assert d["all_23_operator_families_passed_to_lightgbm"]
-          assert d["lightgbm_trained_and_scored"]
-          assert d["three_view_weights"] == {"latest_5": .35, "latest_10": .35, "full_archive": .30}
-          assert len(d["first_zone"]) == (5 if d["game"] == "539" else 6)
-          assert len(set(d["first_zone"])) == len(d["first_zone"])
-          assert d["exact_candidates"] == (56 if d["game"] == "539" else 28)
-          assert all(v["operator_witnesses_executed"] == 23 and v["operator_families_in_model"] == 23 for v in d["per_view_audits"].values())
-          assert d["official_data_verified"] is False
-          assert d["out_of_sample_predictive_advantage_verified"] is False
-          if d["game"] == "power":
-              assert d["history_draws"] >= 16 and d["data_cutoff"] and not d["synthetic_data"]
-              assert 1 <= d["second_zone"] <= 8
-          else:
-              assert d["synthetic_data"] and d["data_cutoff"] is None
-          print("PASS: OF-LGBM standalone 23 operators / LightGBM / 3 views / Python exact search")
+          a=json.loads(Path("history-audit.json").read_text())
+          d=json.loads(Path("of-lgbm-evidence.json").read_text())
+          game=os.environ["GAME"]
+          assert a["game"]==game and a["chronological_and_legal_range_verified"]
+          assert not a["record_by_record_official_provenance_verified"]
+          assert a["csv_dates_consistent"]==(game!="power")
+          assert d["game"]==game and not d["synthetic_data"]
+          assert d["history_draws"]==a["rows"] and d["data_cutoff"]==a["last_id"]
+          assert d["openfe_23_operator_candidate_enablement"] and d["openfe_23_operator_execution_verified"]
+          assert d["all_23_operator_families_passed_to_lightgbm"] and d["lightgbm_trained_and_scored"]
+          assert d["three_view_weights"]=={"latest_5":.35,"latest_10":.35,"full_archive":.30}
+          assert all(v["operator_witnesses_executed"]==23 and v["operator_families_in_model"]==23 for v in d["per_view_audits"].values())
+          assert len(d["first_zone"])==(5 if game=="539" else 6)
+          assert len(set(d["first_zone"]))==len(d["first_zone"])
+          assert d["exact_candidates"]==(56 if game=="539" else 28)
+          assert not d["official_data_verified"] and not d["out_of_sample_predictive_advantage_verified"]
+          if game=="power": assert 1<=d["second_zone"]<=8
+          print("PASS: real CSV, all 23 OpenFE families, three LightGBM views, exact Python selection")
           PY
-
-      - name: Upload standalone model evidence
-        uses: actions/upload-artifact@v4
+      - name: Upload genuine standalone E2E evidence
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: of-lgbm-standalone-${{ matrix.game }}-${{ github.run_id }}
           path: |
+            history-audit.json
+            history-audit.log
             of-lgbm-evidence.json
             of-lgbm-run.log
           if-no-files-found: warn
