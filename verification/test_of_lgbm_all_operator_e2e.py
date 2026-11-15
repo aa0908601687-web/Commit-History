@@ -19,6 +19,26 @@ class AllOperatorsContractTests(unittest.TestCase):
     def test_registry_is_exactly_23(self):
         self.assertEqual(len(system.supported_operators()), 23)
 
+    def test_order_one_search_submits_every_generated_candidate(self):
+        from types import SimpleNamespace
+        # More than two per operator ensures the former 46-formula cap fails.
+        supported = system.supported_operators()
+        candidates = [
+            SimpleNamespace(name=name, index=i)
+            for name in sorted(supported) for i in range(4)
+        ]
+        complete = system.full_order_one_candidates(candidates, supported)
+        self.assertEqual(len(complete), 4 * 23)
+        self.assertTrue(all(a is b for a, b in zip(complete, candidates)))
+
+    def test_order_one_search_rejects_missing_operator_family(self):
+        from types import SimpleNamespace
+        supported = system.supported_operators()
+        incomplete = [SimpleNamespace(name=name)
+                      for name in sorted(supported)[:-1]]
+        with self.assertRaises(RuntimeError):
+            system.full_order_one_candidates(incomplete, supported)
+
     def test_all_windows_strictly_causal(self):
         changed_far_past = list(self.draws)
         # Flip membership of 1 only in a draw older than the last 20.
