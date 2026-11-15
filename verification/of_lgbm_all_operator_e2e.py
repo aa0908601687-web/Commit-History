@@ -60,12 +60,12 @@ def read_real_csv(csv_path, kind):
             if second_max:
                 second_rows.append(second)
             previous = draw_id
-    if len(rows) < 16:
-        raise ValueError("at least 16 completed draws are required")
+    if len(rows) < 25:
+        raise ValueError("at least 25 completed draws are required")
     return rows, second_rows, str(previous)
 
-VIEW_ANCHORS = {"latest_5": 5, "latest_10": 10, "full_archive": None}
-VIEW_WEIGHTS = {"latest_5": 0.35, "latest_10": 0.35, "full_archive": 0.30}
+VIEW_ANCHORS = {"latest_10": 10, "latest_20": 20, "full_archive": None}
+VIEW_WEIGHTS = {"latest_10": 0.35, "latest_20": 0.35, "full_archive": 0.30}
 CATEGORY_COLUMNS = ("parity_group", "number_band", "recency_group")
 EXPECTED_OPERATORS = frozenset((
     "freq", "abs", "log", "sqrt", "square", "sigmoid", "round",
@@ -85,28 +85,35 @@ def supported_operators():
 
 
 def row_features(history, n, maximum, view):
-    """Only completed draws in the most recent 5/10 are used as features."""
-    last5, last10 = history[-5:], history[-10:]
-    scoped = last5 if view == "latest_5" else last10
+    """Use only prior completed draws: latest 10, latest 20, or complete history."""
+    if view not in VIEW_ANCHORS:
+        raise ValueError(f"unknown OF-LGBM view: {view}")
+    last10, last20 = history[-10:], history[-20:]
+    scoped = {"latest_10": last10, "latest_20": last20, "full_archive": history}[view]
     gap = next((age for age, draw in enumerate(reversed(scoped), 1) if n in draw),
                len(scoped) + 1)
     recency = min(gap // 3, 4)
+    hits = sum(n in d for d in scoped)
     result = {
         "number": float(n), "scaled": float(n / maximum),
         "odd": float(n % 2),
-        "view_frequency": float(sum(n in d for d in scoped) / len(scoped)),
+        "view_frequency": float(hits / len(scoped)),
         "gap_view": float(gap),
         "repeat_last": float(n in history[-1]),
         "parity_group": str(n % 2),
         "number_band": str((n - 1) // 10),
         "recency_group": str(recency),
     }
-    if view != "latest_5":
-        result["freq10"] = float(sum(n in d for d in last10))
     if view != "latest_10":
-        result["freq5"] = float(sum(n in d for d in last5))
+        result["freq20"] = float(sum(n in d for d in last20))
+    if view != "latest_20":
+        result["freq10"] = float(sum(n in d for d in last10))
     if view == "full_archive":
-        result["decay10"] = float(sum((i + 1) * (n in d) for i, d in enumerate(last10)) / 55)
+        result["historical_count"] = float(hits)
+        result["historical_draws"] = float(len(scoped))
+        result["decay20"] = float(
+            sum((i + 1) * (n in d) for i, d in enumerate(last20)) / 210
+        )
     return result
 
 
@@ -118,14 +125,11 @@ def feature_frame(records):
 
 
 def anchors(total, view):
-    ends = list(range(10, total))
+    # 20 completed draws warm up the 20-draw feature window.
+    # All eligible prior historical training anchors are used (no 100-anchor cap).
+    ends = list(range(20, total))
     limit = VIEW_ANCHORS[view]
-    if limit is not None:
-        return ends[-limit:]
-    if len(ends) > 100:
-        positions = {round(i * (len(ends) - 1) / 99) for i in range(100)}
-        ends = [ends[i] for i in sorted(positions)]
-    return ends
+    return ends[-limit:] if limit is not None else ends
 
 
 def train_and_current(draws, maximum, count, view):
@@ -236,9 +240,9 @@ def run(game, csv_path=None):
         draws, second, cutoff = read_real_csv(csv_path, game)
     else:
         rng = random.Random(20261115 + maximum)
-        draws = [tuple(sorted(rng.sample(range(1, maximum + 1), count))) for _ in range(18)]
+        draws = [tuple(sorted(rng.sample(range(1, maximum + 1), count))) for _ in range(30)]
         second, cutoff = [], None
-    if len(draws) < 16:
+    if len(draws) < 25:
         raise RuntimeError("at least 16 completed draws needed")
     results, audits = {}, {}
     for view, weight in VIEW_WEIGHTS.items():
@@ -256,8 +260,8 @@ def run(game, csv_path=None):
     if second_max:
         second_pick = max(
             range(1, second_max + 1),
-            key=lambda n: (0.6 * sum(x == n for x in second[-5:]) +
-                           0.4 * sum(x == n for x in second[-10:]), -n)
+            key=lambda n: (0.6 * sum(x == n for x in second[-10:]) +
+                           0.4 * sum(x == n for x in second[-20:]), -n)
         ) if csv_path else 1
     output = {
         "system": "independent OF-LGBM 23-operator research E2E",
@@ -269,11 +273,12 @@ def run(game, csv_path=None):
         "lightgbm_trained_and_scored": True,
         "exact_candidates": len(tickets),
         "history_draws": len(draws), "data_cutoff": cutoff,
+        "feature_window_lengths": [10, 20], "full_archive_training_anchors": len(draws) - 20,
         "history_source": "repository CSV; official external verification pending" if csv_path else "deterministic synthetic fixture",
         "synthetic_data": not bool(csv_path),
         "official_data_verified": False,
         "out_of_sample_predictive_advantage_verified": False,
-        "second_zone_model": "recent 5/10 frequency baseline; not OpenFE/LightGBM" if second_max else None,
+        "second_zone_model": "recent 10/20 frequency baseline; not OpenFE/LightGBM" if second_max else None,
     }
     if csv_path:
         import hashlib
