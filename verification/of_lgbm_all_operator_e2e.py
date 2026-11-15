@@ -27,7 +27,42 @@ from openfe.FeatureGenerator import (
 )
 from lightgbm import LGBMClassifier
 
-from openfe_three_lottery_integration import CONFIGS, read_real_csv
+import csv
+import hashlib
+
+CONFIGS = {"power": (38, 6, 8), "lotto": (49, 6, None), "539": (39, 5, None)}
+
+
+def read_real_csv(csv_path, kind):
+    """Strict chronological and range validation, independent of QUBO/CUDA-Q."""
+    maximum, count, second_max = CONFIGS[kind]
+    rows, second_rows = [], []
+    previous = -1
+    with open(csv_path, newline="", encoding="utf-8-sig") as handle:
+        reader = csv.DictReader(handle)
+        required = {"draw_id", "first"} | ({"second"} if second_max else set())
+        if not reader.fieldnames or not required.issubset(reader.fieldnames):
+            raise ValueError(f"required CSV columns: {sorted(required)}")
+        for line, row in enumerate(reader, start=2):
+            try:
+                draw_id = int(row["draw_id"])
+                first = tuple(sorted(int(v) for v in row["first"].replace(",", " ").split()))
+                second = int(row["second"]) if second_max else None
+            except (ValueError, TypeError, AttributeError) as exc:
+                raise ValueError(f"invalid CSV on line {line}") from exc
+            if draw_id <= previous:
+                raise ValueError(f"non-increasing draw ID on line {line}")
+            if len(first) != count or len(set(first)) != count or not all(1 <= n <= maximum for n in first):
+                raise ValueError(f"invalid first-zone numbers on line {line}")
+            if second_max and not (1 <= second <= second_max):
+                raise ValueError(f"invalid second-zone number on line {line}")
+            rows.append(first)
+            if second_max:
+                second_rows.append(second)
+            previous = draw_id
+    if len(rows) < 16:
+        raise ValueError("at least 16 completed draws are required")
+    return rows, second_rows, str(previous)
 
 VIEW_ANCHORS = {"latest_5": 5, "latest_10": 10, "full_archive": None}
 VIEW_WEIGHTS = {"latest_5": 0.35, "latest_10": 0.35, "full_archive": 0.30}
