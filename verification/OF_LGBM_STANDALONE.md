@@ -4,10 +4,16 @@
 This standalone system uses its own dependency file and has no imports or E2E connections to V6, CUDA-Q, QAOA, Ising/QUBO, Nemotron, tsfresh, Featuretools, or any retired deep-learning backend. GitHub may show other repository-wide workflows on the same PR; these are not part of standalone OF-LGBM testing.
 
 ## Model and optimization
-- OpenFE 0.0.12: all 23 operator *families* are executed, with bounded candidate screening. One computed witness of each family is included in LightGBM inputs per view. This is NOT every possible OpenFE formula.
+- OpenFE 0.0.12: all 23 operator *families* are executed. The independent runner now submits **every generated `order=1` candidate** to `OpenFE.fit()` in each of the three views rather than selecting at most 2 formulas per family (46 total). A computed witness of each family remains included in the LightGBM inputs per view, plus the highest-ranked two features from OpenFE. This is a complete submission of the *finite order-1 candidate set for the current input columns*, NOT an exhaustive search of higher-order, recursive, or unlimited-depth formulas. OpenFE may internally prune candidates; successful submission does not prove that every submitted formula became a model input.
 - LightGBM (CPU): three independently trained views and normalized score fusion: recent-10 training anchors 35%, recent-20 anchors 35%, all eligible historical training anchors 30%. Features use only prior completed drawings: 10, 20, or the complete past respectively; no 100-anchor cap. The first 20 draws are warm-up for historical labels.
 - Exact Python itertools.combinations enumeration of an 8-number pool: 8 choose 6 = 28 for Power and Lotto, 8 choose 5 = 56 for 539. This is exact solely for the eight-number pool and stated score objective.
 - Power second zone is a separate 10/20 frequency baseline, not OpenFE/LightGBM.
+
+### Full order-1 candidate search evidence and resource cost
+- The E2E JSON reports `candidate_features_possible`, `candidate_features_screened`, `all_generated_order1_candidates_submitted`, `operator_candidate_counts`, and `openfe_ranked_features` for every view. The dedicated workflow asserts full list submission in **all three lotteries**. "Screened" means **submitted to OpenFE candidate selection**, not necessarily retained or individually numerically ranked by OpenFE.
+- This mode is more expensive than the earlier 46-formula limit. Long-history fitting and 100/200/500-fold backtests may exceed CPU job resources; failures/timeouts must be reported as failures, never silently fall back to the bounded mode.
+- The search scope and retained LightGBM features are distinct; the LightGBM classifier still receives a representative witness per family plus up to two OpenFE-ranked formulas, rather than all order-1 candidates.
+- No change to 10/20/full-history weights, lottery pick rules, source CSVs, or unrelated V6 code.
 
 ## Real historical CSV snapshots (not synthetic)
 - Power: verification/of_lgbm_data/power_history_archive.csv; 1,963 entries through 115000091. A prior in-repository archive, with incomplete official provenance. The most recent 370 entries were separately checked for agreement with the third-party mirror; the 370 overlapped draws matched.
