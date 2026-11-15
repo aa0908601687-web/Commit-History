@@ -39,6 +39,20 @@ class AllOperatorsContractTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             system.full_order_one_candidates(incomplete, supported)
 
+    def test_openfe_fit_stage_one_preserves_both_class_labels(self):
+        # Regression for PR #79's 100/200/500-fold "previously unseen labels"
+        # failure. The OpenFE default 8-block unstratified sampling can remove
+        # the positive class entirely; 1 block retains both classes.
+        from openfe.openfe import _subsample
+        self.assertEqual(system.OPENFE_DATA_BLOCKS, 1)
+        labels = [0] * 48 + [1] * 8
+        for seed in range(25):
+            random.seed(seed)
+            sampled = _subsample(list(range(len(labels))), system.OPENFE_DATA_BLOCKS)
+            self.assertEqual(len(sampled), 1)
+            self.assertEqual(len(sampled[0]), len(labels))
+            self.assertEqual({labels[i] for i in sampled[0]}, {0, 1})
+
     def test_all_windows_strictly_causal(self):
         changed_far_past = list(self.draws)
         # Flip membership of 1 only in a draw older than the last 20.
