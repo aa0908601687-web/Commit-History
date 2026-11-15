@@ -151,6 +151,20 @@ def train_and_current(draws, maximum, count, view):
     return train, pd.Series(y, name="drawn"), test, ends
 
 
+def full_order_one_candidates(candidates, supported):
+    """Preserve the entire generated order=1 list, without per-family truncation."""
+    complete = list(candidates)
+    if not complete:
+        raise RuntimeError("OpenFE generated no depth-one feature candidates")
+    operator_names = {node.name for node in complete}
+    if operator_names != supported:
+        raise RuntimeError(
+            f"full candidate operator mismatch: missing={sorted(supported - operator_names)}, "
+            f"unexpected={sorted(operator_names - supported)}"
+        )
+    return complete
+
+
 def audit_and_score(train, labels, current, maximum, view):
     supported = supported_operators()
     numeric = [col for col in train if col not in CATEGORY_COLUMNS]
@@ -162,15 +176,10 @@ def audit_and_score(train, labels, current, maximum, view):
         represented.setdefault(node.name, node)
     if set(represented) != supported:
         raise RuntimeError(f"operator generation incomplete: {sorted(supported - set(represented))}")
-    # Bound actual OpenFE feature screening while keeping all 23 operator kinds.
-    # Every operator has at least one real candidate passed to OpenFE.fit().
-    screen_candidates = []
-    seen_counts = {}
-    for node in candidates:
-        if seen_counts.get(node.name, 0) < 2:
-            screen_candidates.append(node)
-            seen_counts[node.name] = seen_counts.get(node.name, 0) + 1
-    assert set(seen_counts) == supported
+    # Complete depth-one search: submit EVERY generated formula to OpenFE.fit.
+    # OpenFE may internally prune invalid/uninformative formulas. This does not
+    # enumerate higher-order or unlimited-depth expressions.
+    screen_candidates = full_order_one_candidates(candidates, supported)
     # This is a real calculation, not an inspection of candidate names alone.
     witnesses = []
     for name in sorted(supported):
@@ -223,6 +232,10 @@ def audit_and_score(train, labels, current, maximum, view):
     return scores, {
         "candidate_features_possible": len(candidates),
         "candidate_features_screened": len(screen_candidates),
+        "candidate_search_scope": "all_generated_order1_candidates",
+        "all_generated_order1_candidates_submitted": len(screen_candidates) == len(candidates),
+        "operator_candidate_counts": {name: sum(node.name == name for node in candidates)
+                                      for name in sorted(supported)},
         "openfe_ranked_features": len(generated),
         "supported_operators": sorted(supported),
         "operator_candidates_enabled": len(represented),
@@ -268,6 +281,9 @@ def run(game, csv_path=None):
         "game": game, "first_zone": sorted(ticket), "second_zone": second_pick,
         "three_view_weights": VIEW_WEIGHTS, "per_view_audits": audits,
         "openfe_23_operator_candidate_enablement": True,
+        "full_order1_candidate_submission_verified": all(
+            a["all_generated_order1_candidates_submitted"] for a in audits.values()
+        ),
         "openfe_23_operator_execution_verified": True,
         "all_23_operator_families_passed_to_lightgbm": True,
         "lightgbm_trained_and_scored": True,
@@ -287,6 +303,7 @@ def run(game, csv_path=None):
     assert len(set(output["first_zone"])) == count
     assert all(1 <= n <= maximum for n in output["first_zone"])
     assert all(a["operator_families_in_model"] == 23 for a in audits.values())
+    assert all(a["all_generated_order1_candidates_submitted"] for a in audits.values())
     return output
 
 
