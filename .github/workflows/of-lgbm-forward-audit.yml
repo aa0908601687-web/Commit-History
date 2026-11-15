@@ -1,0 +1,81 @@
+name: OF-LGBM standalone three-game five-fold ML holdout
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'verification/of_lgbm_*'
+      - 'verification/of_lgbm_data/**'
+      - 'verification/test_of_lgbm_*'
+      - '.github/workflows/of-lgbm-forward-audit.yml'
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_*'
+      - 'verification/of_lgbm_data/**'
+      - 'verification/test_of_lgbm_*'
+      - '.github/workflows/of-lgbm-forward-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-of-lgbm-historical:
+    name: OF-LGBM / ${{ matrix.game }} / five actual ML refits
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        game: [power, lotto, '539']
+    env:
+      GAME: ${{ matrix.game }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install only dedicated OF-LGBM CPU requirements
+        run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
+      - name: Run chronological holdout and CSV gate tests
+        run: |
+          python -m unittest verification/test_of_lgbm_forward_audit.py verification/test_of_lgbm_real_history_gate.py -v
+      - name: Run five causally ordered true ML training/holdout iterations
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$GAME" in
+            power) HIST=verification/of_lgbm_data/power_history_archive.csv ;;
+            lotto) HIST=verification/of_lgbm_data/lotto_history_mirror.csv ;;
+            539) HIST=verification/of_lgbm_data/539_history_mirror.csv ;;
+            *) exit 2 ;;
+          esac
+          python verification/of_lgbm_real_history_gate.py --game "$GAME" --csv "$HIST" --output source-audit.json > source-audit.log
+          python verification/of_lgbm_forward_audit.py --game "$GAME" --csv "$HIST" --folds 5 --output forward.json > forward.log
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          a=json.loads(Path("source-audit.json").read_text())
+          d=json.loads(Path("forward.json").read_text())
+          w=d["walk_forward"]
+          assert a["game"]==os.environ["GAME"]
+          assert a["chronological_and_legal_range_verified"]
+          assert not a["record_by_record_official_provenance_verified"]
+          assert d["audit"]["rows"]==a["rows"]
+          assert w["mode"]=="actual OpenFE+LightGBM refit for each held-out draw"
+          assert w["folds"]==5 and len(w["outcomes"])==5
+          assert all(r["target_id"]!=r["cutoff_id"] for r in w["outcomes"])
+          assert w["feature_window_lengths"]==[5,10]
+          assert w["view_weights"]=={"latest_5":.35,"latest_10":.35,"full_archive":.30}
+          assert not w["official_data_verified"] and not w["predictive_advantage_verified"]
+          print("PASS: genuine five-draw walk-forward ML refits; forecasting advantage NOT verified")
+          PY
+      - name: Upload history and independent forward-test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-forward-${{ matrix.game }}-${{ github.run_id }}
+          path: |
+            source-audit.json
+            source-audit.log
+            forward.json
+            forward.log
+          if-no-files-found: warn

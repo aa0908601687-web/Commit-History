@@ -1,0 +1,9 @@
+# Standalone OF-LGBM research pipeline; CPU only.
+# No dependencies on other lottery/quantum research runners.
+openfe==0.0.12
+lightgbm>=4.3,<5
+numpy
+pandas
+scipy
+matplotlib
+pyarrow
