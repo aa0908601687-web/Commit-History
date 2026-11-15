@@ -1,5 +1,13 @@
 name: OF-LGBM standalone three-game five-fold ML holdout
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'verification/of_lgbm_*'
+      - 'verification/of_lgbm_data/**'
+      - 'verification/test_of_lgbm_*'
+      - '.github/workflows/of-lgbm-forward-audit.yml'
   pull_request:
     paths:
       - 'verification/of_lgbm_*'
