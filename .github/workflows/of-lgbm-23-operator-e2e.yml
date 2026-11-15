@@ -1,5 +1,14 @@
 name: OF-LGBM Standalone CPU E2E (OpenFE + LightGBM)
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'verification/of_lgbm_*'
+      - 'verification/of_lgbm_data/**'
+      - 'verification/test_of_lgbm_*'
+      - 'verification/OF_LGBM_STANDALONE.md'
+      - '.github/workflows/of-lgbm-23-operator-e2e.yml'
   pull_request:
     paths:
       - 'verification/of_lgbm_*'
