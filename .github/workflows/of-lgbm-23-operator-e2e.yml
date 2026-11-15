@@ -1,0 +1,60 @@
+name: Independent OF-LGBM full 23-operator CPU E2E
+on:
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_all_operator_e2e.py'
+      - 'verification/test_of_lgbm_all_operator_e2e.py'
+      - '.github/workflows/of-lgbm-23-operator-e2e.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  all-operators:
+    name: 23 operators / ${{ matrix.game }} / Python 3.11
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        game: [power, lotto, '539']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install actual OpenFE + LightGBM CPU dependencies
+        run: |
+          python -m pip install --disable-pip-version-check 'openfe==0.0.12' 'lightgbm>=4.3,<5' numpy pandas scipy matplotlib pyarrow
+      - name: Validate 23-operator registry, windows, and history contracts
+        run: |
+          python -m unittest verification/test_of_lgbm_all_operator_e2e.py -v
+      - name: Execute complete 23-operator E2E for the configured game
+        run: |
+          if [ "${{ matrix.game }}" = "power" ]; then
+            python verification/of_lgbm_all_operator_e2e.py --game power --csv WP-OS-Git-MAX/historical_archive.csv --output of-lgbm-evidence.json > of-lgbm-run.log
+          else
+            python verification/of_lgbm_all_operator_e2e.py --game "${{ matrix.game }}" --output of-lgbm-evidence.json > of-lgbm-run.log
+          fi
+          python - <<'PY'
+          import json
+          d=json.load(open('of-lgbm-evidence.json',encoding='utf-8'))
+          assert d['openfe_23_operator_candidate_enablement']
+          assert d['openfe_23_operator_execution_verified']
+          assert d['all_23_operator_families_passed_to_lightgbm']
+          assert d['lightgbm_trained_and_scored']
+          assert len(d['first_zone'])==(5 if d['game']=='539' else 6)
+          assert d['exact_candidates']==(56 if d['game']=='539' else 28)
+          assert all(v['operator_witnesses_executed']==23 and v['operator_families_in_model']==23 for v in d['per_view_audits'].values())
+          assert d['official_data_verified'] is False
+          assert d['out_of_sample_predictive_advantage_verified'] is False
+          print('PASS: all 23 OpenFE operators executed, fed to LightGBM, three-view selection audited')
+          PY
+      - name: Upload full operator E2E evidence and log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: of-lgbm-23-operators-${{ matrix.game }}-${{ github.run_id }}
+          path: |
+            of-lgbm-evidence.json
+            of-lgbm-run.log
+          if-no-files-found: warn
