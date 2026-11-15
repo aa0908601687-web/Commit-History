@@ -63,9 +63,11 @@ jobs:
           assert a["csv_dates_consistent"]==(game!="power")
           assert d["game"]==game and not d["synthetic_data"]
           assert d["history_draws"]==a["rows"] and d["data_cutoff"]==a["last_id"]
+          assert d["feature_window_lengths"]==[10,20]
+          assert d["full_archive_training_anchors"]==a["rows"]-20
           assert d["openfe_23_operator_candidate_enablement"] and d["openfe_23_operator_execution_verified"]
           assert d["all_23_operator_families_passed_to_lightgbm"] and d["lightgbm_trained_and_scored"]
-          assert d["three_view_weights"]=={"latest_5":.35,"latest_10":.35,"full_archive":.30}
+          assert d["three_view_weights"]=={"latest_10":.35,"latest_20":.35,"full_archive":.30}
           assert all(v["operator_witnesses_executed"]==23 and v["operator_families_in_model"]==23 for v in d["per_view_audits"].values())
           assert len(d["first_zone"])==(5 if game=="539" else 6)
           assert len(set(d["first_zone"]))==len(d["first_zone"])
