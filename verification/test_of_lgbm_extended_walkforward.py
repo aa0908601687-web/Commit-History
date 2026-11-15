@@ -12,6 +12,23 @@ import of_lgbm_extended_walkforward as extended
 
 
 class ExtendedAuditTests(unittest.TestCase):
+    def test_openfe_stage_one_uses_both_labels_without_random_subblocks(self):
+        # Regression for "y contains previously unseen labels: [1]" observed
+        # in 539 and power long-horizon history. The upstream OpenFE stage-I
+        # sampler shuffles indices and takes just 1/8 by default, sometimes
+        # leaving no positive labels in the internal training sample.
+        import random
+        from openfe.openfe import _subsample
+        from of_lgbm_all_operator_e2e import OPENFE_DATA_BLOCKS
+        self.assertEqual(OPENFE_DATA_BLOCKS, 1)
+        labels = [0] * 48 + [1] * 8
+        for seed in range(25):
+            random.seed(seed)
+            sampled = _subsample(list(range(len(labels))), OPENFE_DATA_BLOCKS)
+            self.assertEqual(len(sampled), 1)
+            self.assertEqual(len(sampled[0]), len(labels))
+            self.assertEqual({labels[i] for i in sampled[0]}, {0, 1})
+
     def test_summary_is_explicit_about_insufficient_folds(self):
         rows = [{"target_id": str(i), "matches": 0, "random_matches": 1}
                 for i in range(100)]
