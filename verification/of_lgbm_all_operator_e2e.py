@@ -188,8 +188,8 @@ def audit_and_score(train, labels, current, maximum, view):
         task="classification", n_jobs=1, verbose=False,
         categorical_features=list(CATEGORY_COLUMNS),
         candidate_features_list=screen_candidates,
-        train_index=list(range(split)),
-        val_index=list(range(split, len(train))),
+        train_index=pd.Index(range(split)),
+        val_index=pd.Index(range(split, len(train))),
         tmp_save_path=temp_name,
         seed=20261115,
     )
