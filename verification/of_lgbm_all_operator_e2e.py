@@ -66,6 +66,11 @@ def read_real_csv(csv_path, kind):
 
 VIEW_ANCHORS = {"latest_10": 10, "latest_20": 20, "full_archive": None}
 VIEW_WEIGHTS = {"latest_10": 0.35, "latest_20": 0.35, "full_archive": 0.30}
+# OpenFE's default 8-block random stage-I subsampling can randomly yield a
+# training subset containing only class 0, while its validation subset contains
+# class 1. LightGBM then raises "y contains previously unseen labels".
+# One data block keeps *all* chronological training rows in each OpenFE stage.
+OPENFE_DATA_BLOCKS = 1
 CATEGORY_COLUMNS = ("parity_group", "number_band", "recency_group")
 EXPECTED_OPERATORS = frozenset((
     "freq", "abs", "log", "sqrt", "square", "sigmoid", "round",
@@ -185,11 +190,16 @@ def audit_and_score(train, labels, current, maximum, view):
     split = split_anchors * maximum
     if split >= len(train):
         raise RuntimeError("empty chronological feature-validation interval")
+    # No target-draw data is included: both groups are historical training
+    # anchors. Ensure full, non-subsampled partitions contain both classes.
+    if set(labels.iloc[:split].unique()) != {0, 1} or set(labels.iloc[split:].unique()) != {0, 1}:
+        raise RuntimeError("OpenFE chronological train/validation groups must both contain labels 0 and 1")
     temp_name = os.path.join(tempfile.gettempdir(), f"of_lgbm_23ops_{os.getpid()}_{view}.feather")
     # OpenFE may create/remove this file. A unique name prevents cross-job collisions.
     generated = OpenFE().fit(
         data=train.copy(), label=labels.to_frame(),
         task="classification", n_jobs=1, verbose=False,
+        n_data_blocks=OPENFE_DATA_BLOCKS,
         categorical_features=list(CATEGORY_COLUMNS),
         candidate_features_list=screen_candidates,
         train_index=pd.Index(range(split)),
@@ -227,6 +237,7 @@ def audit_and_score(train, labels, current, maximum, view):
         "supported_operators": sorted(supported),
         "operator_candidates_enabled": len(represented),
         "operator_witnesses_executed": len(witnesses),
+        "openfe_data_blocks": OPENFE_DATA_BLOCKS,
         "operator_families_in_model": len(model_operators),
         "model_feature_nodes": len(chosen),
         "chronological_train_anchors": split_anchors,
