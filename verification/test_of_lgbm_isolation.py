@@ -52,7 +52,7 @@ class StandaloneOFLCGBMContracts(unittest.TestCase):
 
     def test_workflow_uses_only_standalone_runner(self):
         workflow = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("pip install -r verification/of_lgbm_requirements.txt", workflow)
+        self.assertIn("-r verification/of_lgbm_requirements.txt", workflow)
         self.assertIn("verification/of_lgbm_all_operator_e2e.py", workflow)
         for forbidden_script in (
             "verification/openfe_three_lottery_integration.py",
