@@ -73,8 +73,8 @@ def audit_history(path, game):
 
 def predict_one(prior_draws, prior_seconds, game):
     maximum, count, second_max = CONFIGS[game]
-    if len(prior_draws) < 16:
-        raise ValueError("at least 16 earlier draws required")
+    if len(prior_draws) < 25:
+        raise ValueError("at least 25 earlier draws required")
     per_view = []
     for view, weight in VIEW_WEIGHTS.items():
         training, labels, current, _ = train_and_current(prior_draws, maximum, count, view)
@@ -91,8 +91,8 @@ def predict_one(prior_draws, prior_seconds, game):
     second = None
     if second_max:
         second = max(range(1, second_max + 1),
-                     key=lambda n: (0.6 * sum(x == n for x in prior_seconds[-5:]) +
-                                    0.4 * sum(x == n for x in prior_seconds[-10:]), -n))
+                     key=lambda n: (0.6 * sum(x == n for x in prior_seconds[-10:]) +
+                                    0.4 * sum(x == n for x in prior_seconds[-20:]), -n))
     return tuple(sorted(ticket)), second
 
 
@@ -104,7 +104,7 @@ def theory_3plus(maximum, count):
 
 def walk_forward(ids, draws, seconds, game, folds):
     maximum, count, second_max = CONFIGS[game]
-    if folds < 1 or len(draws) - folds < 16:
+    if folds < 1 or len(draws) - folds < 25:
         raise ValueError("invalid holdout length")
     outcomes = []
     for target in range(len(draws)-folds, len(draws)):
@@ -128,7 +128,8 @@ def walk_forward(ids, draws, seconds, game, folds):
         "hits_3plus": wins, "rate_3plus": wins / folds,
         "fair_null_rate_3plus": theory_3plus(maximum, count),
         "random_baseline_3plus": sum(row["random_matches"] >= 3 for row in outcomes),
-        "feature_window_lengths": [5, 10], "view_weights": VIEW_WEIGHTS,
+        "feature_window_lengths": [10, 20], "view_weights": VIEW_WEIGHTS,
+        "full_archive_anchor_policy": "all_eligible_completed_draws",
         "prediction_prior_to_each_target": True,
         "official_data_verified": False,
         "predictive_advantage_verified": False,
