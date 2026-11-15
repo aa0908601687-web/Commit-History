@@ -69,12 +69,17 @@ jobs:
           assert d["all_23_operator_families_passed_to_lightgbm"] and d["lightgbm_trained_and_scored"]
           assert d["three_view_weights"]=={"latest_10":.35,"latest_20":.35,"full_archive":.30}
           assert all(v["operator_witnesses_executed"]==23 and v["operator_families_in_model"]==23 for v in d["per_view_audits"].values())
+          assert d["full_order1_candidate_submission_verified"]
+          assert all(v["all_generated_order1_candidates_submitted"]
+                     and v["candidate_features_screened"]==v["candidate_features_possible"]
+                     and v["candidate_search_scope"]=="all_generated_order1_candidates"
+                     for v in d["per_view_audits"].values())
           assert len(d["first_zone"])==(5 if game=="539" else 6)
           assert len(set(d["first_zone"]))==len(d["first_zone"])
           assert d["exact_candidates"]==(56 if game=="539" else 28)
           assert not d["official_data_verified"] and not d["out_of_sample_predictive_advantage_verified"]
           if game=="power": assert 1<=d["second_zone"]<=8
-          print("PASS: real CSV, all 23 OpenFE families, three LightGBM views, exact Python selection")
+          print("PASS: real CSV, complete order-1 OpenFE candidate submission, 23 families, three LightGBM views, exact Python selection")
           PY
       - name: Upload genuine standalone E2E evidence
         if: always()
