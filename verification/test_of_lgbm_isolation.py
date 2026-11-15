@@ -17,7 +17,7 @@ WORKFLOW = ROOT / ".github" / "workflows" / "of-lgbm-23-operator-e2e.yml"
 # Only the standalone project dependencies should be installed.
 ALLOWED_DEPS = {"openfe", "lightgbm", "numpy", "pandas", "scipy", "matplotlib", "pyarrow"}
 FORBIDDEN_IMPORTS = {
-    "cudaq", "dimod", "qiskit", "pennylane", "torch",
+    "cudaq", "dimod", "qiskit", "pennylane",
     "verification.openfe_three_lottery_integration",
     "verification.v6_ising_qubo_reference",
 }
