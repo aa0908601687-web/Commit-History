@@ -2,6 +2,9 @@ name: OF-LGBM actual 100-200-500 prequential execution
 on:
   pull_request:
     paths:
+      - 'verification/of_lgbm_all_operator_e2e.py'
+      - 'verification/of_lgbm_extended_walkforward.py'
+      - 'verification/test_of_lgbm_extended_walkforward.py'
       - '.github/workflows/of-lgbm-long-horizon-execution.yml'
   workflow_dispatch:
 permissions:
