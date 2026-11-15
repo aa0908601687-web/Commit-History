@@ -1,7 +1,7 @@
 # OF-LGBM: independent OpenFE + LightGBM CPU research
 
 ## Boundaries
-This standalone system has no imports or E2E connections to V6, CUDA-Q, QAOA, Ising/QUBO, PyTorch, Nemotron, tsfresh or Featuretools. GitHub may show other repository-wide workflows on the same PR; these are not part of standalone OF-LGBM testing.
+This standalone system uses its own dependency file and has no imports or E2E connections to V6, CUDA-Q, QAOA, Ising/QUBO, Nemotron, tsfresh, Featuretools, or any retired deep-learning backend. GitHub may show other repository-wide workflows on the same PR; these are not part of standalone OF-LGBM testing.
 
 ## Model and optimization
 - OpenFE 0.0.12: all 23 operator *families* are executed, with bounded candidate screening. One computed witness of each family is included in LightGBM inputs per view. This is NOT every possible OpenFE formula.
