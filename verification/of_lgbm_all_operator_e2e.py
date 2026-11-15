@@ -123,6 +123,15 @@ def audit_and_score(train, labels, current, maximum, view):
         represented.setdefault(node.name, node)
     if set(represented) != supported:
         raise RuntimeError(f"operator generation incomplete: {sorted(supported - set(represented))}")
+    # Bound actual OpenFE feature screening while keeping all 23 operator kinds.
+    # Every operator has at least one real candidate passed to OpenFE.fit().
+    screen_candidates = []
+    seen_counts = {}
+    for node in candidates:
+        if seen_counts.get(node.name, 0) < 2:
+            screen_candidates.append(node)
+            seen_counts[node.name] = seen_counts.get(node.name, 0) + 1
+    assert set(seen_counts) == supported
     # This is a real calculation, not an inspection of candidate names alone.
     witnesses = []
     for name in sorted(supported):
@@ -143,7 +152,7 @@ def audit_and_score(train, labels, current, maximum, view):
         data=train.copy(), label=labels.to_frame(),
         task="classification", n_jobs=1, verbose=False,
         categorical_features=list(CATEGORY_COLUMNS),
-        candidate_features_list=candidates,
+        candidate_features_list=screen_candidates,
         train_index=list(range(split)),
         val_index=list(range(split, len(train))),
         tmp_save_path=temp_name,
@@ -173,7 +182,8 @@ def audit_and_score(train, labels, current, maximum, view):
     if len(scores) != maximum or not np.isfinite(scores).all():
         raise RuntimeError("LightGBM produced missing or non-finite scores")
     return scores, {
-        "candidate_features": len(candidates),
+        "candidate_features_possible": len(candidates),
+        "candidate_features_screened": len(screen_candidates),
         "openfe_ranked_features": len(generated),
         "supported_operators": sorted(supported),
         "operator_candidates_enabled": len(represented),
