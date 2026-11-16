@@ -1,0 +1,21 @@
+name: V6 retired 100 feature suites scoped audit
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scoped-audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify retired 100 feature suite references are absent from active V6 paths
+        run: |
+          python verification/audit_v6_retired_feature_sets.py
+          python -m unittest discover -s verification -p 'test_audit_v6_retired_feature_sets.py' -v
