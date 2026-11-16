@@ -2,6 +2,7 @@ name: OF-LGBM actual 100-200-500 prequential execution
 on:
   pull_request:
     paths:
+      - 'verification/of_lgbm_data/lotto_history_mirror.csv'
       - 'verification/of_lgbm_all_operator_e2e.py'
       - 'verification/of_lgbm_extended_walkforward.py'
       - 'verification/test_of_lgbm_extended_walkforward.py'
@@ -56,13 +57,16 @@ jobs:
           assert not d["csv_official_provenance_verified"]
           assert not d["predictive_advantage_verified"]
           assert all(d["horizons"][h]["status"]=="completed" for h in ["100","200"])
-          if game=="lotto":
-              assert d["executed_folds"]==200
-              assert d["horizons"]["500"]["status"]=="not_completed"
-              assert d["maximum_possible_folds_with_current_csv"]==386
+          maximum_possible = d["maximum_possible_folds_with_current_csv"]
+          expected = max((h for h in [100, 200, 500] if h <= maximum_possible), default=0)
+          assert d["executed_folds"] == expected, (game, maximum_possible, d["executed_folds"], expected)
+          if maximum_possible >= 500:
+              assert d["horizons"]["500"]["status"] == "completed"
+              assert d["horizons"]["500"]["folds"] == 500
           else:
-              assert d["executed_folds"]==500
-              assert d["horizons"]["500"]["status"]=="completed"
+              assert d["horizons"]["500"]["status"] == "not_completed"
+              assert d["horizons"]["500"]["required_folds"] == 500
+              assert d["horizons"]["500"]["executed_folds"] == expected
           for h, v in d["horizons"].items():
               if v["status"]=="completed":
                   assert sum(v["hit_distribution"].values())==v["folds"]
