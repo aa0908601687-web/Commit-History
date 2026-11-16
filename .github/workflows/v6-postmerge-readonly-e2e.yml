@@ -60,6 +60,16 @@ jobs:
           layer = result["openfe_feature_layer"]
           assert layer["enabled"] is True
           assert layer["mode"] == "three_history_views_100_percent"
+          # Confirm actual OpenFE.fit -> transform -> LightGBM training/inference
+          # produced and used generated features, rather than only importing packages.
+          assert layer["engine"] == "OpenFE+LightGBM"
+          assert layer["generated_features"] > 0
+          assert 0 < layer["used_features"] <= 12
+          assert layer["used_features"] <= layer["generated_features"]
+          assert layer["leakage_safe"] is True
+          assert layer["history_views"] == ["latest_5", "latest_10", "full_archive"]
+          assert set(layer["per_view_scores"]) == set(layer["history_views"])
+          assert all(len(scores) == 38 for scores in layer["per_view_scores"].values())
           assert result["exact_optimization_layer"]["globally_optimal_within_pool"] is True
           assert result["first_zone"] == result["exact_optimization_layer"]["exact_selection"]
           assert result["exact_optimization_layer"]["searched_combinations"] == 28
@@ -87,6 +97,9 @@ jobs:
           assert hashlib.sha256(csv_path.read_bytes()).hexdigest() == provenance["verified_merged_sha256"] == selection["sha256"]
           assert selection["openfe_feature_layer"]["enabled"] is True
           assert selection["openfe_feature_layer"]["weight"] == 1.0
+          assert selection["openfe_feature_layer"]["generated_features"] > 0
+          assert 0 < selection["openfe_feature_layer"]["used_features"] <= 12
+          assert selection["openfe_feature_layer"]["engine"] == "OpenFE+LightGBM"
           assert selection["cudaq_layer"]["executed"] is False
           assert selection["ising_qubo_layer"]["executed"] is False
           assert selection["exact_optimization_layer"]["globally_optimal_within_pool"] is True
