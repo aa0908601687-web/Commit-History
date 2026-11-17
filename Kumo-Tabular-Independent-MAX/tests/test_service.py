@@ -22,6 +22,8 @@ class ServiceTests(unittest.TestCase):
             with self.assertRaises(json.JSONDecodeError):
                 register_report(p/"runs.db",f)
     def test_no_webhook(self):
-        self.assertFalse(send_alert("test",webhook="")["sent"] if False else send_alert("test",webhook=None)["sent"])
+        from unittest.mock import patch
+        with patch.dict("os.environ", {"KUMO_ALERT_WEBHOOK":""}):
+            self.assertFalse(send_alert("test")["sent"])
 if __name__=="__main__":
     unittest.main()
