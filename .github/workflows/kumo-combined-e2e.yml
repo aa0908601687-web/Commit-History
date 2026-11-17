@@ -1,0 +1,67 @@
+name: Kumo Combined Real Inference and Baseline E2E
+on:
+  push:
+    branches: [kumo-full-pipeline-upgrade]
+    paths:
+      - 'Kumo-Tabular-Independent-MAX/**'
+      - '.github/workflows/kumo-combined-e2e.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  combined-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: Kumo-Tabular-Independent-MAX
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Kumo SDK and baseline dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt lightgbm
+          python -m pip check
+      - name: Verify Kumo SDK installation
+        run: python verify_install.py
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Run actual Kumo model inference
+        run: python smoke_predict.py
+      - name: Generate chronological CI fixture
+        run: |
+          python - <<'PY'
+          from sklearn.datasets import load_breast_cancer
+          df = load_breast_cancer(as_frame=True).frame
+          df.insert(0, 'time', range(len(df)))
+          df.to_csv('ci_fixture.csv', index=False)
+          PY
+      - name: Run baseline walk-forward
+        run: python full_pipeline.py --csv ci_fixture.csv --min-train 300 --step 50 --out pipeline_report.json
+      - name: Validate both outputs and source integrity
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          from full_pipeline import sha256
+          k = json.loads(Path('prediction_smoke_report.json').read_text())
+          b = json.loads(Path('pipeline_report.json').read_text())
+          assert k.get('success') is True and k.get('predictions') == 269
+          assert math.isfinite(k['accuracy']) and 0 <= k['accuracy'] <= 1
+          assert b['source_sha256'] == sha256('ci_fixture.csv')
+          assert {'dummy','logistic','lightgbm'} <= {x['model'] for x in b['splits']}
+          assert all(x['train_end'] < x['test_start'] for x in b['splits'])
+          print('Kumo real inference and baseline walk-forward reports verified')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kumo-combined-e2e-reports
+          path: |
+            Kumo-Tabular-Independent-MAX/installation_check.json
+            Kumo-Tabular-Independent-MAX/prediction_smoke_report.json
+            Kumo-Tabular-Independent-MAX/pipeline_report.json
+          if-no-files-found: warn
