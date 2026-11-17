@@ -49,7 +49,10 @@ def inspect_files(paths: list[str]) -> tuple[int, list[str]]:
             findings.append(f"{name}: cannot inspect: {exc}")
             continue
         for number, line in enumerate(lines, 1):
-            if RETIRED.search(line):
+            # A workflow may legitimately reference this guard script by filename.
+            # Ignore only that exact self-reference; inspect all other text.
+            inspected_line = line.replace(SELF, "")
+            if RETIRED.search(inspected_line):
                 findings.append(f"{name}:{number}: retired reference")
     return scanned, findings
 
