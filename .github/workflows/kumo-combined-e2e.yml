@@ -43,6 +43,15 @@ jobs:
         run: python kumo_csv_predict.py --csv ci_fixture.csv --min-context 300 --out kumo_csv_report.json
       - name: Run baseline walk-forward
         run: python full_pipeline.py --csv ci_fixture.csv --min-train 300 --step 50 --out pipeline_report.json
+      - name: Register Kumo report in local SQLite registry
+        run: |
+          python service.py register --db ci_runs.sqlite3 --report kumo_csv_report.json --model kumo
+          python - <<'PY'
+          from service import list_runs
+          runs = list_runs('ci_runs.sqlite3')
+          assert len(runs) == 1 and runs[0]['model'] == 'kumo'
+          print('SQLite registry verified')
+          PY
       - name: Validate both outputs and source integrity
         run: |
           python - <<'PY'
@@ -70,4 +79,5 @@ jobs:
             Kumo-Tabular-Independent-MAX/prediction_smoke_report.json
             Kumo-Tabular-Independent-MAX/pipeline_report.json
             Kumo-Tabular-Independent-MAX/kumo_csv_report.json
+            Kumo-Tabular-Independent-MAX/ci_runs.sqlite3
           if-no-files-found: warn
