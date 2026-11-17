@@ -63,6 +63,8 @@ jobs:
           from pathlib import Path
           report = json.loads(Path('prediction_smoke_report.json').read_text())
           assert report.get('success') is True
+          assert report.get('predictions') == 269, 'Expected 269 held-out breast-cancer rows'
+          assert isinstance(report.get('timestamp_utc'), str) and report['timestamp_utc'], 'Missing inference timestamp'
           assert isinstance(report.get('predictions'), int) and report['predictions'] > 0
           assert isinstance(report.get('accuracy'), (float, int)) and math.isfinite(report['accuracy'])
           assert 0 <= report['accuracy'] <= 1
