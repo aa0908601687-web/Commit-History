@@ -53,8 +53,6 @@ jobs:
           PY
       - name: Compile retained V6 Python modules
         run: |
-          python -m py_compile WP-OS-Git-MAX/v6_exact_e2e.py WP-OS-Git-MAX/v6_openfe_bridge.py WP-OS-Git-MAX/v6_nemotron_ingest.py
+          python -m py_compile WP-OS-Git-MAX/v6_exact_e2e.py WP-OS-Git-MAX/v6_openfe_bridge.py
       - name: Run dependency-free selection contracts
-        run: |
-          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_exact_e2e.py' -v
-          python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_nemotron_ingest.py' -v
+        run: python -m unittest discover -s WP-OS-Git-MAX -p 'test_v6_exact_e2e.py' -v
