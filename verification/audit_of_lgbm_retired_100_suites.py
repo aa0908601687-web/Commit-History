@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Reject reintroduction of retired independent 100-suite feature machinery.
+"""Repository-wide guard against retired independent 100-feature-suite machinery.
 
-Important: this is *not* a ban on OpenFE's normal candidate generation,
-100/200/500 walk-forward validation folds, or unrelated numeric values.
+This guard deliberately permits OpenFE's native generated candidate features,
+100/200/500 historical evaluation folds, and unrelated numeric constants.
+It checks every tracked code/config/workflow file, not just OF-LGBM filenames.
 """
 from __future__ import annotations
 
@@ -11,53 +12,62 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ACTIVE_PREFIXES = ("verification/of_lgbm_", ".github/workflows/of-lgbm-")
-ACTIVE_FILES = {
-    "WP-OS-Git-MAX/v6_openfe_bridge.py",
-    "WP-OS-Git-MAX/v6_exact_e2e.py",
-    ".github/workflows/v6-openfe-integration.yml",
+SELF = Path(__file__).relative_to(ROOT).as_posix()
+SCANNED_EXTENSIONS = {
+    ".py", ".yml", ".yaml", ".json", ".toml", ".ini", ".cfg",
+    ".txt", ".sh", ".bash", ".ps1", ".xml",
 }
-# Match module-specific names, not generic OpenFE feature candidates.
+# Named legacy suite/config/API identifiers, not OpenFE internals.
 RETIRED = re.compile(
-    r"(?i)(?:100[_ -]?(?:independent[_ -]?)?(?:candidate[_ -]?)?"
+    r"(?i)(?:"
+    r"100[_ -]?(?:independent[_ -]?)?(?:candidate[_ -]?)?"
     r"(?:feature[_ -]?)?(?:sets?|suites?|combinations?)"
     r"|(?:independent[_ -]?)?(?:candidate[_ -]?)?(?:feature[_ -]?)?"
-    r"(?:sets?|suites?|combinations?)[_ -]?100|100套(?:獨立)?(?:候選)?特徵)"
+    r"(?:sets?|suites?|combinations?)[_ -]?100"
+    r"|100套(?:獨立)?(?:候選)?特徵"
+    r")"
 )
 
 
-def active_path(name: str) -> bool:
-    if name == Path(__file__).relative_to(ROOT).as_posix():
-        return False
-    return name.startswith(ACTIVE_PREFIXES) or name in ACTIVE_FILES
+def inspect_files(paths: list[str]) -> tuple[int, list[str]]:
+    findings: list[str] = []
+    scanned = 0
+    for name in paths:
+        if name == SELF:
+            continue
+        path = ROOT / name
+        if not path.is_file():
+            continue
+        if RETIRED.search(name):
+            findings.append(f"{name}: retired filename")
+        if path.suffix.lower() not in SCANNED_EXTENSIONS:
+            continue
+        scanned += 1
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except (UnicodeError, OSError) as exc:
+            findings.append(f"{name}: cannot inspect: {exc}")
+            continue
+        for number, line in enumerate(lines, 1):
+            if RETIRED.search(line):
+                findings.append(f"{name}:{number}: retired reference")
+    return scanned, findings
 
 
 def main() -> None:
     tracked = subprocess.check_output(
         ["git", "-C", str(ROOT), "ls-files", "-z"]
     ).decode("utf-8").split("\0")
-    findings = []
-    scanned = 0
-    for name in filter(active_path, tracked):
-        path = ROOT / name
-        if not path.is_file():
-            continue
-        scanned += 1
-        if RETIRED.search(name):
-            findings.append(f"{name}: retired module filename")
-        if path.suffix not in {".py", ".yml", ".yaml", ".json", ".toml", ".txt"}:
-            continue
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except (UnicodeError, OSError):
-            continue
-        for i, line in enumerate(lines, 1):
-            if RETIRED.search(line):
-                findings.append(f"{name}:{i}: retired feature suite reference")
+    scanned, findings = inspect_files([p for p in tracked if p])
     if findings:
-        raise SystemExit("Retired independent 100 feature suites detected:\n" +
-                         "\n".join(findings))
-    print(f"PASS: {scanned} active files contain no retired independent 100-suite references")
+        raise SystemExit(
+            "FAIL: retired independent 100 feature suites detected:\n"
+            + "\n".join(findings)
+        )
+    print(
+        f"PASS: scanned {scanned} tracked code/config/CI files; "
+        "no retired independent 100-suite references"
+    )
 
 
 if __name__ == "__main__":
