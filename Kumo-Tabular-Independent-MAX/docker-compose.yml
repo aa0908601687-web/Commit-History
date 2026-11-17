@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kumo
+      POSTGRES_USER: kumo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kumo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [internal]
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://kumo:${POSTGRES_PASSWORD}@postgres:5432/kumo
+      KUMO_API_KEY: ${KUMO_API_KEY:?Set KUMO_API_KEY in .env}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.22.0
+    command: ["mlflow","server","--host","0.0.0.0","--port","5000","--backend-store-uri","sqlite:////mlflow/mlflow.db","--default-artifact-root","/mlflow/artifacts"]
+    volumes:
+      - mlflow_data:/mlflow
+    networks: [internal]
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks: [internal]
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks: [internal]
+volumes:
+  postgres_data:
+  mlflow_data:
+  grafana_data:
+networks:
+  internal:
