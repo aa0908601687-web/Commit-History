@@ -9,6 +9,24 @@ Independent Taiwan Power Lottery research prototype. This repository folder is n
 - The two zones are analyzed separately
 - All rules and weights below are **initial research choices, not validated predictive advantages**
 
+## Open-source superintelligence experimental layer
+
+`superintelligence_experimental_layer.py` adds an isolated, opt-in interface
+for preprocessing and deterministic multi-agent experiments. It records the
+reviewed upstream repository and commit, validates Power Lottery draw inputs,
+and emits a SHA-256 audit digest. It is disabled by default and is not connected
+to production selection, cache V3, quantum/QPU execution, or external HPC.
+
+The public `marciolscoutinho/superintelligence` project is used as a design
+reference only. Its reviewed commit `da09a58` contains unresolved runtime
+references, so no upstream executable code is imported. This layer makes no
+claim of ASI capability, AutoML validation, or predictive advantage. Run its
+focused tests with:
+
+```bash
+python3 -m unittest WP-OS-Git-MAX/test_superintelligence_experimental_layer.py
+```
+
 ## Data format
 CSV must contain `draw_id,first,second`. The `first` field contains six space-separated integers, e.g. `01 03 08 17 29 38`. Rows are oldest to newest. No special draw is included in the six first-zone numbers.
 
