@@ -4,6 +4,7 @@ on:
     paths:
       - 'verification/of_lgbm_extended_walkforward.py'
       - 'verification/test_of_lgbm_extended_walkforward.py'
+      - 'verification/audit_of_lgbm_retired_100_suites.py'
       - '.github/workflows/of-lgbm-extended-walkforward.yml'
   workflow_dispatch:
     inputs:
@@ -38,6 +39,8 @@ jobs:
           python-version: '3.11'
       - name: Install standalone OpenFE LightGBM CPU dependencies
         run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
+      - name: Ensure retired independent 100-suite machinery stays absent
+        run: python verification/audit_of_lgbm_retired_100_suites.py
       - name: Run dedicated extended-horizon contract tests
         run: python -m unittest verification/test_of_lgbm_extended_walkforward.py -v
       - name: Run independent real-history OpenFE+LightGBM refit
