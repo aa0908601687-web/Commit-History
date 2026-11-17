@@ -39,7 +39,9 @@ jobs:
           df.insert(0, 'time', range(len(df)))
           df.to_csv('ci_fixture.csv', index=False)
           PY
-      - name: Run Kumo custom CSV inference\n        run: python kumo_csv_predict.py --csv ci_fixture.csv --min-context 300 --out kumo_csv_report.json\n      - name: Run baseline walk-forward
+      - name: Run Kumo custom CSV inference
+        run: python kumo_csv_predict.py --csv ci_fixture.csv --min-context 300 --out kumo_csv_report.json
+      - name: Run baseline walk-forward
         run: python full_pipeline.py --csv ci_fixture.csv --min-train 300 --step 50 --out pipeline_report.json
       - name: Validate both outputs and source integrity
         run: |
@@ -48,7 +50,10 @@ jobs:
           from pathlib import Path
           from full_pipeline import sha256
           k = json.loads(Path('prediction_smoke_report.json').read_text())
-          b = json.loads(Path('pipeline_report.json').read_text())\n          custom = json.loads(Path('kumo_csv_report.json').read_text())\n          assert custom['success'] and custom['query_rows'] == 269\n          assert custom['source_sha256'] == sha256('ci_fixture.csv')
+          b = json.loads(Path('pipeline_report.json').read_text())
+          custom = json.loads(Path('kumo_csv_report.json').read_text())
+          assert custom['success'] and custom['query_rows'] == 269
+          assert custom['source_sha256'] == sha256('ci_fixture.csv')
           assert k.get('success') is True and k.get('predictions') == 269
           assert math.isfinite(k['accuracy']) and 0 <= k['accuracy'] <= 1
           assert b['source_sha256'] == sha256('ci_fixture.csv')
@@ -63,5 +68,6 @@ jobs:
           path: |
             Kumo-Tabular-Independent-MAX/installation_check.json
             Kumo-Tabular-Independent-MAX/prediction_smoke_report.json
-            Kumo-Tabular-Independent-MAX/pipeline_report.json\n            Kumo-Tabular-Independent-MAX/kumo_csv_report.json
+            Kumo-Tabular-Independent-MAX/pipeline_report.json
+            Kumo-Tabular-Independent-MAX/kumo_csv_report.json
           if-no-files-found: warn
