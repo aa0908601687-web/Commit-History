@@ -1,0 +1,4 @@
+# NVIDIA KumoTabular local SDK
+structured-data-models
+scikit-learn
+pandas
