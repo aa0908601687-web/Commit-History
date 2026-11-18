@@ -10,9 +10,9 @@ This standalone system uses its own dependency file and has no imports or E2E co
 - Power second zone is a separate 10/20 frequency baseline, not OpenFE/LightGBM.
 
 ## Real historical CSV snapshots (not synthetic)
-- Power: verification/of_lgbm_data/power_history_archive.csv; 1,963 entries through 115000091. A prior in-repository archive, with incomplete official provenance. The most recent 370 entries were separately checked for agreement with the third-party mirror; the 370 overlapped draws matched.
-- Lotto: verification/of_lgbm_data/lotto_history_mirror.csv; 411 entries, 112000047 to 115000105, with ISO dates and Lotto special numbers.
-- Daily539: verification/of_lgbm_data/539_history_mirror.csv; 1,116 entries, 112000103 to 115000276, with ISO dates.
+- Power: verification/of_lgbm_data/power_history_archive.csv; 1,964 entries through 115000092. A prior in-repository archive, with incomplete official provenance. The most recent 370 entries were separately checked for agreement with the third-party mirror; the 370 overlapped draws matched.
+- Lotto: verification/of_lgbm_data/lotto_history_mirror.csv; 412 entries, 112000047 to 115000106, with ISO dates and Lotto special numbers.
+- Daily539: verification/of_lgbm_data/539_history_mirror.csv; 1,119 entries, 112000103 to 115000279, with ISO dates.
 - Lotto/539 source: public GitHub project oomao/Lottery_Taiwan, commit 12cec5a6995259a54b43f68c29a3e6291f69aba3. The repository describes using Taiwan Lottery official API. It is a third-party mirror, NOT the official publisher; a complete official row-by-row comparison has NOT been performed.
 - See verification/of_lgbm_data/SOURCE_MANIFEST.json for pinned source references. Official source reference: https://www.taiwanlottery.com/lotto/history/result_download/ .
 
@@ -26,7 +26,7 @@ For each game name and matching CSV file above:
     python verification/of_lgbm_forward_audit.py --game GAME --csv CSV --folds 5 --output forward.json
 
 Run isolated unit tests:
-    python -m unittest verification/test_of_lgbm_isolation.py verification/test_of_lgbm_all_operator_e2e.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_forward_audit.py -v
+    python -m unittest verification/test_of_lgbm_isolation.py verification/test_of_lgbm_all_operator_e2e.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_forward_audit.py verification/test_of_lgbm_ticket_selection.py verification/test_of_lgbm_manifest_integrity.py -v
 
 PR GitHub workflows require real CSVs for Power/Lotto/539, explicitly reject synthetic fixtures, and each perform 23 OpenFE-operator + LightGBM training with separate LightGBM refits for five consecutive historical held-out draws.
 
@@ -36,10 +36,12 @@ Shared CSV gates now check ranges, uniqueness, consecutive draw IDs and ROC-year
 - CSVs are historical but NOT entire exhaustive official archives for all three games. Full official record-by-record provenance remains pending.
 - No demonstrated independent prospective predictive edge or improvement over a fair random lottery. Never represent these runs as proof of greater winning probability.
 
-The previous PR #77 was merged. Keep the new 10/20/full-history change in a separate draft PR pending successful isolated CI, provenance review and longer validation.
+PR #89 is a separate update branch. Do not merge based only on CI passing: independently verify official draw sources and assess longer out-of-sample results before production use.
 
 ## 2026-11-19 research hardening (PR #89)
 - Selection logic is deliberately different from earlier published number sets; older tickets cannot be reused as fresh outputs.
 - New cross-check unit tests assert deterministic pair-aware search, causal last-10/20 boundaries, nonfinite-score rejection, and incomplete-date rejection.
 - Data snapshots appended (Power 115000092; Lotto 115000106; 539 115000279), with non-official provenance recorded in SOURCE_MANIFEST. Source authentication and longer nested walk-forward remain outstanding.
 - CI passing does not validate empirical winning probability. Neither the heuristic pair weight nor 10 pseudo-observations were learned from independent test data.
+
+- A new manifest integrity regression test compares each CSV row count and cutoff with SOURCE_MANIFEST, explicitly flags missing Power dates, and prevents labeling these third-party snapshots as officially authenticated.
