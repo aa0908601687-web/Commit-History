@@ -54,6 +54,24 @@ class PowerDatesTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"must not overwrite"):
             reconcile(self.old,self.source,self.old,self.report)
 
+    def test_rejects_swapped_draw_identifiers(self):
+        # Both zones are intentionally identical in the fixture: ID order check
+        # must catch a mislabeled official date even when numbers appear equal.
+        data=self.source.read_text()
+        data=data.replace("115000002", "TEMP_DRAW").replace("115000003", "115000002").replace("TEMP_DRAW", "115000003")
+        self.source.write_text(data)
+        with self.assertRaisesRegex(ValueError,"nonincreasing draw ID"):
+            reconcile(self.old,self.source,self.output,self.report)
+        self.assertFalse(self.output.exists())
+
+    def test_rejects_reversed_archive_order(self):
+        rows=self.old.read_text().splitlines()
+        rows[2],rows[3]=rows[3],rows[2]
+        self.old.write_text(chr(10).join(rows)+chr(10))
+        with self.assertRaisesRegex(ValueError,"nonincreasing draw ID"):
+            reconcile(self.old,self.source,self.output,self.report)
+        self.assertFalse(self.output.exists())
+
     def test_rejects_roc_year_mismatch(self):
         data=self.source.read_text().replace("2026-01-01","2025-01-01")
         self.source.write_text(data)
