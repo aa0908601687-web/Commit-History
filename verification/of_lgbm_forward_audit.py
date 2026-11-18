@@ -18,7 +18,7 @@ from pathlib import Path
 
 import numpy as np
 from of_lgbm_all_operator_e2e import (
-    CONFIGS, causal_view_weights, train_and_current, audit_and_score,
+    CONFIGS, train_and_current_pooled, audit_and_score,
 )
 from of_lgbm_real_history_gate import audit_csv
 from of_lgbm_ticket_selection import select_ticket
@@ -80,15 +80,10 @@ def predict_one(prior_draws, prior_seconds, game):
     maximum, count, second_max = CONFIGS[game]
     if len(prior_draws) < 25:
         raise ValueError("at least 25 earlier draws required")
-    per_view = []
-    view_weights = causal_view_weights(prior_draws, maximum)
-    for view, weight in view_weights.items():
-        training, labels, current, _ = train_and_current(prior_draws, maximum, count, view)
-        scores, audit = audit_and_score(training, labels, current, maximum, view)
-        if audit["operator_families_in_model"] != 23:
-            raise RuntimeError("OpenFE family coverage incomplete")
-        per_view.append(weight * scores)
-    scores = np.sum(per_view, axis=0)
+    training, labels, current, _ = train_and_current_pooled(prior_draws, maximum)
+    scores, audit = audit_and_score(training, labels, current, maximum, "learned_three_view")
+    if audit["operator_families_in_model"] != 23:
+        raise RuntimeError("OpenFE family coverage incomplete")
     if not np.isfinite(scores).all():
         raise RuntimeError("invalid LightGBM output")
     ticket, _ = select_ticket(scores, prior_draws, count, maximum)
@@ -134,8 +129,8 @@ def walk_forward(ids, draws, seconds, game, folds):
         "random_baseline_3plus": sum(row["random_matches"] >= 3 for row in outcomes),
         "random_baseline_note": "one seeded sample for illustration only; not evidence of superiority",
         "feature_window_lengths": [10, 20],
-        "view_weights": causal_view_weights(draws[:-1], maximum),
-        "view_weight_policy": "causal_frequency_brier_calibration_not_ML",
+        "view_weights": None,
+        "view_weight_policy": "single_lightgbm_learned_pooled_features_no_brier_selection",
         "full_archive_anchor_policy": "all_eligible_completed_draws",
         "prediction_prior_to_each_target": True,
         "official_data_verified": False,
