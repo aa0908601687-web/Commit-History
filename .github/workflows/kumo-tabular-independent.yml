@@ -21,9 +21,31 @@ jobs:
         with:
           python-version: '3.11'
       - name: Syntax check
-        run: python -m compileall -q verify_install.py smoke_predict.py data_pipeline.py tests
+        run: python -m compileall -q verify_install.py smoke_predict.py data_pipeline.py audit_input.py tests
       - name: Unit tests
         run: python -m unittest discover -s tests -v
+      - name: Check CSV audit pipeline
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('ci_tabular_sample.csv')
+          p.write_text('date,value,target\\n2026-01-01,1,A\\n2026-01-02,2,B\\n2026-01-03,3,A\\n2026-01-04,4,B\\n2026-01-05,5,A\\n')
+          PY
+          python audit_input.py --csv ci_tabular_sample.csv --target target --time-column date --output data_audit.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          evidence=json.loads(Path('data_audit.json').read_text())
+          assert evidence['metadata']['train_rows'] == 4
+          assert evidence['metadata']['test_rows'] == 1
+          assert len(evidence['source_sha256']) == 64
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kumo-tabular-data-audit
+          path: Kumo-Tabular-Independent-MAX/data_audit.json
+          if-no-files-found: ignore
   install:
     needs: unit
     runs-on: ubuntu-latest
