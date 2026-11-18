@@ -1,47 +1,109 @@
-"""Consistency gate for OF-LGBM repository CSV snapshots and source manifest.
+"""Strict, fail-closed internal integrity gate for OF-LGBM historical CSV files.
 
-This validates internal evidence only; it does not certify official draw provenance.
+Validates bytes, schema, chronological structure and manifest consistency.
+Official authenticity requires an independent source comparison, NOT this gate.
 """
 import csv
-import json
 import hashlib
+import json
+import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "verification" / "of_lgbm_data"
 MANIFEST = DATA / "SOURCE_MANIFEST.json"
-EXPECTED = {"power": ("power_history_archive.csv", "115000092", 1964),
-            "lotto": ("lotto_history_mirror.csv", "115000106", 412),
-            "539": ("539_history_mirror.csv", "115000279", 1119)}
+sys.path.insert(0, str(ROOT / "verification"))
+from of_lgbm_real_history_gate import audit_csv
+
+EXPECTED_GAME_FILES = {
+    "power": "power_history_archive.csv",
+    "lotto": "lotto_history_mirror.csv",
+    "539": "539_history_mirror.csv",
+}
+
+
+def verify_manifest(metadata, data_root=DATA):
+    """Check exact CSV bytes and chronological content against pinned manifest.
+
+    Any CSV update must intentionally update the digest AND be independently
+    reviewed; a matching digest is not proof of official origin.
+    """
+    if set(metadata["datasets"]) != set(EXPECTED_GAME_FILES):
+        raise ValueError("unexpected dataset set")
+    if metadata["record_by_record_officially_authenticated"] is not False:
+        raise ValueError("official provenance cannot be inferred from checksums")
+    if metadata["integrity_audit_20261119"]["official_files_imported"] is not False:
+        raise ValueError("unsupported official source attestation")
+    results = {}
+    for game, filename in EXPECTED_GAME_FILES.items():
+        item = metadata["datasets"][game]
+        path = data_root / filename
+        if item["path"] != "verification/of_lgbm_data/" + filename:
+            raise ValueError("unexpected dataset path: " + game)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if digest != item["sha256"]:
+            raise ValueError("SHA-256 mismatch for " + game)
+        result = audit_csv(path, game)
+        expected_last = item.get("last", item.get("cutoff"))
+        if result["rows"] != item["rows"] or result["last_id"] != expected_last:
+            raise ValueError("row count or cutoff mismatch for " + game)
+        if game == "power":
+            if result["date_coverage"] != 0 or item["date_status"] != "missing_all_dates":
+                raise ValueError("Power dates must remain explicitly unverified")
+        else:
+            if result["date_coverage"] != item["rows"]:
+                raise ValueError("partial date coverage for " + game)
+            if item["date_status"] != "format_consistent_not_officially_verified":
+                raise ValueError("unsubstantiated date status for " + game)
+        if item["official_row_verification"] != "not_completed":
+            raise ValueError("unsupported provenance claim for " + game)
+        results[game] = {"rows": result["rows"], "sha256": digest,
+                         "cutoff": result["last_id"], "date_coverage": result["date_coverage"]}
+    return results
+
 
 class ManifestIntegrityTests(unittest.TestCase):
-    def test_manifest_matches_all_csv_snapshot_boundaries(self):
-        metadata = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        for game, (filename, expected_cutoff, expected_rows) in EXPECTED.items():
-            with self.subTest(game=game):
-                path = DATA / filename
-                with path.open(newline="", encoding="utf-8-sig") as handle:
-                    rows = list(csv.DictReader(handle))
-                self.assertEqual(len(rows), expected_rows)
-                self.assertEqual(rows[-1]["draw_id"], expected_cutoff)
-                entry = metadata["datasets"][game]
-                self.assertEqual(entry["rows"], len(rows))
-                self.assertEqual(entry.get("last", entry.get("cutoff")), rows[-1]["draw_id"])
-                self.assertFalse(metadata["record_by_record_officially_authenticated"])
-                self.assertEqual(len(hashlib.sha256(path.read_bytes()).hexdigest()), 64)
+    def setUp(self):
+        self.metadata = json.loads(MANIFEST.read_text(encoding="utf-8"))
 
-    def test_power_missing_dates_not_marked_verified(self):
-        metadata = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        with (DATA / "power_history_archive.csv").open(encoding="utf-8-sig") as f:
-            header = next(csv.reader(f))
-        self.assertNotIn("draw_date", header)
-        self.assertTrue(metadata["update_notice_20261119"]["power_dates_missing"])
+    def test_all_three_csvs_match_pinned_manifest(self):
+        result = verify_manifest(self.metadata)
+        self.assertEqual(set(result), {"power", "lotto", "539"})
+        self.assertEqual(result["power"]["date_coverage"], 0)
 
-    def test_third_party_not_represented_as_official(self):
-        metadata = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        self.assertFalse(metadata["record_by_record_officially_authenticated"])
-        self.assertFalse(metadata["update_notice_20261119"]["independent_prospective_edge_verified"])
+    def test_date_gaps_and_official_provenance_not_misrepresented(self):
+        self.assertFalse(self.metadata["record_by_record_officially_authenticated"])
+        self.assertTrue(self.metadata["update_notice_20261119"]["power_dates_missing"])
+        self.assertFalse(self.metadata["update_notice_20261119"]["independent_prospective_edge_verified"])
+        self.assertEqual(self.metadata["integrity_audit_20261119"]["missing_power_draw_dates"],
+                         self.metadata["datasets"]["power"]["rows"])
+
+    def test_wrong_sha_is_rejected(self):
+        data = json.loads(json.dumps(self.metadata))
+        data["datasets"]["539"]["sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
+            verify_manifest(data)
+
+    def test_fake_official_claim_is_rejected(self):
+        data = json.loads(json.dumps(self.metadata))
+        data["record_by_record_officially_authenticated"] = True
+        with self.assertRaisesRegex(ValueError, "official provenance"):
+            verify_manifest(data)
+
+    def test_missing_row_and_cutoff_mismatch_is_rejected(self):
+        data = json.loads(json.dumps(self.metadata))
+        data["datasets"]["lotto"]["rows"] += 1
+        with self.assertRaisesRegex(ValueError, "row count or cutoff"):
+            verify_manifest(data)
+
+    def test_source_path_swaps_are_rejected(self):
+        data = json.loads(json.dumps(self.metadata))
+        data["datasets"]["power"]["path"] = "verification/of_lgbm_data/lotto_history_mirror.csv"
+        with self.assertRaisesRegex(ValueError, "unexpected dataset path"):
+            verify_manifest(data)
+
 
 if __name__ == "__main__":
     unittest.main()
