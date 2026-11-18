@@ -1,7 +1,7 @@
 name: Kumo Tabular Independent CI
 on:
   push:
-    branches: [kumo-tabular-setup]
+    branches: [kumo-tabular-setup, kumo-full-pipeline-upgrade]
     paths:
       - 'Kumo-Tabular-Independent-MAX/**'
       - '.github/workflows/kumo-tabular-independent.yml'
@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Syntax check
-        run: python -m compileall -q verify_install.py smoke_predict.py tests
+        run: python -m compileall -q verify_install.py smoke_predict.py data_pipeline.py tests
       - name: Unit tests
         run: python -m unittest discover -s tests -v
   install:
