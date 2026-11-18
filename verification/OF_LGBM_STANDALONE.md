@@ -5,7 +5,7 @@ This standalone system uses its own dependency file and has no imports or E2E co
 
 ## Model and optimization
 - OpenFE 0.0.12: all 23 operator *families* are executed, with bounded candidate screening. One computed witness of each family is included in LightGBM inputs per view. This is NOT every possible OpenFE formula.
-- LightGBM (CPU): three independently trained views and normalized score fusion: recent-10 training anchors 35%, recent-20 anchors 35%, all eligible historical training anchors 30%. Features use only prior completed drawings: 10, 20, or the complete past respectively; no 100-anchor cap. The first 20 draws are warm-up for historical labels.
+- LightGBM (CPU): three independently trained views with causal adaptive score fusion: recent-10, recent-20, and all eligible historical training anchors. Fusion weights are recomputed for each forecast from historical one-step frequency baseline Brier losses, using only already completed draws (up to 30 calibration targets); they are not fixed 35%/35%/30%. These weights are a research heuristic, NOT LightGBM-learned stacking coefficients or validated forecasting gains. Features use only prior completed drawings: 10, 20, or the complete past respectively; no 100-anchor cap. The first 20 draws are warm-up for historical labels.
 - Exact Python itertools.combinations enumeration of an 8-number pool: 8 choose 6 = 28 for Power and Lotto, 8 choose 5 = 56 for 539. The scoring now combines **95% mean fused LightGBM per-number score** with **5% shrunk historical two-number co-occurrence**, computed strictly from the last 10 and last 20 earlier draws (10 pseudo-observations per window). This is a transparent *experimental* interaction heuristic, not a validated probability calibration or an increase in winning odds. Enumeration is exact ONLY within the already ranked eight-number pool, never among all possible lottery tickets.
 - Power second zone is a separate 10/20 frequency baseline, not OpenFE/LightGBM.
 
@@ -59,3 +59,8 @@ PR #89 is a separate update branch. Do not merge based only on CI passing: indep
 - Power separately reports second-zone matches, exact 1/8 fair baseline, expected count, Wilson interval and binomial tail. **The second-zone pick remains a frequency baseline and is not a trained LightGBM output.**
 - The older one-seed random ticket remains for reproducible illustration but is explicitly labeled insufficient as evidence of prediction edge. A five-draw comparison is very small; no statistical power or search-corrected superiority is inferred. The report always labels `statistically_verified_predictive_advantage=false`.
 - This is a **metric/evaluation fix**, not a claim to have repaired the intrinsic uncertainty of fair lottery draws. Model fusion weights, pair heuristic and ticket selection stay unchanged to avoid post-hoc tuning to five observed outcomes.
+
+## 2026-11-19 adaptive three-view research branch
+- Replaces the prior fixed three-view score-fusion weights with causally calibrated weights computed from preceding draws only; first 20 draws are warmup.
+- The calibration is based on smoothed single-number historical-frequency Brier scores for each view; it must not be described as trained LightGBM meta-stacking or proven to improve accuracy.
+- Existing official-source gaps and Power date coverage=0 remain unresolved. The real-history gates, separate E2E workflows, and five-fold forward holdout must pass before merge.

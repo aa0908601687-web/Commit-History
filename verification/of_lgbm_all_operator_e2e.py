@@ -69,7 +69,7 @@ def read_real_csv(csv_path, kind):
     return rows, second_rows, str(previous)
 
 VIEW_ANCHORS = {"latest_10": 10, "latest_20": 20, "full_archive": None}
-VIEW_WEIGHTS = {"latest_10": 0.35, "latest_20": 0.35, "full_archive": 0.30}
+# No fixed three-view score-fusion coefficients. Each forecast uses earlier draws only.
 CATEGORY_COLUMNS = ("parity_group", "number_band", "recency_group")
 EXPECTED_OPERATORS = frozenset((
     "freq", "abs", "log", "sqrt", "square", "sigmoid", "round",
@@ -119,6 +119,36 @@ def row_features(history, n, maximum, view):
             sum((i + 1) * (n in d) for i, d in enumerate(last20)) / 210
         )
     return result
+
+
+def causal_view_weights(draws, maximum, calibration_draws=30):
+    """Fit view fusion from past-only one-step frequency baselines (research heuristic).
+
+    This calibration does NOT evaluate LightGBM itself and is not a validated
+    optimal ML ensemble. All targets precede the draw being forecast.
+    """
+    names = tuple(VIEW_ANCHORS)
+    starts = range(max(20, len(draws) - calibration_draws), len(draws))
+    errors = {name: 0.0 for name in names}
+    used = 0
+    for end in starts:
+        prior = draws[:end]
+        target = set(draws[end])
+        for name in names:
+            limit = VIEW_ANCHORS[name]
+            history = prior[-limit:] if limit is not None else prior
+            counts = {n: sum(n in row for row in history) for n in range(1, maximum + 1)}
+            # Laplace smoothing and a proper Brier loss on the next historical draw.
+            errors[name] += sum(((counts[n] + 1) / (len(history) + 2) - int(n in target)) ** 2
+                                for n in range(1, maximum + 1)) / maximum
+        used += 1
+    if not used:
+        return {name: 1.0 / len(names) for name in names}
+    losses = {name: errors[name] / used for name in names}
+    best = min(losses.values())
+    strengths = {name: math.exp(-30.0 * (losses[name] - best)) for name in names}
+    total = sum(strengths.values())
+    return {name: strengths[name] / total for name in names}
 
 
 def feature_frame(records):
@@ -249,13 +279,14 @@ def run(game, csv_path=None):
     if len(draws) < 25:
         raise RuntimeError("at least 16 completed draws needed")
     results, audits = {}, {}
-    for view, weight in VIEW_WEIGHTS.items():
+    view_weights = causal_view_weights(draws, maximum)
+    for view, weight in view_weights.items():
         train, labels, current, ends = train_and_current(draws, maximum, count, view)
         score, audit = audit_and_score(train, labels, current, maximum, view)
         results[view] = score
         audits[view] = {**audit, "anchor_count": len(ends), "weight": weight}
-    fused = sum(VIEW_WEIGHTS[k] * results[k] for k in VIEW_WEIGHTS)
-    if not np.isfinite(fused).all() or not math.isclose(sum(VIEW_WEIGHTS.values()), 1.0):
+    fused = sum(view_weights[k] * results[k] for k in view_weights)
+    if not np.isfinite(fused).all() or not math.isclose(sum(view_weights.values()), 1.0):
         raise RuntimeError("invalid three-view fusion")
     ticket, selection_audit = select_ticket(fused, draws, count, maximum)
     second_pick = None
@@ -268,7 +299,7 @@ def run(game, csv_path=None):
     output = {
         "system": "independent OF-LGBM 23-operator research E2E",
         "game": game, "first_zone": sorted(ticket), "second_zone": second_pick,
-        "three_view_weights": VIEW_WEIGHTS, "per_view_audits": audits,
+        "three_view_weights": view_weights, "view_weight_policy": "causal_frequency_brier_calibration_not_ML", "per_view_audits": audits,
         "openfe_23_operator_candidate_enablement": True,
         "openfe_23_operator_execution_verified": True,
         "all_23_operator_families_passed_to_lightgbm": True,

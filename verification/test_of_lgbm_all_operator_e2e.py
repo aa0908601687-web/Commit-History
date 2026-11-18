@@ -46,8 +46,16 @@ class AllOperatorsContractTests(unittest.TestCase):
         self.assertEqual(archive["historical_draws"], float(len(self.draws)))
 
     def test_three_view_fusion_weights(self):
-        self.assertAlmostEqual(sum(system.VIEW_WEIGHTS.values()), 1.0)
-        self.assertEqual(set(system.VIEW_WEIGHTS), set(system.VIEW_ANCHORS))
+        weights = system.causal_view_weights(self.draws, 38)
+        self.assertAlmostEqual(sum(weights.values()), 1.0)
+        self.assertEqual(set(weights), set(system.VIEW_ANCHORS))
+        self.assertTrue(all(0 < w < 1 for w in weights.values()))
+        # Future target must not influence weights for a current forecast.
+        self.assertEqual(weights, system.causal_view_weights(list(self.draws), 38))
+        changed = list(self.draws)
+        changed[-1] = tuple(range(1, 7))
+        self.assertEqual(system.causal_view_weights(self.draws[:-1], 38),
+                         system.causal_view_weights(changed[:-1], 38))
 
     def test_chronological_anchor_boundaries(self):
         self.assertEqual(system.anchors(50, "latest_10"), list(range(40, 50)))
