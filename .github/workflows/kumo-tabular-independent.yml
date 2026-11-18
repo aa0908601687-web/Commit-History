@@ -29,7 +29,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           p = Path('ci_tabular_sample.csv')
-          p.write_text('date,value,target\\n2026-01-01,1,A\\n2026-01-02,2,B\\n2026-01-03,3,A\\n2026-01-04,4,B\\n2026-01-05,5,A\\n')
+          p.write_text('date,value,target\n2026-01-01,1,A\n2026-01-02,2,B\n2026-01-03,3,A\n2026-01-04,4,B\n2026-01-05,5,A\n')
           PY
           python audit_input.py --csv ci_tabular_sample.csv --target target --time-column date --output data_audit.json
           python - <<'PY'
