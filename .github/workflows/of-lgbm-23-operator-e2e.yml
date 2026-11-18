@@ -39,7 +39,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
       - name: Check isolation and historical CSV data gates
         run: |
-          python -m unittest verification/test_of_lgbm_isolation.py verification/test_of_lgbm_all_operator_e2e.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_ticket_selection.py verification/test_of_lgbm_manifest_integrity.py verification/test_of_lgbm_power_date_reconcile.py verification/test_of_lgbm_probability_calibration.py -v
+          python -m unittest verification/test_of_lgbm_isolation.py verification/test_of_lgbm_all_operator_e2e.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_ticket_selection.py verification/test_of_lgbm_manifest_integrity.py verification/test_of_lgbm_history_completeness.py verification/test_of_lgbm_power_date_reconcile.py verification/test_of_lgbm_probability_calibration.py -v
       - name: Execute real-history 23 OpenFE operator and LightGBM E2E
         shell: bash
         run: |
@@ -51,6 +51,7 @@ jobs:
             *) exit 2 ;;
           esac
           python verification/of_lgbm_real_history_gate.py --game "$GAME" --csv "$HIST" --output history-audit.json > history-audit.log
+          python verification/of_lgbm_history_completeness.py --output history-completeness.json > history-completeness.log
           python verification/of_lgbm_all_operator_e2e.py --game "$GAME" --csv "$HIST" --output of-lgbm-evidence.json > of-lgbm-run.log
           python - <<'PY'
           import os,json
@@ -58,6 +59,10 @@ jobs:
           a=json.loads(Path("history-audit.json").read_text())
           d=json.loads(Path("of-lgbm-evidence.json").read_text())
           game=os.environ["GAME"]
+          c=json.loads(Path("history-completeness.json").read_text())
+          assert not c["official_full_history_verified"] and not c["complete_to_today_verified"]
+          assert c["datasets"][game]["sha256_matches_manifest"]
+          assert c["datasets"]["power"]["missing_draw_dates"] == 1964
           assert a["game"]==game and a["chronological_and_legal_range_verified"]
           assert not a["record_by_record_official_provenance_verified"]
           assert a["csv_dates_consistent"]==(game!="power")
@@ -84,6 +89,8 @@ jobs:
         with:
           name: of-lgbm-standalone-${{ matrix.game }}-${{ github.run_id }}
           path: |
+            history-completeness.json
+            history-completeness.log
             history-audit.json
             history-audit.log
             of-lgbm-evidence.json
