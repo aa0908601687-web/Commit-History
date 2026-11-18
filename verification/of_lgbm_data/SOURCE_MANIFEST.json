@@ -10,20 +10,30 @@
       "first": "112000103",
       "last": "115000279",
       "path": "verification/of_lgbm_data/539_history_mirror.csv",
-      "source": "public/data/539/raw.json"
+      "source": "public/data/539/raw.json",
+      "sha256": "281124d02830e9a2ae17a2cf0688420b9c9ca1f8b667a90a201fdd62ed8427cb",
+      "date_status": "format_consistent_not_officially_verified",
+      "official_row_verification": "not_completed"
     },
     "lotto": {
       "rows": 412,
       "first": "112000047",
       "last": "115000106",
       "path": "verification/of_lgbm_data/lotto_history_mirror.csv",
-      "source": "public/data/lotto649/raw.json"
+      "source": "public/data/lotto649/raw.json",
+      "sha256": "6a2c8bf615db8e5ae37328319ae06ea987601f0cf568eff48488011224e0a9e4",
+      "date_status": "format_consistent_not_officially_verified",
+      "official_row_verification": "not_completed"
     },
     "power": {
       "rows": 1964,
       "cutoff": "115000092",
       "third_party_matching_overlap": 370,
-      "source": "prior repository archive, not authenticated against full official data"
+      "source": "prior repository archive, not authenticated against full official data",
+      "sha256": "de92a6019d8efa300f4cbb0e96b7badd9babfea9889b5e7657f0b10a01a80e5b",
+      "date_status": "missing_all_dates",
+      "official_row_verification": "not_completed",
+      "path": "verification/of_lgbm_data/power_history_archive.csv"
     }
   },
   "update_notice_20261119": {
@@ -51,5 +61,14 @@
     ],
     "power_dates_missing": true,
     "independent_prospective_edge_verified": false
+  },
+  "integrity_audit_20261119": {
+    "source": "OF-LGBM main-branch E2E run 44367099716, SHA-256 computed from repository CSV bytes",
+    "sha256_role": "detects post-snapshot byte changes; does not authenticate official source",
+    "official_comparison_status": "not_completed",
+    "official_reference": "https://www.taiwanlottery.com/lotto/history/result_download/",
+    "official_files_imported": false,
+    "missing_power_draw_dates": 1964,
+    "notes": "Never reconstruct missing official dates merely from draw sequences. Update SHA-256 pins only after approved data review and rerun E2E."
   }
 }
