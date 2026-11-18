@@ -53,3 +53,9 @@ PR #89 is a separate update branch. Do not merge based only on CI passing: indep
 - Lotto and 539 have structurally consistent ISO dates, but dates and numbers have not been authenticated against all official rows.
 - The official Taiwan Lottery yearly download entry point is https://www.taiwanlottery.com/lotto/history/result_download/ ; official files have **not** been imported into this repository as part of this change. The currently exposed yearly files may be updated monthly and may not cover the most recent draws.
 - If a CSV must be updated, independently inspect the underlying source, update its manifest digest deliberately, run the full validation gate and E2E, and preserve unverified provenance until a documented actual official comparison is completed.
+
+## Prediction-error reporting hardening (2026-11-19)
+- The five-fold true ML holdout now reports the *exact* 49/38/39-select-k hypergeometric distribution of matched first-zone numbers, fair expected mean matches, the observed mean, expected 3+ events, an exact one-sided binomial fair-null tail, and a Wilson 95% interval for the observed 3+ rate.
+- Power separately reports second-zone matches, exact 1/8 fair baseline, expected count, Wilson interval and binomial tail. **The second-zone pick remains a frequency baseline and is not a trained LightGBM output.**
+- The older one-seed random ticket remains for reproducible illustration but is explicitly labeled insufficient as evidence of prediction edge. A five-draw comparison is very small; no statistical power or search-corrected superiority is inferred. The report always labels `statistically_verified_predictive_advantage=false`.
+- This is a **metric/evaluation fix**, not a claim to have repaired the intrinsic uncertainty of fair lottery draws. Model fusion weights, pair heuristic and ticket selection stay unchanged to avoid post-hoc tuning to five observed outcomes.
