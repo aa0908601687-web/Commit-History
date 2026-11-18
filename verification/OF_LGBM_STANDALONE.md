@@ -64,3 +64,12 @@ PR #89 is a separate update branch. Do not merge based only on CI passing: indep
 - Replaces the prior fixed three-view score-fusion weights with causally calibrated weights computed from preceding draws only; first 20 draws are warmup.
 - The calibration is based on smoothed single-number historical-frequency Brier scores for each view; it must not be described as trained LightGBM meta-stacking or proven to improve accuracy.
 - Existing official-source gaps and Power date coverage=0 remain unresolved. The real-history gates, separate E2E workflows, and five-fold forward holdout must pass before merge.
+
+## Power draw-date remediation gate (research PR, 2026-11-19)
+- Current archived Power CSV has 1,964 entries **without any date column**. The archive remains untouched until official date evidence is actually imported. No weekdays, draw-id interpolation, or guessed dates are allowed.
+- Official reference: https://www.taiwanlottery.com/lotto/history/result_download/ (yearly official exports; the current-month rows may not be included in the monthly downloads).
+- Independently obtain the original official files and review their origin. Normalize to a separate CSV with header `draw_id,draw_date,first,second` (ISO date) without altering original downloaded files.
+- Run `python verification/of_lgbm_power_date_reconcile.py --archive verification/of_lgbm_data/power_history_archive.csv --dated-source PATH_TO_INDEPENDENTLY_REVIEWED_DATES.csv --output power_history_with_dates.csv --report power_date_reconciliation.json`.
+- Import refuses missing/extra draw IDs, any mismatch in both zones' exact winning numbers, duplicate IDs, invalid date or ROC year, and dates not strictly increasing. It writes a **new** CSV and audit hashes only after all records match, never replacing the archived source in place.
+- The importer cannot certify a source as official by itself; the report always keeps `independent_official_provenance_verified=false`. An independent official record-by-record audit and explicit source log must occur before changing that flag.
+- Unit tests for this reconciliation run within both standalone E2E and five-fold audit CI. These tests **do not** mean dates have already been recovered. The existing snapshot manifest continues to report date_coverage=0 and official provenance incomplete until real official data has been checked and imported.
