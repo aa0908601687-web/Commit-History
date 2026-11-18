@@ -19,6 +19,40 @@ class AllOperatorsContractTests(unittest.TestCase):
     def test_registry_is_exactly_23(self):
         self.assertEqual(len(system.supported_operators()), 23)
 
+    def test_order_one_search_submits_every_generated_candidate(self):
+        from types import SimpleNamespace
+        # More than two per operator ensures the former 46-formula cap fails.
+        supported = system.supported_operators()
+        candidates = [
+            SimpleNamespace(name=name, index=i)
+            for name in sorted(supported) for i in range(4)
+        ]
+        complete = system.full_order_one_candidates(candidates, supported)
+        self.assertEqual(len(complete), 4 * 23)
+        self.assertTrue(all(a is b for a, b in zip(complete, candidates)))
+
+    def test_order_one_search_rejects_missing_operator_family(self):
+        from types import SimpleNamespace
+        supported = system.supported_operators()
+        incomplete = [SimpleNamespace(name=name)
+                      for name in sorted(supported)[:-1]]
+        with self.assertRaises(RuntimeError):
+            system.full_order_one_candidates(incomplete, supported)
+
+    def test_openfe_fit_stage_one_preserves_both_class_labels(self):
+        # Regression for PR #79's 100/200/500-fold "previously unseen labels"
+        # failure. The OpenFE default 8-block unstratified sampling can remove
+        # the positive class entirely; 1 block retains both classes.
+        from openfe.openfe import _subsample
+        self.assertEqual(system.OPENFE_DATA_BLOCKS, 1)
+        labels = [0] * 48 + [1] * 8
+        for seed in range(25):
+            random.seed(seed)
+            sampled = _subsample(list(range(len(labels))), system.OPENFE_DATA_BLOCKS)
+            self.assertEqual(len(sampled), 1)
+            self.assertEqual(len(sampled[0]), len(labels))
+            self.assertEqual({labels[i] for i in sampled[0]}, {0, 1})
+
     def test_all_windows_strictly_causal(self):
         changed_far_past = list(self.draws)
         # Flip membership of 1 only in a draw older than the last 20.

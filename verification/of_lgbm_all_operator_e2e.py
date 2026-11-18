@@ -66,6 +66,10 @@ def read_real_csv(csv_path, kind):
 
 VIEW_ANCHORS = {"latest_10": 10, "latest_20": 20, "full_archive": None}
 VIEW_WEIGHTS = {"latest_10": 0.35, "latest_20": 0.35, "full_archive": 0.30}
+# Keep every class in OpenFE stage-I train/validation subsets. Its default
+# 8-block unstratified shuffle can leave the internal train split with class 0
+# only, then LightGBM raises "y contains previously unseen labels: [1]".
+OPENFE_DATA_BLOCKS = 1
 CATEGORY_COLUMNS = ("parity_group", "number_band", "recency_group")
 EXPECTED_OPERATORS = frozenset((
     "freq", "abs", "log", "sqrt", "square", "sigmoid", "round",
@@ -151,6 +155,20 @@ def train_and_current(draws, maximum, count, view):
     return train, pd.Series(y, name="drawn"), test, ends
 
 
+def full_order_one_candidates(candidates, supported):
+    """Preserve the entire generated order=1 list, without per-family truncation."""
+    complete = list(candidates)
+    if not complete:
+        raise RuntimeError("OpenFE generated no depth-one feature candidates")
+    operator_names = {node.name for node in complete}
+    if operator_names != supported:
+        raise RuntimeError(
+            f"full candidate operator mismatch: missing={sorted(supported - operator_names)}, "
+            f"unexpected={sorted(operator_names - supported)}"
+        )
+    return complete
+
+
 def audit_and_score(train, labels, current, maximum, view):
     supported = supported_operators()
     numeric = [col for col in train if col not in CATEGORY_COLUMNS]
@@ -162,15 +180,10 @@ def audit_and_score(train, labels, current, maximum, view):
         represented.setdefault(node.name, node)
     if set(represented) != supported:
         raise RuntimeError(f"operator generation incomplete: {sorted(supported - set(represented))}")
-    # Bound actual OpenFE feature screening while keeping all 23 operator kinds.
-    # Every operator has at least one real candidate passed to OpenFE.fit().
-    screen_candidates = []
-    seen_counts = {}
-    for node in candidates:
-        if seen_counts.get(node.name, 0) < 2:
-            screen_candidates.append(node)
-            seen_counts[node.name] = seen_counts.get(node.name, 0) + 1
-    assert set(seen_counts) == supported
+    # Complete depth-one search: submit EVERY generated formula to OpenFE.fit.
+    # OpenFE may internally prune invalid/uninformative formulas. This does not
+    # enumerate higher-order or unlimited-depth expressions.
+    screen_candidates = full_order_one_candidates(candidates, supported)
     # This is a real calculation, not an inspection of candidate names alone.
     witnesses = []
     for name in sorted(supported):
@@ -185,11 +198,14 @@ def audit_and_score(train, labels, current, maximum, view):
     split = split_anchors * maximum
     if split >= len(train):
         raise RuntimeError("empty chronological feature-validation interval")
+    if set(labels.iloc[:split].unique()) != {0, 1} or set(labels.iloc[split:].unique()) != {0, 1}:
+        raise RuntimeError("OpenFE chronological train/validation groups must both contain labels 0 and 1")
     temp_name = os.path.join(tempfile.gettempdir(), f"of_lgbm_23ops_{os.getpid()}_{view}.feather")
     # OpenFE may create/remove this file. A unique name prevents cross-job collisions.
     generated = OpenFE().fit(
         data=train.copy(), label=labels.to_frame(),
         task="classification", n_jobs=1, verbose=False,
+        n_data_blocks=OPENFE_DATA_BLOCKS,
         categorical_features=list(CATEGORY_COLUMNS),
         candidate_features_list=screen_candidates,
         train_index=pd.Index(range(split)),
@@ -223,10 +239,15 @@ def audit_and_score(train, labels, current, maximum, view):
     return scores, {
         "candidate_features_possible": len(candidates),
         "candidate_features_screened": len(screen_candidates),
+        "candidate_search_scope": "all_generated_order1_candidates",
+        "all_generated_order1_candidates_submitted": len(screen_candidates) == len(candidates),
+        "operator_candidate_counts": {name: sum(node.name == name for node in candidates)
+                                      for name in sorted(supported)},
         "openfe_ranked_features": len(generated),
         "supported_operators": sorted(supported),
         "operator_candidates_enabled": len(represented),
         "operator_witnesses_executed": len(witnesses),
+        "openfe_data_blocks": OPENFE_DATA_BLOCKS,
         "operator_families_in_model": len(model_operators),
         "model_feature_nodes": len(chosen),
         "chronological_train_anchors": split_anchors,
@@ -268,6 +289,9 @@ def run(game, csv_path=None):
         "game": game, "first_zone": sorted(ticket), "second_zone": second_pick,
         "three_view_weights": VIEW_WEIGHTS, "per_view_audits": audits,
         "openfe_23_operator_candidate_enablement": True,
+        "full_order1_candidate_submission_verified": all(
+            a["all_generated_order1_candidates_submitted"] for a in audits.values()
+        ),
         "openfe_23_operator_execution_verified": True,
         "all_23_operator_families_passed_to_lightgbm": True,
         "lightgbm_trained_and_scored": True,
@@ -287,6 +311,7 @@ def run(game, csv_path=None):
     assert len(set(output["first_zone"])) == count
     assert all(1 <= n <= maximum for n in output["first_zone"])
     assert all(a["operator_families_in_model"] == 23 for a in audits.values())
+    assert all(a["all_generated_order1_candidates_submitted"] for a in audits.values())
     return output
 
 
