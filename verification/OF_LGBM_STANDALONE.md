@@ -6,7 +6,7 @@ This standalone system uses its own dependency file and has no imports or E2E co
 ## Model and optimization
 - OpenFE 0.0.12: all 23 operator *families* are executed, with bounded candidate screening. One computed witness of each family is included in LightGBM inputs per view. This is NOT every possible OpenFE formula.
 - LightGBM (CPU): three independently trained views and normalized score fusion: recent-10 training anchors 35%, recent-20 anchors 35%, all eligible historical training anchors 30%. Features use only prior completed drawings: 10, 20, or the complete past respectively; no 100-anchor cap. The first 20 draws are warm-up for historical labels.
-- Exact Python itertools.combinations enumeration of an 8-number pool: 8 choose 6 = 28 for Power and Lotto, 8 choose 5 = 56 for 539. This is exact solely for the eight-number pool and stated score objective.
+- Exact Python itertools.combinations enumeration of an 8-number pool: 8 choose 6 = 28 for Power and Lotto, 8 choose 5 = 56 for 539. The scoring now combines **95% mean fused LightGBM per-number score** with **5% shrunk historical two-number co-occurrence**, computed strictly from the last 10 and last 20 earlier draws (10 pseudo-observations per window). This is a transparent *experimental* interaction heuristic, not a validated probability calibration or an increase in winning odds. Enumeration is exact ONLY within the already ranked eight-number pool, never among all possible lottery tickets.
 - Power second zone is a separate 10/20 frequency baseline, not OpenFE/LightGBM.
 
 ## Real historical CSV snapshots (not synthetic)
@@ -31,9 +31,15 @@ Run isolated unit tests:
 PR GitHub workflows require real CSVs for Power/Lotto/539, explicitly reject synthetic fixtures, and each perform 23 OpenFE-operator + LightGBM training with separate LightGBM refits for five consecutive historical held-out draws.
 
 ## Verification limits
-Local data gates check ranges, uniqueness, consecutive sequence numbers, ROC-year rollover, and Lotto/539 dates including ROC-year matches. Power archival CSV lacks dates. SHA-256 verifies bytes, NOT authentic official provenance.
+Shared CSV gates now check ranges, uniqueness, consecutive draw IDs and ROC-year rollover before both full E2E and forward refits. For datasets with a draw_date column, every row must have a valid, strictly increasing ISO date whose Gregorian year matches the ROC draw ID; missing/partial date values are rejected. Power archival CSV still has **no date column** and is explicitly reported as incomplete (date_coverage=0, date_validation_status=missing_date_column). It must not be described as date-verified. SHA-256 verifies bytes, NOT authentic official provenance.
 - A successful CI run verifies reproducible execution and limited historical holdout (five per game), NOT full 100/200/500-fold evaluation.
 - CSVs are historical but NOT entire exhaustive official archives for all three games. Full official record-by-record provenance remains pending.
 - No demonstrated independent prospective predictive edge or improvement over a fair random lottery. Never represent these runs as proof of greater winning probability.
 
 The previous PR #77 was merged. Keep the new 10/20/full-history change in a separate draft PR pending successful isolated CI, provenance review and longer validation.
+
+## 2026-11-19 research hardening (PR #89)
+- Selection logic is deliberately different from earlier published number sets; older tickets cannot be reused as fresh outputs.
+- New cross-check unit tests assert deterministic pair-aware search, causal last-10/20 boundaries, nonfinite-score rejection, and incomplete-date rejection.
+- Data snapshots appended (Power 115000092; Lotto 115000106; 539 115000279), with non-official provenance recorded in SOURCE_MANIFEST. Source authentication and longer nested walk-forward remain outstanding.
+- CI passing does not validate empirical winning probability. Neither the heuristic pair weight nor 10 pseudo-observations were learned from independent test data.
