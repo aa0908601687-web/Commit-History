@@ -50,7 +50,7 @@ class ForwardAuditTests(unittest.TestCase):
             lines = path.read_text().splitlines()
             lines[2] = lines[2].replace("01 02 03 04 05 06", "01 02 03 04 05 39")
             path.write_text("\n".join(lines) + "\n")
-            with self.assertRaisesRegex(ValueError, "invalid first zone"):
+            with self.assertRaisesRegex(ValueError, "invalid first.zone"):
                 audit.audit_history(path, "power")
 
     def test_holdout_never_sees_future_draw(self):

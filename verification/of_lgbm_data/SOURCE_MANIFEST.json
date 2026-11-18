@@ -6,24 +6,50 @@
   "record_by_record_officially_authenticated": false,
   "datasets": {
     "539": {
-      "rows": 1116,
+      "rows": 1119,
       "first": "112000103",
-      "last": "115000276",
+      "last": "115000279",
       "path": "verification/of_lgbm_data/539_history_mirror.csv",
       "source": "public/data/539/raw.json"
     },
     "lotto": {
-      "rows": 411,
+      "rows": 412,
       "first": "112000047",
-      "last": "115000105",
+      "last": "115000106",
       "path": "verification/of_lgbm_data/lotto_history_mirror.csv",
       "source": "public/data/lotto649/raw.json"
     },
     "power": {
-      "rows": 1963,
-      "cutoff": "115000091",
+      "rows": 1964,
+      "cutoff": "115000092",
       "third_party_matching_overlap": 370,
       "source": "prior repository archive, not authenticated against full official data"
     }
+  },
+  "update_notice_20261119": {
+    "status": "third-party corroboration only; NOT official row-by-row verified",
+    "as_of": "2026-11-19",
+    "new_draws": {
+      "539": [
+        "115000277",
+        "115000278",
+        "115000279"
+      ],
+      "power": [
+        "115000092"
+      ],
+      "lotto": [
+        "115000106"
+      ]
+    },
+    "source_urls": [
+      "https://top-lottery.com/open/super/115000092",
+      "https://www.cna.com.tw/news/ahel/202611170307.aspx",
+      "https://top-lottery.com/open/539/115000277",
+      "https://top-lottery.com/open/539/115000278",
+      "https://top-lottery.com/open/539/115000279"
+    ],
+    "power_dates_missing": true,
+    "independent_prospective_edge_verified": false
   }
 }

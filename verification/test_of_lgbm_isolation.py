@@ -11,6 +11,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "verification" / "of_lgbm_all_operator_e2e.py"
+SELECTOR = ROOT / "verification" / "of_lgbm_ticket_selection.py"
 REQUIREMENTS = ROOT / "verification" / "of_lgbm_requirements.txt"
 WORKFLOW = ROOT / ".github" / "workflows" / "of-lgbm-23-operator-e2e.yml"
 
@@ -63,8 +64,13 @@ class StandaloneOFLCGBMContracts(unittest.TestCase):
 
     def test_python_exact_search_without_external_solver(self):
         source = SOURCE.read_text(encoding="utf-8")
-        self.assertIn("from itertools import combinations", source)
-        self.assertIn("tickets = list(combinations(pool, count))", source)
+        selector = SELECTOR.read_text(encoding="utf-8")
+        self.assertIn("from of_lgbm_ticket_selection import select_ticket", source)
+        self.assertIn("select_ticket(fused, draws, count, maximum)", source)
+        self.assertIn("from itertools import combinations", selector)
+        self.assertIn("options = list(combinations(pool, count))", selector)
+        self.assertNotIn("cudaq", selector)
+        self.assertNotIn("qiskit", selector)
 
 
 if __name__ == "__main__":

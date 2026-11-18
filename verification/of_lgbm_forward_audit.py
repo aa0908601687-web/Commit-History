@@ -20,11 +20,14 @@ import numpy as np
 from of_lgbm_all_operator_e2e import (
     CONFIGS, VIEW_WEIGHTS, train_and_current, audit_and_score,
 )
+from of_lgbm_real_history_gate import audit_csv
+from of_lgbm_ticket_selection import select_ticket
 
 
 def audit_history(path, game):
     maximum, count, second_max = CONFIGS[game]
     path = Path(path)
+    verified_format = audit_csv(path, game, min_rows=17)
     ids, draws, seconds = [], [], []
     years = Counter()
     with path.open(newline="", encoding="utf-8-sig") as stream:
@@ -67,6 +70,8 @@ def audit_history(path, game):
         "chronological_and_legal_range_verified": True,
         "independent_official_provenance_verified": False,
         "dates_verified": False,
+        "csv_dates_consistent": verified_format["csv_dates_consistent"],
+        "date_coverage": verified_format["date_coverage"],
     }
     return ids, draws, seconds, summary
 
@@ -85,9 +90,7 @@ def predict_one(prior_draws, prior_seconds, game):
     scores = np.sum(per_view, axis=0)
     if not np.isfinite(scores).all():
         raise RuntimeError("invalid LightGBM output")
-    pool = sorted(range(1, maximum + 1), key=lambda n: (-scores[n - 1], n))[:8]
-    ticket = max(combinations(pool, count),
-                 key=lambda t: (sum(float(scores[n-1]) for n in t), tuple(-n for n in t)))
+    ticket, _ = select_ticket(scores, prior_draws, count, maximum)
     second = None
     if second_max:
         second = max(range(1, second_max + 1),

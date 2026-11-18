@@ -29,6 +29,8 @@ from lightgbm import LGBMClassifier
 
 import csv
 import hashlib
+from of_lgbm_ticket_selection import select_ticket
+from of_lgbm_real_history_gate import audit_csv
 
 CONFIGS = {"power": (38, 6, 8), "lotto": (49, 6, None), "539": (39, 5, None)}
 
@@ -36,6 +38,8 @@ CONFIGS = {"power": (38, 6, 8), "lotto": (49, 6, None), "539": (39, 5, None)}
 def read_real_csv(csv_path, kind):
     """Strict chronological and range validation, independent of QUBO/CUDA-Q."""
     maximum, count, second_max = CONFIGS[kind]
+    # Enforce exact sequence, year rollover, ranges and dates when supplied.
+    audit_csv(csv_path, kind, min_rows=25)
     rows, second_rows = [], []
     previous = -1
     with open(csv_path, newline="", encoding="utf-8-sig") as handle:
@@ -253,9 +257,7 @@ def run(game, csv_path=None):
     fused = sum(VIEW_WEIGHTS[k] * results[k] for k in VIEW_WEIGHTS)
     if not np.isfinite(fused).all() or not math.isclose(sum(VIEW_WEIGHTS.values()), 1.0):
         raise RuntimeError("invalid three-view fusion")
-    pool = sorted(range(1, maximum + 1), key=lambda n: (-fused[n - 1], n))[:8]
-    tickets = list(combinations(pool, count))
-    ticket = max(tickets, key=lambda t: (sum(float(fused[n - 1]) for n in t), tuple(-n for n in t)))
+    ticket, selection_audit = select_ticket(fused, draws, count, maximum)
     second_pick = None
     if second_max:
         second_pick = max(
@@ -271,7 +273,8 @@ def run(game, csv_path=None):
         "openfe_23_operator_execution_verified": True,
         "all_23_operator_families_passed_to_lightgbm": True,
         "lightgbm_trained_and_scored": True,
-        "exact_candidates": len(tickets),
+        "exact_candidates": selection_audit["candidate_combinations"],
+        "selection_audit": selection_audit,
         "history_draws": len(draws), "data_cutoff": cutoff,
         "feature_window_lengths": [10, 20], "full_archive_training_anchors": len(draws) - 20,
         "history_source": "repository CSV; official external verification pending" if csv_path else "deterministic synthetic fixture",
