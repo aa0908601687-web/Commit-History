@@ -81,3 +81,22 @@ jobs:
           name: kumo-inference-report
           path: Kumo-Tabular-Independent-MAX/prediction_smoke_report.json
           if-no-files-found: error
+
+  scope-audit:
+    needs: [unit, install, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Audit all 15 research pipeline stages (including gaps)
+        run: python full_scope_audit.py
+      - name: Upload full-scope evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kumo-full-scope-audit
+          path: Kumo-Tabular-Independent-MAX/full_scope_audit_report.json
+          if-no-files-found: error
