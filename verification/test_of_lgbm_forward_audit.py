@@ -61,7 +61,7 @@ class ForwardAuditTests(unittest.TestCase):
         def stub(prior, prior_seconds, game, with_scores=False):
             observed.append((len(prior), len(prior_seconds), game))
             self.assertTrue(with_scores)
-            return (tuple(range(1, 7)), 1, [6/38] * 38
+            return (tuple(range(1, 7)), 1, [6/38] * 38)
         with patch.object(audit, "predict_one", side_effect=stub):
             result = audit.walk_forward(ids, draws, seconds, "power", folds=2)
         self.assertEqual(observed, [(28, 28, "power"), (29, 29, "power")])
