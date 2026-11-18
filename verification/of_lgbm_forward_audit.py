@@ -22,7 +22,6 @@ from of_lgbm_all_operator_e2e import (
 )
 from of_lgbm_real_history_gate import audit_csv
 from of_lgbm_ticket_selection import select_ticket
-from of_lgbm_prediction_error_audit import summarize_outcomes
 
 
 def audit_history(path, game):
@@ -134,7 +133,6 @@ def walk_forward(ids, draws, seconds, game, folds):
         "fair_null_rate_3plus": theory_3plus(maximum, count),
         "random_baseline_3plus": sum(row["random_matches"] >= 3 for row in outcomes),
         "random_baseline_note": "one seeded sample for illustration only; not evidence of superiority",
-        "prediction_error_audit": summarize_outcomes(outcomes, maximum, count, second_max),
         "feature_window_lengths": [10, 20],
         "view_weights": causal_view_weights(draws[:-1], maximum),
         "view_weight_policy": "causal_frequency_brier_calibration_not_ML",
