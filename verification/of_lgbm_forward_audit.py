@@ -76,7 +76,7 @@ def audit_history(path, game):
     return ids, draws, seconds, summary
 
 
-def predict_one(prior_draws, prior_seconds, game):
+def predict_one(prior_draws, prior_seconds, game, return_probabilities=False):
     maximum, count, second_max = CONFIGS[game]
     if len(prior_draws) < 25:
         raise ValueError("at least 25 earlier draws required")
@@ -92,6 +92,8 @@ def predict_one(prior_draws, prior_seconds, game):
         second = max(range(1, second_max + 1),
                      key=lambda n: (0.6 * sum(x == n for x in prior_seconds[-10:]) +
                                     0.4 * sum(x == n for x in prior_seconds[-20:]), -n))
+    if return_probabilities:
+        return tuple(sorted(ticket)), second, tuple(float(p) for p in scores)
     return tuple(sorted(ticket)), second
 
 
@@ -108,13 +110,21 @@ def walk_forward(ids, draws, seconds, game, folds):
     outcomes = []
     for target in range(len(draws)-folds, len(draws)):
         before = draws[:target]
-        ticket, pick2 = predict_one(before, seconds[:target] if second_max else [], game)
+        ticket, pick2, probabilities = predict_one(
+            before, seconds[:target] if second_max else [], game,
+            return_probabilities=True,
+        )
         actual = draws[target]
         matched = len(set(ticket) & set(actual))
         random_ticket = random.Random(20261115 + target).sample(range(1, maximum+1), count)
+        # Proper scoring rule on ALL first-zone numbers, not just selected tickets.
+        # This is evaluation-only; it must never alter candidate selection.
+        brier = sum((p - float(n in actual)) ** 2
+                    for n, p in enumerate(probabilities, start=1)) / maximum
         outcomes.append({
             "target_id": str(ids[target]), "cutoff_id": str(ids[target-1]),
             "ticket": list(ticket), "actual": list(actual), "matches": matched,
+            "brier_score": brier,
             "random_matches": len(set(random_ticket) & set(actual)),
             "second_pick": pick2, "second_actual": seconds[target] if second_max else None,
         })
@@ -125,6 +135,9 @@ def walk_forward(ids, draws, seconds, game, folds):
         "game": game, "mode": "actual OpenFE+LightGBM refit for each held-out draw",
         "folds": folds, "outcomes": outcomes, "distribution": distribution,
         "hits_3plus": wins, "rate_3plus": wins / folds,
+        "brier_score": sum(row["brier_score"] for row in outcomes) / folds,
+        "brier_baseline": count / maximum * (1 - count / maximum),
+        "brier_policy": "evaluation_only_not_used_for_selection_or_view_weights",
         "fair_null_rate_3plus": theory_3plus(maximum, count),
         "random_baseline_3plus": sum(row["random_matches"] >= 3 for row in outcomes),
         "random_baseline_note": "one seeded sample for illustration only; not evidence of superiority",
