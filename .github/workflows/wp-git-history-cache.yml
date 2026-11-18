@@ -12,10 +12,10 @@ jobs:
   cache-and-report:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - name: Test cache behavior
@@ -23,7 +23,7 @@ jobs:
       - name: Test cumulative metrics
         run: python -m unittest discover -s Git-History-Cache -p 'test_cache_totals.py' -v
       - name: Restore prior history cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .wp-git-cache/history.json
           key: wp-git-history-v1-${{ github.repository_id }}-${{ github.ref }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -36,7 +36,7 @@ jobs:
           python Git-History-Cache/git_history_cache.py --repository "$REPOSITORY" --cache .wp-git-cache/history.json --report-dir git-history-report --pick
           cp .wp-git-cache/history.json git-history-report/history.json
       - name: Upload history cache and charts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: wp-git-history-${{ github.run_id }}-${{ github.run_attempt }}
           path: git-history-report/
@@ -49,13 +49,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - name: Test cumulative metrics
         run: python -m unittest discover -s Git-History-Cache -p 'test_cache_totals.py' -v
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           name: wp-git-history-${{ github.run_id }}-${{ github.run_attempt }}
           path: git-history-report
@@ -63,7 +63,7 @@ jobs:
         env:
           GH_METRICS_TOKEN: ${{ github.token }}
         run: python Git-History-Cache/cache_totals.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: wp-cache-totals-${{ github.run_id }}-${{ github.run_attempt }}
           path: git-history-report/cache_totals.json
