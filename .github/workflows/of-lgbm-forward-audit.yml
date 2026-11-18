@@ -37,7 +37,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
       - name: Run chronological holdout and CSV gate tests
         run: |
-          python -m unittest verification/test_of_lgbm_forward_audit.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_ticket_selection.py verification/test_of_lgbm_manifest_integrity.py verification/test_of_lgbm_prediction_error_audit.py -v
+          python -m unittest verification/test_of_lgbm_forward_audit.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_ticket_selection.py verification/test_of_lgbm_manifest_integrity.py verification/test_of_lgbm_prediction_error_audit.py verification/test_of_lgbm_probability_calibration.py -v
       - name: Run five causally ordered true ML training/holdout iterations
         shell: bash
         run: |
