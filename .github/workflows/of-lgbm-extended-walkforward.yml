@@ -1,0 +1,84 @@
+name: OF-LGBM Extended Walk-Forward (Standalone)
+on:
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_extended_walkforward.py'
+      - 'verification/test_of_lgbm_extended_walkforward.py'
+      - 'verification/audit_of_lgbm_retired_100_suites.py'
+      - '.github/workflows/of-lgbm-extended-walkforward.yml'
+  workflow_dispatch:
+    inputs:
+      folds:
+        description: 'Number of actual refit folds. 1 = smoke; 100/200/500 = research'
+        required: true
+        default: '1'
+        type: choice
+        options:
+          - '1'
+          - '100'
+          - '200'
+          - '500'
+permissions:
+  contents: read
+jobs:
+  isolated-extended-cpu:
+    name: Standalone OF-LGBM / ${{ matrix.game }} / causal CPU
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        game: [power, lotto, '539']
+    env:
+      GAME: ${{ matrix.game }}
+      FOLDS: ${{ github.event.inputs.folds || '1' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install standalone OpenFE LightGBM CPU dependencies
+        run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
+      - name: Run legacy feature configuration absence audit
+        run: python verification/audit_of_lgbm_retired_100_suites.py
+      - name: Run dedicated extended-horizon contract tests
+        run: python -m unittest verification/test_of_lgbm_extended_walkforward.py -v
+      - name: Run independent real-history OpenFE+LightGBM refit
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$GAME" in
+            power) HIST=verification/of_lgbm_data/power_history_archive.csv ;;
+            lotto) HIST=verification/of_lgbm_data/lotto_history_mirror.csv ;;
+            539) HIST=verification/of_lgbm_data/539_history_mirror.csv ;;
+            *) exit 2 ;;
+          esac
+          python verification/of_lgbm_extended_walkforward.py \
+            --game "$GAME" --csv "$HIST" --horizons 100 200 500 \
+            --max-folds "$FOLDS" --checkpoint extended-checkpoint.json \
+            --output extended-evidence.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path("extended-evidence.json").read_text())
+          assert d["executed_folds"] == int(__import__("os").environ["FOLDS"]) or (
+              d["maximum_possible_folds_with_current_csv"] < int(__import__("os").environ["FOLDS"])
+          )
+          assert not d["csv_official_provenance_verified"]
+          assert not d["predictive_advantage_verified"]
+          assert d["feature_window_lengths"] == [10, 20]
+          assert d["view_weights"] == {"latest_10": .35, "latest_20": .35, "full_archive": .30}
+          assert all(r["target_id"] != r["cutoff_id"] for r in d["outcomes"])
+          if int(__import__("os").environ["FOLDS"]) == 1:
+              assert all(v["status"] == "not_completed" for v in d["horizons"].values())
+          print("PASS: genuine standalone refit; clearly marked horizon evidence")
+          PY
+      - name: Upload immutable-result research evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-extended-${{ matrix.game }}-${{ github.run_id }}
+          path: |
+            extended-checkpoint.json
+            extended-evidence.json
+          if-no-files-found: warn

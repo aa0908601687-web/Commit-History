@@ -1,0 +1,86 @@
+name: OF-LGBM actual 100-200-500 prequential execution
+on:
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_data/lotto_history_mirror.csv'
+      - 'verification/of_lgbm_all_operator_e2e.py'
+      - 'verification/of_lgbm_extended_walkforward.py'
+      - 'verification/test_of_lgbm_extended_walkforward.py'
+      - 'verification/audit_of_lgbm_retired_100_suites.py'
+      - '.github/workflows/of-lgbm-long-horizon-execution.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-cpu-prequential:
+    name: OF-LGBM genuine history / ${{ matrix.game }} / 100-200-500
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        game: [power, lotto, '539']
+    env:
+      GAME: ${{ matrix.game }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install isolated OF-LGBM CPU dependencies
+        run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
+      - name: Run repository-wide legacy feature configuration audit
+        run: python verification/audit_of_lgbm_retired_100_suites.py
+      - name: Verify long-horizon audit contracts
+        run: python -m unittest verification/test_of_lgbm_extended_walkforward.py -v
+      - name: Perform real multi-fold OpenFE and LightGBM refits with checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$GAME" in
+            power) HIST=verification/of_lgbm_data/power_history_archive.csv ;;
+            lotto) HIST=verification/of_lgbm_data/lotto_history_mirror.csv ;;
+            539) HIST=verification/of_lgbm_data/539_history_mirror.csv ;;
+            *) exit 2 ;;
+          esac
+          python verification/of_lgbm_extended_walkforward.py \
+            --game "$GAME" --csv "$HIST" --horizons 100 200 500 \
+            --max-folds 500 --checkpoint long-horizon-checkpoint.json \
+            --output long-horizon-evidence.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          d=json.loads(Path("long-horizon-evidence.json").read_text())
+          game=os.environ["GAME"]
+          assert d["game"]==game
+          assert d["actual_openfe_lightgbm_refit_each_fold"]
+          assert d["feature_window_lengths"]==[10,20]
+          assert d["view_weights"]=={"latest_10":.35,"latest_20":.35,"full_archive":.30}
+          assert d["executed_folds"]==len(d["outcomes"])
+          assert not d["csv_official_provenance_verified"]
+          assert not d["predictive_advantage_verified"]
+          assert all(d["horizons"][h]["status"]=="completed" for h in ["100","200"])
+          maximum_possible = d["maximum_possible_folds_with_current_csv"]
+          expected = max((h for h in [100, 200, 500] if h <= maximum_possible), default=0)
+          assert d["executed_folds"] == expected, (game, maximum_possible, d["executed_folds"], expected)
+          if maximum_possible >= 500:
+              assert d["horizons"]["500"]["status"] == "completed"
+              assert d["horizons"]["500"]["folds"] == 500
+          else:
+              assert d["horizons"]["500"]["status"] == "not_completed"
+              assert d["horizons"]["500"]["required_folds"] == 500
+              assert d["horizons"]["500"]["executed_folds"] == expected
+          for h, v in d["horizons"].items():
+              if v["status"]=="completed":
+                  assert sum(v["hit_distribution"].values())==v["folds"]
+          print("PASS: real 100/200/500 fold evidence; missing history explicitly marked")
+          PY
+      - name: Upload completed evidence and partial checkpoint even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-long-horizon-${{ matrix.game }}-${{ github.run_id }}
+          path: |
+            long-horizon-checkpoint.json
+            long-horizon-evidence.json
+          if-no-files-found: warn
