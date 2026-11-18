@@ -23,10 +23,14 @@ def read_rows(path, dated):
             raise ValueError("missing mandatory columns")
         rows = {}
         previous_date = None
+        previous_id = None
         for line, row in enumerate(reader, 2):
             ident = row["draw_id"].strip()
             if not ident.isdigit() or len(ident) != 9 or ident in rows:
                 raise ValueError(f"duplicate or malformed draw id at line {line}")
+            if previous_id is not None and int(ident) <= previous_id:
+                raise ValueError(f"nonincreasing draw ID at line {line}")
+            previous_id = int(ident)
             try:
                 nums = tuple(sorted(int(n) for n in row["first"].replace(",", " ").split()))
                 second = int(row["second"])
@@ -63,6 +67,13 @@ def reconcile(archive, source, output, report):
     for ident, rec in old.items():
         if rec[:2] != dated[ident][:2]:
             raise ValueError(f"drawn numbers differ at {ident}")
+    # Date order must also agree with the canonical archive draw order.
+    previous_date = None
+    for ident in old:
+        current_date = dated[ident][2]
+        if previous_date is not None and current_date <= previous_date:
+            raise ValueError(f"source date order disagrees with archive at {ident}")
+        previous_date = current_date
     # Preserve the original row order and numbers verbatim (normalized spaces).
     result_lines = []
     for ident, (first, second, _) in old.items():
@@ -80,6 +91,7 @@ def reconcile(archive, source, output, report):
         "output_sha256": hashlib.sha256(payload).hexdigest(),
         "first_draw_id": next(iter(old)), "last_draw_id": next(reversed(old)),
         "numbers_preserved": True, "draw_dates_complete": True,
+        "date_and_id_order_cross_checked": True,
         "independent_official_provenance_verified": False,
         "note": "Structural reconciliation only. Official authentication requires a documented independently reviewed original official export."
     }
