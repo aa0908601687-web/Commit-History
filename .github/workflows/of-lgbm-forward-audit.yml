@@ -37,7 +37,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
       - name: Run chronological holdout and CSV gate tests
         run: |
-          python -m unittest verification/test_of_lgbm_forward_audit.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_ticket_selection.py verification/test_of_lgbm_manifest_integrity.py verification/test_of_lgbm_prediction_error_audit.py -v
+          python -m unittest verification/test_of_lgbm_forward_audit.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_ticket_selection.py verification/test_of_lgbm_manifest_integrity.py verification/test_of_lgbm_prediction_error_audit.py verification/test_of_lgbm_probability_calibration.py -v
       - name: Run five causally ordered true ML training/holdout iterations
         shell: bash
         run: |
@@ -70,6 +70,9 @@ jobs:
           assert w["view_weight_policy"] == "causal_frequency_brier_calibration_not_ML"
           assert not w["official_data_verified"] and not w["predictive_advantage_verified"]
           assert w["prediction_error_audit"]["statistically_verified_predictive_advantage"] is False
+          assert w["probability_calibration_audit"]["number_of_draws"] == 5
+          assert w["probability_calibration_audit"]["status"] == "insufficient_prior_predictions"
+          assert w["probability_calibration_audit"]["predictive_advantage_verified"] is False
           assert len(w["prediction_error_audit"]["fair_hit_distribution"]) == (7 if os.environ["GAME"]!="539" else 6)
           assert "power_second_zone" in w["prediction_error_audit"] if os.environ["GAME"]=="power" else "power_second_zone" not in w["prediction_error_audit"]
           print("PASS: genuine five-draw walk-forward ML refits; forecasting advantage NOT verified")

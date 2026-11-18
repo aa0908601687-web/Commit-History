@@ -30,6 +30,11 @@ Run isolated unit tests:
 
 PR GitHub workflows require real CSVs for Power/Lotto/539, explicitly reject synthetic fixtures, and each perform 23 OpenFE-operator + LightGBM training with separate LightGBM refits for five consecutive historical held-out draws.
 
+## Causal probability-error calibration audit (research)
+- In the five-draw historical forward holdout, retain LightGBM fused per-number scores and compare Brier loss against the exact fair per-number probability (6/38, 6/49 or 5/39). Calculate a prequential shrinkage-to-fair candidate from ONLY earlier held-out predictions; the minimum prior is 30 draws.
+- At five folds the research audit deliberately reports `insufficient_prior_predictions`; it does **not** fit a calibrator or modify tickets based on their actual outcomes. The calibrated diagnostic is equal to the fair baseline during this short holdout; this is not a demonstration of superior accuracy.
+- This is probability calibration diagnostics, not proof of prediction or a production calibration model; longer chronological, truly independent testing and official source verification remain required. No model-selection weights or ticket-selection logic changed.
+
 ## Verification limits
 Shared CSV gates now check ranges, uniqueness, consecutive draw IDs and ROC-year rollover before both full E2E and forward refits. For datasets with a draw_date column, every row must have a valid, strictly increasing ISO date whose Gregorian year matches the ROC draw ID; missing/partial date values are rejected. Power archival CSV still has **no date column** and is explicitly reported as incomplete (date_coverage=0, date_validation_status=missing_date_column). It must not be described as date-verified. SHA-256 verifies bytes, NOT authentic official provenance.
 - A successful CI run verifies reproducible execution and limited historical holdout (five per game), NOT full 100/200/500-fold evaluation.
