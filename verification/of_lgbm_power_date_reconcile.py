@@ -49,12 +49,12 @@ def read_rows(path, dated):
 def reconcile(archive, source, output, report):
     """Write atomically only after full validation; never overwrite archive."""
     archive, source, output, report = map(Path, (archive, source, output, report))
+    if output.resolve() in (archive.resolve(), source.resolve()):
+        raise ValueError("output must not overwrite source or archive")
     if output.resolve() == report.resolve() or report.resolve() in (archive.resolve(), source.resolve()):
         raise ValueError("report path must be separate from all inputs and output")
     if output.exists() or report.exists():
         raise ValueError("output or report already exists; refusing overwrite")
-    if output.resolve() in (archive.resolve(), source.resolve()):
-        raise ValueError("output must not overwrite source or archive")
     old, dated = read_rows(archive, False), read_rows(source, True)
     if set(old) != set(dated):
         missing = sorted(set(old)-set(dated))
