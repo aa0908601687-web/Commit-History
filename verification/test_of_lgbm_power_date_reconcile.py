@@ -67,7 +67,7 @@ class PowerDatesTests(unittest.TestCase):
     def test_rejects_reversed_archive_order(self):
         rows=self.old.read_text().splitlines()
         rows[2],rows[3]=rows[3],rows[2]
-        self.old.write_text("\\n".join(rows)+"\\n")
+        self.old.write_text(chr(10).join(rows)+chr(10))
         with self.assertRaisesRegex(ValueError,"nonincreasing draw ID"):
             reconcile(self.old,self.source,self.output,self.report)
         self.assertFalse(self.output.exists())
