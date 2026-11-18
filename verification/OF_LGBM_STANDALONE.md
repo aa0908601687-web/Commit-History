@@ -30,11 +30,6 @@ Run isolated unit tests:
 
 PR GitHub workflows require real CSVs for Power/Lotto/539, explicitly reject synthetic fixtures, and each perform 23 OpenFE-operator + LightGBM training with separate LightGBM refits for five consecutive historical held-out draws.
 
-## Causal probability-error calibration audit (research)
-- In the five-draw historical forward holdout, retain LightGBM fused per-number scores and compare Brier loss against the exact fair per-number probability (6/38, 6/49 or 5/39). Calculate a prequential shrinkage-to-fair candidate from ONLY earlier held-out predictions; the minimum prior is 30 draws.
-- At five folds the research audit deliberately reports `insufficient_prior_predictions`; it does **not** fit a calibrator or modify tickets based on their actual outcomes. The calibrated diagnostic is equal to the fair baseline during this short holdout; this is not a demonstration of superior accuracy.
-- This is probability calibration diagnostics, not proof of prediction or a production calibration model; longer chronological, truly independent testing and official source verification remain required. No model-selection weights or ticket-selection logic changed.
-
 ## Verification limits
 Shared CSV gates now check ranges, uniqueness, consecutive draw IDs and ROC-year rollover before both full E2E and forward refits. For datasets with a draw_date column, every row must have a valid, strictly increasing ISO date whose Gregorian year matches the ROC draw ID; missing/partial date values are rejected. Power archival CSV still has **no date column** and is explicitly reported as incomplete (date_coverage=0, date_validation_status=missing_date_column). It must not be described as date-verified. SHA-256 verifies bytes, NOT authentic official provenance.
 - A successful CI run verifies reproducible execution and limited historical holdout (five per game), NOT full 100/200/500-fold evaluation.
@@ -58,12 +53,6 @@ PR #89 is a separate update branch. Do not merge based only on CI passing: indep
 - Lotto and 539 have structurally consistent ISO dates, but dates and numbers have not been authenticated against all official rows.
 - The official Taiwan Lottery yearly download entry point is https://www.taiwanlottery.com/lotto/history/result_download/ ; official files have **not** been imported into this repository as part of this change. The currently exposed yearly files may be updated monthly and may not cover the most recent draws.
 - If a CSV must be updated, independently inspect the underlying source, update its manifest digest deliberately, run the full validation gate and E2E, and preserve unverified provenance until a documented actual official comparison is completed.
-
-## Prediction-error reporting hardening (2026-11-19)
-- The five-fold true ML holdout now reports the *exact* 49/38/39-select-k hypergeometric distribution of matched first-zone numbers, fair expected mean matches, the observed mean, expected 3+ events, an exact one-sided binomial fair-null tail, and a Wilson 95% interval for the observed 3+ rate.
-- Power separately reports second-zone matches, exact 1/8 fair baseline, expected count, Wilson interval and binomial tail. **The second-zone pick remains a frequency baseline and is not a trained LightGBM output.**
-- The older one-seed random ticket remains for reproducible illustration but is explicitly labeled insufficient as evidence of prediction edge. A five-draw comparison is very small; no statistical power or search-corrected superiority is inferred. The report always labels `statistically_verified_predictive_advantage=false`.
-- This is a **metric/evaluation fix**, not a claim to have repaired the intrinsic uncertainty of fair lottery draws. Model fusion weights, pair heuristic and ticket selection stay unchanged to avoid post-hoc tuning to five observed outcomes.
 
 ## 2026-11-19 adaptive three-view research branch
 - Replaces the prior fixed three-view score-fusion weights with causally calibrated weights computed from preceding draws only; first 20 draws are warmup.

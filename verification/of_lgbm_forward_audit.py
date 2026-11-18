@@ -22,8 +22,6 @@ from of_lgbm_all_operator_e2e import (
 )
 from of_lgbm_real_history_gate import audit_csv
 from of_lgbm_ticket_selection import select_ticket
-from of_lgbm_prediction_error_audit import summarize_outcomes
-from of_lgbm_probability_calibration import audit_predictions
 
 
 def audit_history(path, game):
@@ -78,7 +76,7 @@ def audit_history(path, game):
     return ids, draws, seconds, summary
 
 
-def predict_one(prior_draws, prior_seconds, game, with_scores=False):
+def predict_one(prior_draws, prior_seconds, game):
     maximum, count, second_max = CONFIGS[game]
     if len(prior_draws) < 25:
         raise ValueError("at least 25 earlier draws required")
@@ -99,8 +97,6 @@ def predict_one(prior_draws, prior_seconds, game, with_scores=False):
         second = max(range(1, second_max + 1),
                      key=lambda n: (0.6 * sum(x == n for x in prior_seconds[-10:]) +
                                     0.4 * sum(x == n for x in prior_seconds[-20:]), -n))
-    if with_scores:
-        return tuple(sorted(ticket)), second, [float(p) for p in scores]
     return tuple(sorted(ticket)), second
 
 
@@ -115,13 +111,9 @@ def walk_forward(ids, draws, seconds, game, folds):
     if folds < 1 or len(draws) - folds < 25:
         raise ValueError("invalid holdout length")
     outcomes = []
-    probability_records = []
     for target in range(len(draws)-folds, len(draws)):
         before = draws[:target]
-        ticket, pick2, probs = predict_one(
-            before, seconds[:target] if second_max else [], game, with_scores=True
-        )
-        probability_records.append({"scores": probs, "actual": list(draws[target])})
+        ticket, pick2 = predict_one(before, seconds[:target] if second_max else [], game)
         actual = draws[target]
         matched = len(set(ticket) & set(actual))
         random_ticket = random.Random(20261115 + target).sample(range(1, maximum+1), count)
@@ -141,8 +133,6 @@ def walk_forward(ids, draws, seconds, game, folds):
         "fair_null_rate_3plus": theory_3plus(maximum, count),
         "random_baseline_3plus": sum(row["random_matches"] >= 3 for row in outcomes),
         "random_baseline_note": "one seeded sample for illustration only; not evidence of superiority",
-        "prediction_error_audit": summarize_outcomes(outcomes, maximum, count, second_max),
-        "probability_calibration_audit": audit_predictions(probability_records, maximum, count),
         "feature_window_lengths": [10, 20],
         "view_weights": causal_view_weights(draws[:-1], maximum),
         "view_weight_policy": "causal_frequency_brier_calibration_not_ML",
