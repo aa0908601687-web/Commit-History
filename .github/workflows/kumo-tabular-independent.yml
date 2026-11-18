@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Syntax check
-        run: python -m compileall -q verify_install.py smoke_predict.py tests
+        run: python -m compileall -q verify_install.py smoke_predict.py full_pipeline_e2e.py full_scope_audit.py tests
       - name: Unit tests
         run: python -m unittest discover -s tests -v
   install:
@@ -75,6 +75,27 @@ jobs:
           assert report.get('device') in ('cpu', 'cuda')
           print('Inference report validated:', report)
           PY
+      - name: Execute chronological Kumo research pipeline E2E
+        run: python full_pipeline_e2e.py
+      - name: Validate chronological research E2E report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x = json.loads(Path("research_pipeline_report.json").read_text())
+          assert x["passed"] is True
+          assert x["mode"] == "real_kumo_inference_synthetic_chronological_demo"
+          assert len(x["walk_forward_folds"]) == 3
+          assert all(f["last_train_timestamp"] < f["first_test_timestamp"] for f in x["walk_forward_folds"])
+          assert all(f["test_rows"] == 10 for f in x["walk_forward_folds"])
+          print("Research pipeline chrono E2E validated")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kumo-research-pipeline-report
+          path: Kumo-Tabular-Independent-MAX/research_pipeline_report.json
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
