@@ -65,7 +65,9 @@ jobs:
           assert all(r["target_id"]!=r["cutoff_id"] for r in w["outcomes"])
           assert w["feature_window_lengths"]==[10,20]
           assert w["full_archive_anchor_policy"]=="all_eligible_completed_draws"
-          assert w["view_weights"]=={"latest_10":.35,"latest_20":.35,"full_archive":.30}
+          assert set(w["view_weights"]) == {"latest_10","latest_20","full_archive"}
+          assert abs(sum(w["view_weights"].values())-1.0) < 1e-9
+          assert w["view_weight_policy"] == "causal_frequency_brier_calibration_not_ML"
           assert not w["official_data_verified"] and not w["predictive_advantage_verified"]
           assert w["prediction_error_audit"]["statistically_verified_predictive_advantage"] is False
           assert len(w["prediction_error_audit"]["fair_hit_distribution"]) == (7 if os.environ["GAME"]!="539" else 6)
