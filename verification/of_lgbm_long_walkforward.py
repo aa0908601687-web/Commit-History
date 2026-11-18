@@ -55,7 +55,6 @@ def make_summary(ids, draws, seconds, game, folds, runner=walk_forward):
       "single_seed_random_3plus_rate": baseline_hits / folds,
       "fair_exact_3plus_rate": theory_3plus(maximum, count),
       "fair_expected_3plus_count": folds * theory_3plus(maximum, count),
-      "model_probability_calibration": result["probability_calibration_audit"],
       "prediction_error_audit": result["prediction_error_audit"],
       "full_walk_forward": result,
       "official_sources_row_verified": False,
