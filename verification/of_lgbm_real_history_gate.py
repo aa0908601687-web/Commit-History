@@ -59,6 +59,8 @@ def audit_csv(filename,game,min_rows=17):
             previous_year,previous_seq=year,seq
     if len(dates)<min_rows: raise ValueError("not enough historical draws")
     return {"game":game,"rows":len(dates),
+            "date_coverage":sum(d is not None for _,d in dates),
+            "date_validation_status":"complete_format_only_not_official" if has_date else "missing_date_column",
             "first_id":dates[0][0],"last_id":dates[-1][0],
             "first_date":dates[0][1],"last_date":dates[-1][1],
             "chronological_and_legal_range_verified":True,
