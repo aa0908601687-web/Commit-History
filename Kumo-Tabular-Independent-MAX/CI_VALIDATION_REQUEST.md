@@ -13,3 +13,7 @@ Re-run the isolated Kumo `unit` → `install` → `e2e` pipeline against the cur
 ## Independent install and E2E revalidation — request 2026-11-18 B
 
 Run dedicated Kumo tests: unit → install (structured-data-models and dependency verification) → e2e (real KumoTabular classification inference and JSON assertions) → scope-audit (15-stage capabilities and gaps). Verify results using this commit's GitHub Actions jobs and uploaded artifacts. This request does not change OF-LGBM or claim 15-stage completion.
+
+## Fresh validation request — 2026-11-18 C
+
+Re-run the independent `unit`, `install`, `e2e`, and `scope-audit` jobs at this commit. The E2E job must execute real KumoTabular inference and the chronological synthetic-data research pipeline, including walk-forward and baseline comparison. Record the final run ID, conclusions and report artifacts; no claim of real-world prediction accuracy. OF-LGBM is excluded.
