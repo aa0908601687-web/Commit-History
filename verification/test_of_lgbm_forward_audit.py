@@ -58,9 +58,10 @@ class ForwardAuditTests(unittest.TestCase):
         draws = [tuple(range(1, 7))] * 30
         seconds = [(i % 8) + 1 for i in range(30)]
         observed = []
-        def stub(prior, prior_seconds, game):
+        def stub(prior, prior_seconds, game, with_scores=False):
             observed.append((len(prior), len(prior_seconds), game))
-            return (tuple(range(1, 7)), 1)
+            self.assertTrue(with_scores)
+            return (tuple(range(1, 7)), 1, [6/38] * 38
         with patch.object(audit, "predict_one", side_effect=stub):
             result = audit.walk_forward(ids, draws, seconds, "power", folds=2)
         self.assertEqual(observed, [(28, 28, "power"), (29, 29, "power")])
@@ -70,6 +71,8 @@ class ForwardAuditTests(unittest.TestCase):
                          ["115000028", "115000029"])
         self.assertEqual(result["distribution"]["6"], 2)
         self.assertFalse(result["predictive_advantage_verified"])
+        self.assertEqual(result["probability_calibration_audit"]["status"],
+                         "insufficient_prior_predictions")
 
     def test_null_probability_exact(self):
         p = audit.theory_3plus(38, 6)
