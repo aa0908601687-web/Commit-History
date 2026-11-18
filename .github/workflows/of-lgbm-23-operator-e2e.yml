@@ -72,9 +72,9 @@ jobs:
           assert d["full_archive_training_anchors"]==a["rows"]-20
           assert d["openfe_23_operator_candidate_enablement"] and d["openfe_23_operator_execution_verified"]
           assert d["all_23_operator_families_passed_to_lightgbm"] and d["lightgbm_trained_and_scored"]
-          assert set(d["three_view_weights"]) == {"latest_10","latest_20","full_archive"}
-          assert abs(sum(d["three_view_weights"].values())-1.0) < 1e-9
-          assert d["view_weight_policy"] == "causal_frequency_brier_calibration_not_ML"
+          assert d["three_view_weights"] is None
+          assert "learned_three_view" in d["per_view_audits"]
+          assert d["view_weight_policy"] == "single_lightgbm_learned_pooled_features_no_brier_selection"
           assert all(v["operator_witnesses_executed"]==23 and v["operator_families_in_model"]==23 for v in d["per_view_audits"].values())
           assert len(d["first_zone"])==(5 if game=="539" else 6)
           assert len(set(d["first_zone"]))==len(d["first_zone"])

@@ -69,9 +69,9 @@ jobs:
           assert all(r["target_id"]!=r["cutoff_id"] for r in w["outcomes"])
           assert w["feature_window_lengths"]==[10,20]
           assert w["full_archive_anchor_policy"]=="all_eligible_completed_draws"
-          assert set(w["view_weights"]) == {"latest_10","latest_20","full_archive"}
-          assert abs(sum(w["view_weights"].values())-1.0) < 1e-9
-          assert w["view_weight_policy"] == "causal_frequency_brier_calibration_not_ML"
+          assert w["view_weights"] is None
+          assert w["view_weight_policy"] == "single_lightgbm_learned_pooled_features_no_brier_selection"
+          assert w["view_weight_policy"] == "single_lightgbm_learned_pooled_features_no_brier_selection"
           assert not w["official_data_verified"] and not w["predictive_advantage_verified"]
           print("PASS: genuine five-draw walk-forward ML refits; forecasting advantage NOT verified")
           PY

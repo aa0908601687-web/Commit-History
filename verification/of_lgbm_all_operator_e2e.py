@@ -185,6 +185,38 @@ def train_and_current(draws, maximum, count, view):
     return train, pd.Series(y, name="drawn"), test, ends
 
 
+
+def pooled_row_features(history, n, maximum):
+    """One feature row per number, with all three past-only perspectives."""
+    base = row_features(history, n, maximum, "full_archive")
+    for view in ("latest_10", "latest_20"):
+        view_row = row_features(history, n, maximum, view)
+        for key, value in view_row.items():
+            if key not in CATEGORY_COLUMNS:
+                base[f"{view}__{key}"] = value
+    return base
+
+
+def train_and_current_pooled(draws, maximum):
+    """Train one model on causally assembled 10/20/all-history features."""
+    ends = anchors(len(draws), "full_archive")
+    x, y = [], []
+    for end in ends:
+        prior = draws[:end]
+        for n in range(1, maximum + 1):
+            x.append(pooled_row_features(prior, n, maximum))
+            y.append(int(n in draws[end]))
+    current = [pooled_row_features(draws, n, maximum) for n in range(1, maximum + 1)]
+    train, test = feature_frame(x), feature_frame(current)
+    if len(ends) < 5 or set(y) != {0, 1}:
+        raise RuntimeError("at least five labeled historical anchors are required")
+    for col in CATEGORY_COLUMNS:
+        categories = sorted(set(train[col].cat.categories) | set(test[col].cat.categories))
+        dtype = pd.CategoricalDtype(categories=categories)
+        train[col], test[col] = train[col].astype(dtype), test[col].astype(dtype)
+    return train, pd.Series(y, name="drawn"), test, ends
+
+
 def audit_and_score(train, labels, current, maximum, view):
     supported = supported_operators()
     numeric = [col for col in train if col not in CATEGORY_COLUMNS]
@@ -278,16 +310,11 @@ def run(game, csv_path=None):
         second, cutoff = [], None
     if len(draws) < 25:
         raise RuntimeError("at least 16 completed draws needed")
-    results, audits = {}, {}
-    view_weights = causal_view_weights(draws, maximum)
-    for view, weight in view_weights.items():
-        train, labels, current, ends = train_and_current(draws, maximum, count, view)
-        score, audit = audit_and_score(train, labels, current, maximum, view)
-        results[view] = score
-        audits[view] = {**audit, "anchor_count": len(ends), "weight": weight}
-    fused = sum(view_weights[k] * results[k] for k in view_weights)
-    if not np.isfinite(fused).all() or not math.isclose(sum(view_weights.values()), 1.0):
-        raise RuntimeError("invalid three-view fusion")
+    train, labels, current, ends = train_and_current_pooled(draws, maximum)
+    fused, audit = audit_and_score(train, labels, current, maximum, "learned_three_view")
+    audits = {"learned_three_view": {**audit, "anchor_count": len(ends)}}
+    if not np.isfinite(fused).all():
+        raise RuntimeError("invalid pooled three-view LightGBM scores")
     ticket, selection_audit = select_ticket(fused, draws, count, maximum)
     second_pick = None
     if second_max:
@@ -299,7 +326,7 @@ def run(game, csv_path=None):
     output = {
         "system": "independent OF-LGBM 23-operator research E2E",
         "game": game, "first_zone": sorted(ticket), "second_zone": second_pick,
-        "three_view_weights": view_weights, "view_weight_policy": "causal_frequency_brier_calibration_not_ML", "per_view_audits": audits,
+        "three_view_weights": None, "view_weight_policy": "single_lightgbm_learned_pooled_features_no_brier_selection", "per_view_audits": audits,
         "openfe_23_operator_candidate_enablement": True,
         "openfe_23_operator_execution_verified": True,
         "all_23_operator_families_passed_to_lightgbm": True,
