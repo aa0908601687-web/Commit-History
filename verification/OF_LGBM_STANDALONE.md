@@ -89,3 +89,14 @@ PR #89 is a separate update branch. Do not merge based only on CI passing: indep
 Run `python verification/of_lgbm_history_completeness.py --output history-completeness.json` to produce an independent, fail-closed, three-game local archive snapshot inventory. Both standalone and forward-test CI execute it and attach JSON evidence. It checks original CSV hashes, declared row count/cutoff, legal sequential in-file draw IDs, date availability and manifest source flags, but **does not certify that the archive includes the entire official history or the latest official draw**.
 Pinned snapshot: Power 1,964 draws, 0 dates / 1,964 missing, last 115000092; Lotto 412 draws, dates format-consistent but not officially authenticated, last 115000106; 539 1,119 draws, dates format-consistent but not officially authenticated, last 115000279. The exact snapshot may become stale; this workflow intentionally fails closed rather than inventing new dates or modifying existing draw numbers.
 Official annual-download reference: https://www.taiwanlottery.com/lotto/history/result_download/ . Full official file import, row-level verification, and comparison to the latest published result remain outstanding before a true full-history certification can be claimed.
+
+### Optional 100/200/500-draw historical walk-forward (research, not scheduled CI)
+The standalone `verification/of_lgbm_long_walkforward.py` adds **only** longer historical prequential evaluation for each of Power/Lotto/539. It is opt-in because real OpenFE + LightGBM refitting for 100–500 draws per game may be expensive on CPU; mandatory CI retains five-fold validation, plus fast deterministic leakage tests.
+
+Examples (run separately and allow significant compute budget):
+```bash
+python verification/of_lgbm_long_walkforward.py --game power --csv verification/of_lgbm_data/power_history_archive.csv --folds 100 --output power-100.json
+python verification/of_lgbm_long_walkforward.py --game lotto --csv verification/of_lgbm_data/lotto_history_mirror.csv --folds 200 --output lotto-200.json
+python verification/of_lgbm_long_walkforward.py --game 539 --csv verification/of_lgbm_data/539_history_mirror.csv --folds 500 --output 539-500.json
+```
+Each forecast uses data strictly before its target draw and the existing model unchanged; exports 0–6 / 0–5 matches, 3+ rate, fair exact 3+ probability, a single seeded random-reference trial (illustrative only), descriptive Wilson interval and original per-fold details. **No new probability calibration or stronger calibration is introduced.** Existing PR #93 functions remain unchanged. The output is not evidence of predictive superiority unless independent prospective validation and selection-bias/multiple-test safeguards are separately established. Source CSVs are third-party, Power dates remain missing, and official record-by-record validation remains outstanding.
