@@ -39,7 +39,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
       - name: Check isolation and historical CSV data gates
         run: |
-          python -m unittest verification/test_of_lgbm_isolation.py verification/test_of_lgbm_all_operator_e2e.py verification/test_of_lgbm_real_history_gate.py -v
+          python -m unittest verification/test_of_lgbm_isolation.py verification/test_of_lgbm_all_operator_e2e.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_ticket_selection.py -v
       - name: Execute real-history 23 OpenFE operator and LightGBM E2E
         shell: bash
         run: |
