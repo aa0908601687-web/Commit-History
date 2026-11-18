@@ -45,3 +45,11 @@ PR #89 is a separate update branch. Do not merge based only on CI passing: indep
 - CI passing does not validate empirical winning probability. Neither the heuristic pair weight nor 10 pseudo-observations were learned from independent test data.
 
 - A new manifest integrity regression test compares each CSV row count and cutoff with SOURCE_MANIFEST, explicitly flags missing Power dates, and prevents labeling these third-party snapshots as officially authenticated.
+
+## 2026-11-19 data-integrity hardening
+- SOURCE_MANIFEST pins the **actual SHA-256** of each of the three current repository CSV snapshots, taken from the successful main-branch E2E execution (run 44367099716). CI recomputes the SHA-256 from CSV bytes and fails on a mismatch, missing rows, changed cutoff, invalid chronological structure or unexpected dataset path.
+- The check distinguishes structural/date-format integrity from source authenticity. **Neither matching SHA-256 nor passing CI proves the draws were copied accurately from Taiwan Lottery.** Official full row-by-row comparison has not been completed.
+- Power has 1,964 historical records with **no draw_date field at all**. The audit explicitly retains date_coverage=0 and missing_all_dates; do NOT infer dates from sequential draw IDs or fill them from assumed weekday schedules.
+- Lotto and 539 have structurally consistent ISO dates, but dates and numbers have not been authenticated against all official rows.
+- The official Taiwan Lottery yearly download entry point is https://www.taiwanlottery.com/lotto/history/result_download/ ; official files have **not** been imported into this repository as part of this change. The currently exposed yearly files may be updated monthly and may not cover the most recent draws.
+- If a CSV must be updated, independently inspect the underlying source, update its manifest digest deliberately, run the full validation gate and E2E, and preserve unverified provenance until a documented actual official comparison is completed.
