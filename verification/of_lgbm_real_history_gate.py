@@ -119,7 +119,12 @@ def main():
     parser.add_argument("--output")
     parser.add_argument("--official-csv", help="Independently sourced normalized official CSV for strict comparison")
     args=parser.parse_args()
-    message=json.dumps(audit_csv(args.csv,args.game),indent=2,ensure_ascii=False,sort_keys=True)+"\n"
+    result = audit_csv(args.csv,args.game)
+    if args.official_csv:
+        result["official_comparison"] = compare_official_normalized(args.csv,args.official_csv,args.game)
+        if not result["official_comparison"]["official_rows_verified"]:
+            raise ValueError("official CSV comparison failed; source records differ or dates are missing")
+    message=json.dumps(result,indent=2,ensure_ascii=False,sort_keys=True)+"\n"
     if args.output: Path(args.output).write_text(message,encoding="utf-8")
     print(message,end="")
 
