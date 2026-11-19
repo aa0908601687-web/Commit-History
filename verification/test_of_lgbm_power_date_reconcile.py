@@ -50,6 +50,15 @@ class PowerDatesTests(unittest.TestCase):
             reconcile(self.old,self.source,self.output,self.report)
         self.assertFalse(self.output.exists())
 
+    def test_report_creation_failure_removes_partial_output(self):
+        # A bad report destination must not leave a misleading dated archive.
+        self.report = Path(self.tmp.name) / "missing_directory" / "audit.json"
+        with self.assertRaises(FileNotFoundError):
+            reconcile(self.old, self.source, self.output, self.report)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.report.exists())
+        self.assertTrue(self.old.exists())
+
     def test_never_overwrites_original(self):
         with self.assertRaisesRegex(ValueError,"must not overwrite"):
             reconcile(self.old,self.source,self.old,self.report)
