@@ -83,6 +83,62 @@ jobs:
           if game=="power": assert 1<=d["second_zone"]<=8
           print("PASS: real CSV, all 23 OpenFE families, three LightGBM views, exact Python selection")
           PY
+      - name: Run original OF-LGBM on separately cross-checked latest available draws
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import csv, os
+          game=os.environ["GAME"]
+          sources={
+            "power":("verification/of_lgbm_data/power_history_archive.csv", ["115000093","01 12 13 18 30 33","03"],"115000093"),
+            "lotto":("verification/of_lgbm_data/lotto_history_mirror.csv",None,"115000106"),
+            "539":("verification/of_lgbm_data/539_history_mirror.csv",["115000280","2026-11-19","02 10 23 24 37"],"115000280"),
+          }
+          source,appended,expected=sources[game]
+          with open(source,newline="",encoding="utf-8-sig") as stream:
+            reader=csv.reader(stream)
+            rows=list(reader)
+          assert rows[-1][0] == ("115000092" if game=="power" else "115000106" if game=="lotto" else "115000279")
+          assert len(rows)=={"power":1965,"lotto":413,"539":1120}[game]
+          if appended: rows.append(appended)
+          assert rows[-1][0] == expected
+          with open("latest-research-input.csv","w",newline="",encoding="utf-8") as stream:
+            csv.writer(stream,lineterminator="\\n").writerows(rows)
+          print("TEMPORARY_INPUT_SOURCE="+source+"; latest="+expected+"; externally crosschecked incremental rows, NOT full official certification")
+          PY
+          python verification/of_lgbm_real_history_gate.py --game "$GAME" --csv latest-research-input.csv --output latest-audit.json > latest-audit.log
+          python verification/of_lgbm_all_operator_e2e.py --game "$GAME" --csv latest-research-input.csv --output latest-model.json > latest-model.log
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          g=os.environ["GAME"]
+          d=json.loads(Path("latest-model.json").read_text())
+          a=json.loads(Path("latest-audit.json").read_text())
+          assert not d["synthetic_data"] and d["lightgbm_trained_and_scored"]
+          assert d["data_cutoff"]==a["last_id"]
+          assert d["data_cutoff"]=={"power":"115000093","lotto":"115000106","539":"115000280"}[g]
+          assert not d["official_data_verified"] and not d["out_of_sample_predictive_advantage_verified"]
+          print("OF_LGBM_LATEST_ACTUAL_JSON="+json.dumps({
+            "game":g,"first_zone":d["first_zone"],"second_zone":d["second_zone"],
+            "cutoff":d["data_cutoff"],"history_draws":d["history_draws"],
+            "input_sha256":d["data_sha256"],"operator_families":d["per_view_audits"]["learned_three_view"]["operator_families_in_model"],
+            "exact_candidates":d["exact_candidates"],"model_trained":d["lightgbm_trained_and_scored"],
+            "official_data_verified":False,"predictive_advantage_verified":False},ensure_ascii=False,sort_keys=True))
+          PY
+      - name: Upload latest-draw research output (not official-certified)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-latest-research-${{ matrix.game }}-${{ github.run_id }}
+          path: |
+            latest-audit.json
+            latest-model.json
+            latest-audit.log
+            latest-model.log
+          if-no-files-found: warn
       - name: Upload genuine standalone E2E evidence
         if: always()
         uses: actions/upload-artifact@v4
