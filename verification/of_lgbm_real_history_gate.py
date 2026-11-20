@@ -109,6 +109,8 @@ def compare_official_normalized(snapshot, official, game):
     return {"official_comparison_performed": True, "matched_draw_ids": compared,
             "snapshot_rows": len(local), "issues": issues,
             "official_rows_verified": len(issues) == 0 and compared == len(local),
+            "independent_official_provenance_verified": False,
+            "official_provenance_note": "Normalized CSV row equality does not authenticate its claimed official origin; independent source review is required.",
             "official_file_sha256": hashlib.sha256(Path(official).read_bytes()).hexdigest()}
 
 
