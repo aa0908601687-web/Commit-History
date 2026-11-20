@@ -89,11 +89,11 @@ class HistoryGateTests(unittest.TestCase):
             snapshot = fixture(folder, "539")
             official = Path(folder) / "official_normalized.csv"
             lines = snapshot.read_text().splitlines()
-            official.write_text("\\n".join(lines[:-1]) + "\\n")
+            official.write_text("\n".join(lines[:-1]) + "\n")
             result = compare_official_normalized(snapshot, official, "539")
             self.assertFalse(result["official_rows_verified"])
             self.assertIn("official_draw_missing", {r["reason"] for r in result["issues"]})
-            official.write_text("\\n".join(lines + [lines[1]]) + "\\n")
+            official.write_text("\n".join(lines + [lines[1]]) + "\n")
             with self.assertRaisesRegex(ValueError, "duplicate official draw_id"):
                 compare_official_normalized(snapshot, official, "539")
 
