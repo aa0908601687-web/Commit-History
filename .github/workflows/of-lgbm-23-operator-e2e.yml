@@ -83,6 +83,27 @@ jobs:
           if game=="power": assert 1<=d["second_zone"]<=8
           print("PASS: real CSV, all 23 OpenFE families, three LightGBM views, exact Python selection")
           PY
+      - name: Report actual three-game model ticket and audited data cutoff
+        if: success()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path("of-lgbm-evidence.json").read_text())
+          a=json.loads(Path("history-audit.json").read_text())
+          assert not d["synthetic_data"] and not d["official_data_verified"]
+          assert d["data_cutoff"]==a["last_id"]
+          print("OF_LGBM_ACTUAL_TICKET_JSON="+json.dumps({
+            "game": d["game"], "first_zone": d["first_zone"],
+            "second_zone": d["second_zone"], "data_cutoff": d["data_cutoff"],
+            "history_draws": d["history_draws"], "data_sha256": d["data_sha256"],
+            "official_data_verified": d["official_data_verified"],
+            "predictive_advantage_verified": d["out_of_sample_predictive_advantage_verified"],
+            "model_trained": d["lightgbm_trained_and_scored"],
+            "operator_families": d["per_view_audits"]["learned_three_view"]["operator_families_in_model"],
+            "exact_candidates": d["exact_candidates"]},ensure_ascii=False,sort_keys=True))
+          PY
       - name: Upload genuine standalone E2E evidence
         if: always()
         uses: actions/upload-artifact@v4
