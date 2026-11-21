@@ -62,8 +62,32 @@ def audit(manifest, snapshot_root=None):
             unordered_ids = 0
             unordered_dates = 0
             date_year_mismatches = 0
+            invalid_number_rows = 0
+            max_number, expected_count, extra_key = {
+                'power': (38, 6, 'second'),
+                'lotto': (49, 6, 'special'),
+                '539': (39, 5, None),
+            }[game]
+            required = {'draw_id', 'first'} | ({extra_key} if extra_key else set())
+            if not required.issubset(reader.fieldnames):
+                blockers.append(f'{game}: missing winning-number CSV columns')
+                continue
             for row in reader:
                 count += 1
+                try:
+                    numbers = [int(n) for n in (row.get('first') or '').replace(',', ' ').split()]
+                    valid = (len(numbers) == expected_count
+                             and len(set(numbers)) == expected_count
+                             and all(1 <= n <= max_number for n in numbers))
+                    if extra_key:
+                        extra = int(row.get(extra_key) or '')
+                        valid = valid and (1 <= extra <= (8 if game == 'power' else 49))
+                        if game == 'lotto':
+                            valid = valid and extra not in numbers
+                    if not valid:
+                        invalid_number_rows += 1
+                except (ValueError, TypeError, AttributeError):
+                    invalid_number_rows += 1
                 draw_id = (row.get('draw_id') or '').strip()
                 if not draw_id or draw_id in ids:
                     duplicate_ids += 1
@@ -100,9 +124,12 @@ def audit(manifest, snapshot_root=None):
                         'malformed_ids': malformed_ids,
                         'unordered_ids': unordered_ids,
                         'unordered_dates': unordered_dates,
-                        'date_year_mismatches': date_year_mismatches}
+                        'date_year_mismatches': date_year_mismatches,
+                        'invalid_number_rows': invalid_number_rows}
         if duplicate_ids:
             blockers.append(f'{game}: missing or duplicate draw IDs ({duplicate_ids})')
+        if invalid_number_rows:
+            blockers.append(f'{game}: invalid winning-number rows ({invalid_number_rows})')
         if malformed_dates:
             blockers.append(f'{game}: invalid ISO dates ({malformed_dates})')
         if malformed_ids:
