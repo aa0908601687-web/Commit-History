@@ -7,6 +7,7 @@ import argparse
 import csv
 import hashlib
 import json
+from datetime import date
 from pathlib import Path
 
 GAMES = ('power', 'lotto', '539')
@@ -51,13 +52,42 @@ def audit(manifest, snapshot_root=None):
                 continue
             count = 0
             dated = 0
+            malformed_dates = 0
+            duplicate_ids = 0
+            ids = set()
+            first_id = last_id = None
             for row in reader:
                 count += 1
-                if row.get('draw_date'):
+                draw_id = (row.get('draw_id') or '').strip()
+                if not draw_id or draw_id in ids:
+                    duplicate_ids += 1
+                ids.add(draw_id)
+                if first_id is None:
+                    first_id = draw_id
+                last_id = draw_id
+                value = (row.get('draw_date') or '').strip()
+                if value:
                     dated += 1
+                    try:
+                        parsed = date.fromisoformat(value)
+                        if parsed.isoformat() != value:
+                            malformed_dates += 1
+                    except ValueError:
+                        malformed_dates += 1
         checks[game] = {'sha256_matches_manifest': hash_ok,
                         'row_count_matches_manifest': count == info.get('rows'),
-                        'rows': count, 'dated_rows': dated}
+                        'rows': count, 'dated_rows': dated,
+                        'invalid_or_duplicate_ids': duplicate_ids,
+                        'malformed_dates': malformed_dates}
+        if duplicate_ids:
+            blockers.append(f'{game}: missing or duplicate draw IDs ({duplicate_ids})')
+        if malformed_dates:
+            blockers.append(f'{game}: invalid ISO dates ({malformed_dates})')
+        if info.get('first') is not None and str(info['first']) != first_id:
+            blockers.append(f'{game}: first draw ID differs from manifest')
+        expected_last = info.get('last', info.get('cutoff'))
+        if expected_last is not None and str(expected_last) != last_id:
+            blockers.append(f'{game}: last draw ID differs from manifest')
         if not hash_ok:
             blockers.append(f'{game}: snapshot SHA-256 mismatch')
         if count != info.get('rows'):
