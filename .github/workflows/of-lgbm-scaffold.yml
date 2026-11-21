@@ -18,3 +18,30 @@ jobs:
         run: python -m compileall -q of_lgbm
       - name: Dependency-free smoke tests
         run: python -m unittest discover -s of_lgbm -p 'test_*.py' -v
+  install-and-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: of_lgbm/requirements.txt
+      - name: Install official PyPI dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r of_lgbm/requirements.txt
+          python -m pip check
+      - name: Verify actual imports and versions
+        run: |
+          python - <<'PY'
+          from importlib.metadata import version
+          from openfe import OpenFE, transform
+          import lightgbm, pandas, numpy, sklearn
+          for name in ("openfe", "lightgbm", "pandas", "numpy", "scikit-learn"):
+              print(f"{name}=={version(name)}")
+          print("OpenFE + LightGBM dependency installation verified")
+          PY
+      - name: Run isolated smoke tests with dependencies installed
+        run: python -m unittest discover -s of_lgbm -p 'test_*.py' -v
