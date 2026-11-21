@@ -31,7 +31,7 @@ class OfficialReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             data = root / 'power.csv'
-            data.write_text('draw_id,draw_date\n115000001,2026-01-01\n', encoding='utf-8')
+            data.write_text('draw_id,draw_date,first,second\n115000001,2026-01-01,1 2 3 4 5 6,1\n', encoding='utf-8')
             digest = hashlib.sha256(data.read_bytes()).hexdigest()
             m = {'datasets': {'power': {'path': 'power.csv', 'rows': 1, 'sha256': digest},
                               'lotto': {}, '539': {}}}
@@ -39,7 +39,7 @@ class OfficialReadinessTests(unittest.TestCase):
             self.assertTrue(report['snapshot_checks']['power']['sha256_matches_manifest'])
             self.assertEqual(report['snapshot_checks']['power']['dated_rows'], 1)
             self.assertFalse(report['production_official_data_ready'])
-            data.write_text('draw_id,draw_date\n115000001,\n', encoding='utf-8')
+            data.write_text('draw_id,draw_date,first,second\n115000001,,1 2 3 4 5 6,1\n', encoding='utf-8')
             report = module.audit(m, snapshot_root=root)
             self.assertFalse(report['snapshot_checks']['power']['sha256_matches_manifest'])
             self.assertEqual(report['snapshot_checks']['power']['dated_rows'], 0)
@@ -50,7 +50,7 @@ class OfficialReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             data = root / 'power.csv'
-            data.write_text('draw_id,draw_date\n115000001,2026-13-01\n115000001,2026-01-02\n', encoding='utf-8')
+            data.write_text('draw_id,draw_date,first,second\n115000001,2026-13-01,1 2 3 4 5 6,1\n115000001,2026-01-02,1 2 3 4 5 6,1\n', encoding='utf-8')
             m = {'datasets': {'power': {'path': 'power.csv', 'rows': 2,
                                         'sha256': hashlib.sha256(data.read_bytes()).hexdigest(),
                                         'first': '115000001', 'cutoff': '115000002'},
@@ -65,7 +65,7 @@ class OfficialReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             data = root / 'power.csv'
-            data.write_text('draw_id,draw_date\n115000002,2026-01-05\n115000001,2025-12-30\n', encoding='utf-8')
+            data.write_text('draw_id,draw_date,first,second\n115000002,2026-01-05,1 2 3 4 5 6,1\n115000001,2025-12-30,1 2 3 4 5 6,1\n', encoding='utf-8')
             m = {'datasets': {'power': {'path': 'power.csv', 'rows': 2,
                                         'sha256': hashlib.sha256(data.read_bytes()).hexdigest()},
                               'lotto': {}, '539': {}}}
@@ -80,13 +80,33 @@ class OfficialReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             data = root / 'power.csv'
-            data.write_text('draw_id,draw_date\nNOTANID,2026-01-01\n', encoding='utf-8')
+            data.write_text('draw_id,draw_date,first,second\nNOTANID,2026-01-01,1 2 3 4 5 6,1\n', encoding='utf-8')
             m = {'datasets': {'power': {'path': 'power.csv', 'rows': 1,
                                         'sha256': hashlib.sha256(data.read_bytes()).hexdigest()},
                               'lotto': {}, '539': {}}}
             report = module.audit(m, snapshot_root=root)
             self.assertEqual(report['snapshot_checks']['power']['malformed_ids'], 1)
             self.assertFalse(report['production_official_data_ready'])
+
+    def test_invalid_winning_numbers_are_blocked(self):
+        examples = [
+            ('power', 'first,second', '1 1 2 3 4 5,1'),
+            ('lotto', 'first,special', '1 2 3 4 5 6,6'),
+            ('539', 'first', '1 2 3 4 40'),
+        ]
+        for game, extra_header, values in examples:
+            with self.subTest(game=game), tempfile.TemporaryDirectory() as d:
+                root = Path(d)
+                data = root / 'draws.csv'
+                data.write_text('draw_id,draw_date,' + extra_header + '\n'
+                                + '115000001,2026-01-01,' + values + '\n', encoding='utf-8')
+                manifest = {'datasets': {game: {
+                    'path': 'draws.csv', 'rows': 1,
+                    'sha256': hashlib.sha256(data.read_bytes()).hexdigest()
+                }}}
+                result = module.audit(manifest, snapshot_root=root)
+                self.assertEqual(result['snapshot_checks'][game]['invalid_number_rows'], 1)
+                self.assertFalse(result['production_official_data_ready'])
 
     def test_directory_escape_is_blocked(self):
         with tempfile.TemporaryDirectory() as d:
