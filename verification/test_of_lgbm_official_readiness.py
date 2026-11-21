@@ -61,6 +61,33 @@ class OfficialReadinessTests(unittest.TestCase):
             self.assertEqual(report['snapshot_checks']['power']['malformed_dates'], 1)
             self.assertTrue(any('last draw ID differs' in b for b in report['blockers']))
 
+    def test_reverse_order_and_roc_year_mismatch(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            data = root / 'power.csv'
+            data.write_text('draw_id,draw_date\\n115000002,2026-01-05\\n115000001,2025-12-30\\n', encoding='utf-8')
+            m = {'datasets': {'power': {'path': 'power.csv', 'rows': 2,
+                                        'sha256': hashlib.sha256(data.read_bytes()).hexdigest()},
+                              'lotto': {}, '539': {}}}
+            report = module.audit(m, snapshot_root=root)
+            check = report['snapshot_checks']['power']
+            self.assertEqual(check['unordered_ids'], 1)
+            self.assertEqual(check['unordered_dates'], 1)
+            self.assertEqual(check['date_year_mismatches'], 1)
+            self.assertFalse(report['production_official_data_ready'])
+
+    def test_malformed_draw_id(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            data = root / 'power.csv'
+            data.write_text('draw_id,draw_date\\nNOTANID,2026-01-01\\n', encoding='utf-8')
+            m = {'datasets': {'power': {'path': 'power.csv', 'rows': 1,
+                                        'sha256': hashlib.sha256(data.read_bytes()).hexdigest()},
+                              'lotto': {}, '539': {}}}
+            report = module.audit(m, snapshot_root=root)
+            self.assertEqual(report['snapshot_checks']['power']['malformed_ids'], 1)
+            self.assertFalse(report['production_official_data_ready'])
+
     def test_directory_escape_is_blocked(self):
         with tempfile.TemporaryDirectory() as d:
             m = {'datasets': {'power': {'path': '../not-in-repo.csv', 'sha256': 'a'*64},
