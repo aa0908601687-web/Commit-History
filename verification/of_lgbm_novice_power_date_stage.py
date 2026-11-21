@@ -35,7 +35,7 @@ class TableRows(HTMLParser):
             self.row = None
 
 def download_page(page):
-    url = SOURCE + "?p=" + str(page)
+    url = SOURCE + ("?y=" + str(page[0]) + "&p=" + str(page[1]) if isinstance(page, tuple) else "?p=" + str(page))
     req = Request(url, headers={"User-Agent":"OF-LGBM-history-audit/1.0 (public research; no automatic publication)"})
     with urlopen(req, timeout=30) as response:
         return response.read().decode("utf-8")
@@ -50,7 +50,8 @@ def rows_from_html(html):
         ident = cells[0].strip()
         day = cells[1].strip()
         numbers = re.findall(r"(?<!\d)\d{1,2}(?!\d)", cells[2])
-        if re.fullmatch(r"\d{9}", ident) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+        if re.fullmatch(r"\d{8,9}", ident) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+            ident = ident.zfill(9)
             if len(numbers) != 7:
                 raise ValueError(f"unexpected number format for {ident}: {cells[2]!r}")
             first = tuple(sorted(map(int, numbers[:6])))
@@ -80,6 +81,27 @@ def collect(fetch=download_page, max_pages=300):
             break
     else:
         raise ValueError("page cap reached: possibly incomplete source")
+    # Historical 2008-2010 draw IDs may be displayed as 8 digits.
+    # Main pagination has omitted these full years; explicitly fetch year-filtered pages.
+    for year in (2008, 2009, 2010):
+        for page in range(1, 10):
+            rows = rows_from_html(fetch((year, page)))
+            if not rows:
+                if page == 1:
+                    raise ValueError(f"year {year}: no rows returned")
+                break
+            new = 0
+            for ident, day, first, second in rows:
+                value = (day, first, second)
+                if ident in found and found[ident] != value:
+                    raise ValueError(f"year {year}: conflicting draw {ident}")
+                if ident not in found:
+                    found[ident] = value
+                    new += 1
+            if new == 0:
+                break
+        else:
+            raise ValueError(f"year {year}: pagination cap reached")
     return found
 
 def load_archive(path):
