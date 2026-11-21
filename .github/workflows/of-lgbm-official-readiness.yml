@@ -28,6 +28,24 @@ jobs:
           if not report["production_official_data_ready"]:
               print("::warning::Official data provenance NOT verified; production data release remains blocked.")
           PY
+      - name: Assert unverified history cannot pass production release gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if python verification/of_lgbm_official_readiness.py --require-ready > release-gate.log 2>&1; then
+            cat release-gate.log
+            echo "::error::UNSAFE: unverified official history passed release gate"
+            exit 1
+          fi
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          report = json.loads(Path("release-gate.log").read_text(encoding="utf-8"))
+          assert report["production_official_data_ready"] is False
+          assert report["official_authentication_performed_by_this_check"] is False
+          assert any("official" in item for item in report["blockers"])
+          print("PASS: unverified history rejected by production release gate")
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: of-lgbm-official-readiness-review-only
