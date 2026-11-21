@@ -1,0 +1,20 @@
+name: OpenFE LightGBM isolated scaffold checks
+on:
+  pull_request:
+    paths:
+      - "of_lgbm/**"
+      - ".github/workflows/of-lgbm-scaffold.yml"
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Syntax validation
+        run: python -m compileall -q of_lgbm
+      - name: Dependency-free smoke tests
+        run: python -m unittest discover -s of_lgbm -p 'test_*.py' -v
