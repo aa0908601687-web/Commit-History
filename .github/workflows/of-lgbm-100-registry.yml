@@ -1,0 +1,20 @@
+name: OF-LGBM 100 Candidate Registry Static Checks
+
+on:
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_100_candidate_configs.json'
+      - 'verification/test_of_lgbm_100_candidate_configs.py'
+      - '.github/workflows/of-lgbm-100-registry.yml'
+  workflow_dispatch:
+
+jobs:
+  verify-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate standalone registry (not model E2E)
+        run: python -m unittest discover -s verification -p 'test_of_lgbm_100_candidate_configs.py' -v
