@@ -68,13 +68,65 @@ def audit_csv(filename,game,min_rows=17):
             "record_by_record_official_provenance_verified":False,
             "sha256":hashlib.sha256(p.read_bytes()).hexdigest()}
 
+def compare_official_normalized(snapshot, official, game):
+    """Compare against independently obtained, normalized official CSV; never fill missing values."""
+    def read_rows(path):
+        with Path(path).open(encoding="utf-8-sig", newline="") as source:
+            reader = csv.DictReader(source)
+            required = {"draw_id", "draw_date", "first"} | ({"second"} if game == "power" else {"special"} if game == "lotto" else set())
+            if not reader.fieldnames or not required.issubset(reader.fieldnames):
+                raise ValueError("official comparison requires normalized dated CSV columns")
+            rows = {}
+            for row in reader:
+                identifier = row["draw_id"].strip()
+                if identifier in rows:
+                    raise ValueError("duplicate official draw_id: " + identifier)
+                rows[identifier] = row
+            return rows
+    reference = read_rows(official)
+    with Path(snapshot).open(encoding="utf-8-sig", newline="") as source:
+        local = list(csv.DictReader(source))
+    issues = []
+    compared = 0
+    for row in local:
+        identifier = row["draw_id"].strip()
+        expected = reference.get(identifier)
+        if expected is None:
+            issues.append({"draw_id": identifier, "reason": "official_draw_missing"})
+            continue
+        compared += 1
+        def normalized_numbers(value):
+            return sorted(int(v) for v in value.replace(",", " ").split())
+        if normalized_numbers(row["first"]) != normalized_numbers(expected["first"]):
+            issues.append({"draw_id": identifier, "reason": "first_zone_mismatch"})
+        extra = RULES[game][2]
+        if extra and int(row[extra]) != int(expected[extra]):
+            issues.append({"draw_id": identifier, "reason": "extra_zone_mismatch"})
+        if not row.get("draw_date"):
+            issues.append({"draw_id": identifier, "reason": "snapshot_date_missing"})
+        elif row["draw_date"] != expected["draw_date"]:
+            issues.append({"draw_id": identifier, "reason": "date_mismatch"})
+    return {"official_comparison_performed": True, "matched_draw_ids": compared,
+            "snapshot_rows": len(local), "issues": issues,
+            "official_rows_verified": len(issues) == 0 and compared == len(local),
+            "independent_official_provenance_verified": False,
+            "official_provenance_note": "Normalized CSV row equality does not authenticate its claimed official origin; independent source review is required.",
+            "official_file_sha256": hashlib.sha256(Path(official).read_bytes()).hexdigest()}
+
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--game",required=True,choices=tuple(RULES))
     parser.add_argument("--csv",required=True)
     parser.add_argument("--output")
+    parser.add_argument("--official-csv", help="Independently sourced normalized official CSV for strict comparison")
     args=parser.parse_args()
-    message=json.dumps(audit_csv(args.csv,args.game),indent=2,ensure_ascii=False,sort_keys=True)+"\n"
+    result = audit_csv(args.csv,args.game)
+    if args.official_csv:
+        result["official_comparison"] = compare_official_normalized(args.csv,args.official_csv,args.game)
+        if not result["official_comparison"]["official_rows_verified"]:
+            raise ValueError("official CSV comparison failed; source records differ or dates are missing")
+    message=json.dumps(result,indent=2,ensure_ascii=False,sort_keys=True)+"\n"
     if args.output: Path(args.output).write_text(message,encoding="utf-8")
     print(message,end="")
 
