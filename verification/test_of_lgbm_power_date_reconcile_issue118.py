@@ -121,5 +121,26 @@ class PowerDateReconcileTests(unittest.TestCase):
         self.assertFalse(self.report.exists())
 
 
+    def test_missing_required_source_column_fails_closed(self):
+        write_csv(self.source, ["draw_id", "draw_date", "first"], [
+            ["115000001", "2026-01-01", self.first],
+            ["115000002", "2026-01-05", self.first],
+        ])
+        with self.assertRaisesRegex(ValueError, "missing mandatory columns"):
+            reconcile(self.archive, self.source, self.output, self.report)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.report.exists())
+
+    def test_second_zone_mismatch_fails_closed(self):
+        self.source_rows([
+            ["115000001", "2026-01-01", self.first, "02"],
+            ["115000002", "2026-01-05", self.first, "02"],
+        ])
+        with self.assertRaisesRegex(ValueError, "drawn numbers differ"):
+            reconcile(self.archive, self.source, self.output, self.report)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.report.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
