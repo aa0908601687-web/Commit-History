@@ -95,12 +95,24 @@ def reconcile(archive, source, output, report):
         "independent_official_provenance_verified": False,
         "note": "Structural reconciliation only. Official authentication requires a documented independently reviewed original official export."
     }
-    # Output creation is exclusive; no source data is mutated.
-    with output.open("xb") as f:
-        f.write(payload)
-    with report.open("x", encoding="utf-8") as f:
-        json.dump(audit, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    # Publish both outputs as a unit from the caller's perspective. If either
+    # write fails, remove only files created by this invocation. In particular,
+    # a failed report write must not leave a seemingly valid dated CSV behind.
+    output_created = report_created = False
+    try:
+        with output.open("xb") as f:
+            output_created = True
+            f.write(payload)
+        with report.open("x", encoding="utf-8") as f:
+            report_created = True
+            json.dump(audit, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+    except BaseException:
+        if report_created:
+            report.unlink(missing_ok=True)
+        if output_created:
+            output.unlink(missing_ok=True)
+        raise
     return audit
 
 def main():
