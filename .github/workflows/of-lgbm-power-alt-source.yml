@@ -1,0 +1,50 @@
+name: Power alternative history source connection and staging audit
+on:
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_novice_power_date_stage.py'
+      - '.github/workflows/of-lgbm-power-alt-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-connect-and-compare:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify HTML table parser locally
+        run: |
+          python - <<'PY'
+          from verification.of_lgbm_novice_power_date_stage import rows_from_html
+          x='<table><tr><td><a>115000093</a></td><td>2026-11-19</td><td><span>01 12 13</span><span> 18 30 33 03</span></td><td>sales</td></tr></table>'
+          assert rows_from_html(x) == [('115000093', '2026-11-19', (1,12,13,18,30,33), 3)]
+          print('PASS: parser regression')
+          PY
+      - name: Fetch alternative source and compare to pinned archive (fail closed)
+        run: |
+          python verification/of_lgbm_novice_power_date_stage.py \
+            --archive verification/of_lgbm_data/power_history_archive.csv \
+            --output candidate-dated-power.csv \
+            --report alt-source-audit.json
+      - name: If matched, run strict existing reconciler without publishing
+        run: |
+          python verification/of_lgbm_power_date_reconcile.py \
+            --archive verification/of_lgbm_data/power_history_archive.csv \
+            --dated-source candidate-dated-power.csv \
+            --output reconciled-power-review-only.csv \
+            --report reconciliation-audit.json
+      - name: Upload REVIEW-ONLY candidate and audit (never rewrite canonical CSV)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: power-alternative-dated-source-review-${{ github.run_id }}
+          path: |
+            candidate-dated-power.csv
+            alt-source-audit.json
+            reconciled-power-review-only.csv
+            reconciliation-audit.json
+          if-no-files-found: warn
