@@ -3,3 +3,4 @@ lightgbm
 pandas
 numpy
 scikit-learn
+matplotlib
