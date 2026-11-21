@@ -120,7 +120,7 @@ def load_archive(path):
         out = {}
         for row in reader:
             ident = row["draw_id"].strip()
-            if not re.fullmatch(r"\\d{9}", ident):
+            if not re.fullmatch(r"\d{9}", ident):
                 raise ValueError(f"invalid archive draw id {ident!r}")
             first = tuple(sorted(int(x) for x in row["first"].replace(","," ").split()))
             second = int(row["second"])
