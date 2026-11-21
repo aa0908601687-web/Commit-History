@@ -68,5 +68,41 @@ class StageTests(unittest.TestCase):
             stage(self.source, self.snapshots, self.stage_dir)
         self.assertFalse(self.stage_dir.exists())
 
+    def test_mid_copy_failure_cleans_temporary_stage_and_preserves_sources(self):
+        """A failed copy cannot leave partial stage outputs or alter pinned CSVs."""
+        import shutil
+        from unittest.mock import patch
+
+        original_copy = shutil.copyfile
+        before_source = {
+            p.name: p.read_bytes() for p in self.source.iterdir() if p.is_file()
+        }
+        before_snapshots = {
+            p.name: p.read_bytes() for p in self.snapshots.iterdir() if p.is_file()
+        }
+        copied = 0
+
+        def fail_on_second_copy(src, dst, *args, **kwargs):
+            nonlocal copied
+            copied += 1
+            if copied == 2:
+                raise OSError("injected copy failure")
+            return original_copy(src, dst, *args, **kwargs)
+
+        with patch("of_lgbm_full_history_install.shutil.copyfile", side_effect=fail_on_second_copy):
+            with self.assertRaisesRegex(OSError, "injected copy failure"):
+                stage(self.source, self.snapshots, self.stage_dir)
+
+        self.assertFalse(self.stage_dir.exists())
+        self.assertEqual(list(self.stage_dir.parent.glob(".of-lgbm-stage-*")), [])
+        self.assertEqual(
+            {p.name: p.read_bytes() for p in self.source.iterdir() if p.is_file()},
+            before_source,
+        )
+        self.assertEqual(
+            {p.name: p.read_bytes() for p in self.snapshots.iterdir() if p.is_file()},
+            before_snapshots,
+        )
+
 if __name__ == "__main__":
     unittest.main()
