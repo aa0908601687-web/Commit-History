@@ -78,5 +78,27 @@ class PowerDateReconcileTests(unittest.TestCase):
         self.assertEqual(self.output.read_text(), "keep")
 
 
+    def test_refuses_overwriting_existing_audit_report(self):
+        self.source_rows([
+            ["115000001", "2026-01-01", self.first, "01"],
+            ["115000002", "2026-01-05", self.first, "02"],
+        ])
+        self.report.write_text("keep audit", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "already exists"):
+            reconcile(self.archive, self.source, self.output, self.report)
+        self.assertEqual(self.report.read_text(encoding="utf-8"), "keep audit")
+        self.assertFalse(self.output.exists())
+
+    def test_rejects_reversed_date_order_without_outputs(self):
+        self.source_rows([
+            ["115000001", "2026-01-05", self.first, "01"],
+            ["115000002", "2026-01-01", self.first, "02"],
+        ])
+        with self.assertRaisesRegex(ValueError, "dates not strictly increasing"):
+            reconcile(self.archive, self.source, self.output, self.report)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.report.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
