@@ -1,0 +1,808 @@
+{
+  "version": "2026-11-21-draft",
+  "kind": "OF-LGBM standalone candidate configuration registry",
+  "note": "Proposals only. Not 100 trained models; not the retired V6 feature suite. Must not use future draw labels or ticket-outcome features. Does not change current main selection.",
+  "fixed_weights": false,
+  "configurations": [
+    {
+      "id": "001",
+      "group": "frequency_time",
+      "name": "10-draw frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "002",
+      "group": "frequency_time",
+      "name": "20-draw frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "003",
+      "group": "frequency_time",
+      "name": "all-prior frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "004",
+      "group": "frequency_time",
+      "name": "10+20 frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "005",
+      "group": "frequency_time",
+      "name": "10+all-prior frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "006",
+      "group": "frequency_time",
+      "name": "20+all-prior frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "007",
+      "group": "frequency_time",
+      "name": "three-view frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "008",
+      "group": "frequency_time",
+      "name": "10 frequency+decay",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "009",
+      "group": "frequency_time",
+      "name": "20 frequency+decay",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "010",
+      "group": "frequency_time",
+      "name": "all-prior frequency+decay",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "011",
+      "group": "frequency_time",
+      "name": "10-vs-20 frequency delta",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "012",
+      "group": "frequency_time",
+      "name": "10-vs-all frequency delta",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "013",
+      "group": "frequency_time",
+      "name": "20-vs-all frequency delta",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "014",
+      "group": "frequency_time",
+      "name": "multi-view frequency rank",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "015",
+      "group": "frequency_time",
+      "name": "recent hot drift",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "016",
+      "group": "frequency_time",
+      "name": "recent cold drift",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "017",
+      "group": "frequency_time",
+      "name": "frequency magnitude drift",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "018",
+      "group": "frequency_time",
+      "name": "frequency trend slope",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "019",
+      "group": "frequency_time",
+      "name": "frequency volatility",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "020",
+      "group": "frequency_time",
+      "name": "frequency cross-window stability",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "021",
+      "group": "cooccurrence",
+      "name": "10-draw pair co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "022",
+      "group": "cooccurrence",
+      "name": "20-draw pair co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "023",
+      "group": "cooccurrence",
+      "name": "all-prior pair co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "024",
+      "group": "cooccurrence",
+      "name": "three-view pair co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "025",
+      "group": "cooccurrence",
+      "name": "10-draw triple co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "026",
+      "group": "cooccurrence",
+      "name": "20-draw triple co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "027",
+      "group": "cooccurrence",
+      "name": "all-prior triple co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "028",
+      "group": "cooccurrence",
+      "name": "three-view triple co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "029",
+      "group": "cooccurrence",
+      "name": "pair+single-frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "030",
+      "group": "cooccurrence",
+      "name": "triple+single-frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "031",
+      "group": "cooccurrence",
+      "name": "pair+triple co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "032",
+      "group": "cooccurrence",
+      "name": "time-decayed co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "033",
+      "group": "cooccurrence",
+      "name": "co-occurrence cross-view stability",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "034",
+      "group": "cooccurrence",
+      "name": "co-occurrence momentum",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "035",
+      "group": "cooccurrence",
+      "name": "co-occurrence conditional rate",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "036",
+      "group": "cooccurrence",
+      "name": "Bayesian-shrunk co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "037",
+      "group": "cooccurrence",
+      "name": "co-occurrence+repeat",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "038",
+      "group": "cooccurrence",
+      "name": "co-occurrence+streak",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "039",
+      "group": "cooccurrence",
+      "name": "co-occurrence+omission",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "040",
+      "group": "cooccurrence",
+      "name": "multi-order co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "041",
+      "group": "repeat_streak_omission",
+      "name": "last draw repeat",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "042",
+      "group": "repeat_streak_omission",
+      "name": "previous-two repeat count",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "043",
+      "group": "repeat_streak_omission",
+      "name": "10-draw repeat patterns",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "044",
+      "group": "repeat_streak_omission",
+      "name": "20-draw repeat patterns",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "045",
+      "group": "repeat_streak_omission",
+      "name": "all-prior repeat patterns",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "046",
+      "group": "repeat_streak_omission",
+      "name": "two-draw consecutive appearance",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "047",
+      "group": "repeat_streak_omission",
+      "name": "three-draw consecutive appearance",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "048",
+      "group": "repeat_streak_omission",
+      "name": "maximum completed streak",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "049",
+      "group": "repeat_streak_omission",
+      "name": "streak continuation frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "050",
+      "group": "repeat_streak_omission",
+      "name": "streak+recent frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "051",
+      "group": "repeat_streak_omission",
+      "name": "current omission gap",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "052",
+      "group": "repeat_streak_omission",
+      "name": "prior average omission gap",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "053",
+      "group": "repeat_streak_omission",
+      "name": "prior max omission gap",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "054",
+      "group": "repeat_streak_omission",
+      "name": "normalized omission gap",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "055",
+      "group": "repeat_streak_omission",
+      "name": "omission+recent frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "056",
+      "group": "repeat_streak_omission",
+      "name": "omission+all-prior frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "057",
+      "group": "repeat_streak_omission",
+      "name": "one-draw-skip recurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "058",
+      "group": "repeat_streak_omission",
+      "name": "repeat+omission",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "059",
+      "group": "repeat_streak_omission",
+      "name": "streak+omission",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "060",
+      "group": "repeat_streak_omission",
+      "name": "repeat+streak+omission",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "061",
+      "group": "ticket_structure",
+      "name": "ticket parity ratio",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "062",
+      "group": "ticket_structure",
+      "name": "ticket high-low ratio",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "063",
+      "group": "ticket_structure",
+      "name": "ticket sum",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "064",
+      "group": "ticket_structure",
+      "name": "ticket span",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "065",
+      "group": "ticket_structure",
+      "name": "ticket number-band distribution",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "066",
+      "group": "ticket_structure",
+      "name": "ticket adjacent pairs",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "067",
+      "group": "ticket_structure",
+      "name": "ticket same-last-digit count",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "068",
+      "group": "ticket_structure",
+      "name": "ticket average spacing",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "069",
+      "group": "ticket_structure",
+      "name": "ticket spacing variance",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "070",
+      "group": "ticket_structure",
+      "name": "ticket dispersion",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "071",
+      "group": "ticket_structure",
+      "name": "parity+sum",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "072",
+      "group": "ticket_structure",
+      "name": "high-low+span",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "073",
+      "group": "ticket_structure",
+      "name": "band+adjacency",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "074",
+      "group": "ticket_structure",
+      "name": "last-digit+spacing",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "075",
+      "group": "ticket_structure",
+      "name": "historical ticket-structure frequency",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "076",
+      "group": "ticket_structure",
+      "name": "ticket structure cross-view stability",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "077",
+      "group": "ticket_structure",
+      "name": "ticket structure+recent frequency",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "078",
+      "group": "ticket_structure",
+      "name": "ticket structure+pair co-occurrence",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "079",
+      "group": "ticket_structure",
+      "name": "ticket structure+triple co-occurrence",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "080",
+      "group": "ticket_structure",
+      "name": "multi-structure candidate score",
+      "stage": "candidate_ticket_scoring",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "081",
+      "group": "openfe_interactions",
+      "name": "OpenFE frequency interaction",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "082",
+      "group": "openfe_interactions",
+      "name": "OpenFE trend interaction",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "083",
+      "group": "openfe_interactions",
+      "name": "OpenFE frequency+omission",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "084",
+      "group": "openfe_interactions",
+      "name": "OpenFE frequency+repeat",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "085",
+      "group": "openfe_interactions",
+      "name": "OpenFE co-occurrence+frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "086",
+      "group": "openfe_interactions",
+      "name": "OpenFE co-occurrence+time",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "087",
+      "group": "openfe_interactions",
+      "name": "OpenFE streak+omission",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "088",
+      "group": "openfe_interactions",
+      "name": "OpenFE structure+frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "089",
+      "group": "openfe_interactions",
+      "name": "OpenFE structure+co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "090",
+      "group": "openfe_interactions",
+      "name": "OpenFE three-view interaction",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "091",
+      "group": "openfe_interactions",
+      "name": "Bayesian-smoothed frequency",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "092",
+      "group": "openfe_interactions",
+      "name": "Bayesian-shrunk co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "093",
+      "group": "openfe_interactions",
+      "name": "frequency+co-occurrence+Bayesian",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "094",
+      "group": "openfe_interactions",
+      "name": "repeat+streak+Bayesian",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "095",
+      "group": "openfe_interactions",
+      "name": "omission+trend+Bayesian",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "096",
+      "group": "openfe_interactions",
+      "name": "three-view frequency+co-occurrence",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "097",
+      "group": "openfe_interactions",
+      "name": "three-view frequency+structure",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "098",
+      "group": "openfe_interactions",
+      "name": "frequency+co-occurrence+repeat+omission",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "099",
+      "group": "openfe_interactions",
+      "name": "OpenFE-selected combined features",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    },
+    {
+      "id": "100",
+      "group": "openfe_interactions",
+      "name": "all-candidate-type comparison",
+      "stage": "pre_draw_feature_proposal",
+      "selection": "train_fold_only",
+      "status": "proposed_not_integrated"
+    }
+  ]
+}
