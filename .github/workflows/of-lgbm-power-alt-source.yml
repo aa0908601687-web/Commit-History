@@ -1,0 +1,126 @@
+name: Power alternative history source connection and staging audit
+on:
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_novice_power_date_stage.py'
+      - '.github/workflows/of-lgbm-power-alt-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-connect-and-compare:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify HTML table parser locally
+        run: |
+          python - <<'PY'
+          from verification.of_lgbm_novice_power_date_stage import rows_from_html
+          x='<table><tr><td><a>115000093</a></td><td>2026-11-19</td><td><span>01 12 13</span><span> 18 30 33 03</span></td><td>sales</td></tr></table>'
+          assert rows_from_html(x) == [('115000093', '2026-11-19', (1,12,13,18,30,33), 3)]
+          old='<table><tr><td>97000098</td><td>2008-12-29</td><td>02 10 15 19 28 31 01</td></tr></table>'
+          assert rows_from_html(old) == [('097000098', '2008-12-29', (2,10,15,19,28,31), 1)]
+          print('PASS: parser regression including 8-digit ROC draw IDs')
+          for bad_date in ('2026-02-30', '2026-13-01'):
+              invalid=f'<table><tr><td>115000093</td><td>{bad_date}</td><td>01 12 13 18 30 33 03</td></tr></table>'
+              try:
+                  rows_from_html(invalid)
+              except ValueError:
+                  pass
+              else:
+                  raise AssertionError(f'invalid date accepted: {bad_date}')
+          from verification.of_lgbm_novice_power_date_stage import load_archive
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          with TemporaryDirectory() as directory:
+              archive=Path(directory)/'archive.csv'
+              for bad_row in ('115000093,01 01 13 18 30 33,03', '115000093,01 12 13 18 30 39,03', '115000093,01 12 13 18 30 33,09'):
+                  archive.write_text('draw_id,first,second\\n'+bad_row+'\\n', encoding='utf-8')
+                  try:
+                      load_archive(archive)
+                  except ValueError:
+                      pass
+                  else:
+                      raise AssertionError(f'invalid archive row accepted: {bad_row}')
+          print('PASS: invalid dates and invalid archive numbers rejected')
+          PY
+      - name: Fetch alternative source and compare to pinned archive (fail closed)
+        run: |
+          python verification/of_lgbm_novice_power_date_stage.py \
+            --archive verification/of_lgbm_data/power_history_archive.csv \
+            --output candidate-dated-power.csv \
+            --report alt-source-audit.json
+      - name: Print missing draw ID ranges from source audit
+        if: always()
+        run: |
+          if [ -f alt-source-audit.json ]; then
+            python -m json.tool alt-source-audit.json
+          else
+            echo "No source audit file generated"
+          fi
+      - name: If matched, run strict existing reconciler without publishing
+        run: |
+          python verification/of_lgbm_power_date_reconcile.py \
+            --archive verification/of_lgbm_data/power_history_archive.csv \
+            --dated-source candidate-dated-power.csv \
+            --output reconciled-power-review-only.csv \
+            --report reconciliation-audit.json
+      - name: Import validated Power candidate into isolated review-only staging
+        run: |
+          python - <<'PY'
+          import csv
+          import hashlib
+          import json
+          from pathlib import Path
+          candidate = Path("candidate-dated-power.csv")
+          reconciled = Path("reconciled-power-review-only.csv")
+          archive = Path("verification/of_lgbm_data/power_history_archive.csv")
+          source_audit = json.loads(Path("alt-source-audit.json").read_text(encoding="utf-8"))
+          reconciliation = json.loads(Path("reconciliation-audit.json").read_text(encoding="utf-8"))
+          assert source_audit["safe_to_stage"] is True
+          assert source_audit["official_provenance_verified"] is False
+          assert source_audit["missing_count"] == source_audit["number_conflict_count"] == 0
+          assert reconciliation["independent_official_provenance_verified"] is False
+          assert reconciliation["dated_rows"] == source_audit["archive_count"] == 1964
+          assert hashlib.sha256(archive.read_bytes()).hexdigest() == source_audit["archive_sha256"]
+          assert hashlib.sha256(reconciled.read_bytes()).hexdigest() == reconciliation["output_sha256"]
+          with reconciled.open(encoding="utf-8", newline="") as f:
+              rows = list(csv.DictReader(f))
+          assert len(rows) == 1964
+          assert all(row["draw_date"] for row in rows)
+          stage = Path("review-only-import")
+          stage.mkdir(exist_ok=False)
+          staged = stage / "power.csv"
+          with staged.open("xb") as f:
+              f.write(reconciled.read_bytes())
+          assert hashlib.sha256(staged.read_bytes()).hexdigest() == reconciliation["output_sha256"]
+          summary = {
+              "status": "review_only_third_party_not_official",
+              "production_eligible": False,
+              "official_provenance_verified": False,
+              "canonical_archive_modified": False,
+              "rows": len(rows),
+              "source": source_audit["source"],
+              "sha256": reconciliation["output_sha256"],
+              "archive_sha256": source_audit["archive_sha256"],
+              "requires": "independent official original export and row-by-row matching before main import"
+          }
+          (stage / "IMPORT_AUDIT.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+          print("STAGED REVIEW-ONLY 1964 Power draws; canonical archive unchanged; NOT official certified")
+          PY
+      - name: Upload REVIEW-ONLY candidate and audit (never rewrite canonical CSV)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: power-alternative-dated-source-review-${{ github.run_id }}
+          path: |
+            candidate-dated-power.csv
+            alt-source-audit.json
+            reconciled-power-review-only.csv
+            reconciliation-audit.json
+            review-only-import/
+          if-no-files-found: warn
