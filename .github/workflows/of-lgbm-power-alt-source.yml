@@ -22,7 +22,9 @@ jobs:
           from verification.of_lgbm_novice_power_date_stage import rows_from_html
           x='<table><tr><td><a>115000093</a></td><td>2026-11-19</td><td><span>01 12 13</span><span> 18 30 33 03</span></td><td>sales</td></tr></table>'
           assert rows_from_html(x) == [('115000093', '2026-11-19', (1,12,13,18,30,33), 3)]
-          print('PASS: parser regression')
+          old='<table><tr><td>97000098</td><td>2008-12-29</td><td>02 10 15 19 28 31 01</td></tr></table>'
+          assert rows_from_html(old) == [('097000098', '2008-12-29', (2,10,15,19,28,31), 1)]
+          print('PASS: parser regression including 8-digit ROC draw IDs')
           PY
       - name: Fetch alternative source and compare to pinned archive (fail closed)
         run: |
