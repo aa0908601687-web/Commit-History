@@ -100,5 +100,26 @@ class PowerDateReconcileTests(unittest.TestCase):
         self.assertFalse(self.report.exists())
 
 
+    def test_duplicate_source_draw_id_fails_closed(self):
+        self.source_rows([
+            ["115000001", "2026-01-01", self.first, "01"],
+            ["115000001", "2026-01-05", self.first, "01"],
+        ])
+        with self.assertRaisesRegex(ValueError, "duplicate or malformed draw id"):
+            reconcile(self.archive, self.source, self.output, self.report)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.report.exists())
+
+    def test_roc_year_mismatch_fails_closed(self):
+        self.source_rows([
+            ["115000001", "2025-01-01", self.first, "01"],
+            ["115000002", "2025-01-05", self.first, "02"],
+        ])
+        with self.assertRaisesRegex(ValueError, "invalid ISO date/ROC year"):
+            reconcile(self.archive, self.source, self.output, self.report)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.report.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
