@@ -121,7 +121,7 @@ class OfficialReadinessTests(unittest.TestCase):
                 for index, draw_id in enumerate(ids):
                     year = int(draw_id[:3]) + 1911
                     lines.append(f'{draw_id},{year}-01-0{index + 1},1 2 3 4 5 6,1')
-                data.write_text('\\n'.join(lines) + '\\n', encoding='utf-8')
+                data.write_text('\n'.join(lines) + '\n', encoding='utf-8')
                 manifest = {'datasets': {'power': {
                     'path': 'power.csv', 'rows': 2,
                     'sha256': hashlib.sha256(data.read_bytes()).hexdigest()
@@ -135,9 +135,9 @@ class OfficialReadinessTests(unittest.TestCase):
             root = Path(d)
             data = root / 'power.csv'
             data.write_text(
-                'draw_id,draw_date,first,second\\n'
-                '115000099,2026-12-31,1 2 3 4 5 6,1\\n'
-                '116000001,2027-01-01,1 2 3 4 5 6,1\\n',
+                'draw_id,draw_date,first,second\n'
+                '115000099,2026-12-31,1 2 3 4 5 6,1\n'
+                '116000001,2027-01-01,1 2 3 4 5 6,1\n',
                 encoding='utf-8')
             manifest = {'datasets': {'power': {
                 'path': 'power.csv', 'rows': 2,
