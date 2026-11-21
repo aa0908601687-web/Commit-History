@@ -735,7 +735,7 @@
     {
       "id": "092",
       "group": "openfe_interactions",
-      "name": "Bayesian-shrunk co-occurrence",
+      "name": "Bayesian-shrunk triple co-occurrence",
       "stage": "pre_draw_feature_proposal",
       "selection": "train_fold_only",
       "status": "proposed_not_integrated"
