@@ -69,6 +69,49 @@ jobs:
             --dated-source candidate-dated-power.csv \
             --output reconciled-power-review-only.csv \
             --report reconciliation-audit.json
+      - name: Import validated Power candidate into isolated review-only staging
+        run: |
+          python - <<'PY'
+          import csv
+          import hashlib
+          import json
+          from pathlib import Path
+          candidate = Path("candidate-dated-power.csv")
+          reconciled = Path("reconciled-power-review-only.csv")
+          archive = Path("verification/of_lgbm_data/power_history_archive.csv")
+          source_audit = json.loads(Path("alt-source-audit.json").read_text(encoding="utf-8"))
+          reconciliation = json.loads(Path("reconciliation-audit.json").read_text(encoding="utf-8"))
+          assert source_audit["safe_to_stage"] is True
+          assert source_audit["official_provenance_verified"] is False
+          assert source_audit["missing_count"] == source_audit["number_conflict_count"] == 0
+          assert reconciliation["independent_official_provenance_verified"] is False
+          assert reconciliation["dated_rows"] == source_audit["archive_count"] == 1964
+          assert hashlib.sha256(archive.read_bytes()).hexdigest() == source_audit["archive_sha256"]
+          assert hashlib.sha256(reconciled.read_bytes()).hexdigest() == reconciliation["output_sha256"]
+          with reconciled.open(encoding="utf-8", newline="") as f:
+              rows = list(csv.DictReader(f))
+          assert len(rows) == 1964
+          assert all(row["draw_date"] for row in rows)
+          stage = Path("review-only-import")
+          stage.mkdir(exist_ok=False)
+          staged = stage / "power.csv"
+          with staged.open("xb") as f:
+              f.write(reconciled.read_bytes())
+          assert hashlib.sha256(staged.read_bytes()).hexdigest() == reconciliation["output_sha256"]
+          summary = {
+              "status": "review_only_third_party_not_official",
+              "production_eligible": False,
+              "official_provenance_verified": False,
+              "canonical_archive_modified": False,
+              "rows": len(rows),
+              "source": source_audit["source"],
+              "sha256": reconciliation["output_sha256"],
+              "archive_sha256": source_audit["archive_sha256"],
+              "requires": "independent official original export and row-by-row matching before main import"
+          }
+          (stage / "IMPORT_AUDIT.json").write_text(json.dumps(summary, indent=2) + "\\n", encoding="utf-8")
+          print("STAGED REVIEW-ONLY 1964 Power draws; canonical archive unchanged; NOT official certified")
+          PY
       - name: Upload REVIEW-ONLY candidate and audit (never rewrite canonical CSV)
         if: always()
         uses: actions/upload-artifact@v4
@@ -79,4 +122,5 @@ jobs:
             alt-source-audit.json
             reconciled-power-review-only.csv
             reconciliation-audit.json
+            review-only-import/
           if-no-files-found: warn
