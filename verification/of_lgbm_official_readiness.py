@@ -56,12 +56,25 @@ def audit(manifest, snapshot_root=None):
             duplicate_ids = 0
             ids = set()
             first_id = last_id = None
+            previous_num = None
+            previous_date = None
+            malformed_ids = 0
+            unordered_ids = 0
+            unordered_dates = 0
+            date_year_mismatches = 0
             for row in reader:
                 count += 1
                 draw_id = (row.get('draw_id') or '').strip()
                 if not draw_id or draw_id in ids:
                     duplicate_ids += 1
                 ids.add(draw_id)
+                if len(draw_id) != 9 or not draw_id.isascii() or not draw_id.isdigit():
+                    malformed_ids += 1
+                else:
+                    current_num = int(draw_id)
+                    if previous_num is not None and current_num <= previous_num:
+                        unordered_ids += 1
+                    previous_num = current_num
                 if first_id is None:
                     first_id = draw_id
                 last_id = draw_id
@@ -72,17 +85,34 @@ def audit(manifest, snapshot_root=None):
                         parsed = date.fromisoformat(value)
                         if parsed.isoformat() != value:
                             malformed_dates += 1
+                        if previous_date is not None and parsed <= previous_date:
+                            unordered_dates += 1
+                        previous_date = parsed
+                        if len(draw_id) == 9 and draw_id.isdigit() and parsed.year - 1911 != int(draw_id[:3]):
+                            date_year_mismatches += 1
                     except ValueError:
                         malformed_dates += 1
         checks[game] = {'sha256_matches_manifest': hash_ok,
                         'row_count_matches_manifest': count == info.get('rows'),
                         'rows': count, 'dated_rows': dated,
                         'invalid_or_duplicate_ids': duplicate_ids,
-                        'malformed_dates': malformed_dates}
+                        'malformed_dates': malformed_dates,
+                        'malformed_ids': malformed_ids,
+                        'unordered_ids': unordered_ids,
+                        'unordered_dates': unordered_dates,
+                        'date_year_mismatches': date_year_mismatches}
         if duplicate_ids:
             blockers.append(f'{game}: missing or duplicate draw IDs ({duplicate_ids})')
         if malformed_dates:
             blockers.append(f'{game}: invalid ISO dates ({malformed_dates})')
+        if malformed_ids:
+            blockers.append(f'{game}: malformed draw IDs ({malformed_ids})')
+        if unordered_ids:
+            blockers.append(f'{game}: draw IDs not strictly increasing ({unordered_ids})')
+        if unordered_dates:
+            blockers.append(f'{game}: draw dates not strictly increasing ({unordered_dates})')
+        if date_year_mismatches:
+            blockers.append(f'{game}: ROC year and draw date disagree ({date_year_mismatches})')
         if info.get('first') is not None and str(info['first']) != first_id:
             blockers.append(f'{game}: first draw ID differs from manifest')
         expected_last = info.get('last', info.get('cutoff'))
