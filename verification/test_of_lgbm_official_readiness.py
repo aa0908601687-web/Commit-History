@@ -65,7 +65,7 @@ class OfficialReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             data = root / 'power.csv'
-            data.write_text('draw_id,draw_date\\n115000002,2026-01-05\\n115000001,2025-12-30\\n', encoding='utf-8')
+            data.write_text('draw_id,draw_date\n115000002,2026-01-05\n115000001,2025-12-30\n', encoding='utf-8')
             m = {'datasets': {'power': {'path': 'power.csv', 'rows': 2,
                                         'sha256': hashlib.sha256(data.read_bytes()).hexdigest()},
                               'lotto': {}, '539': {}}}
@@ -80,7 +80,7 @@ class OfficialReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             data = root / 'power.csv'
-            data.write_text('draw_id,draw_date\\nNOTANID,2026-01-01\\n', encoding='utf-8')
+            data.write_text('draw_id,draw_date\nNOTANID,2026-01-01\n', encoding='utf-8')
             m = {'datasets': {'power': {'path': 'power.csv', 'rows': 1,
                                         'sha256': hashlib.sha256(data.read_bytes()).hexdigest()},
                               'lotto': {}, '539': {}}}
