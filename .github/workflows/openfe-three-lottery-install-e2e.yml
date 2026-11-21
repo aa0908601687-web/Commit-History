@@ -39,7 +39,7 @@ jobs:
           PY
       - name: Run OF-LGBM integration unit tests
         run: |
-          python -m unittest verification/test_of_lgbm_isolation.py verification/test_of_lgbm_all_operator_e2e.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_full_history_install.py verification/test_of_lgbm_ticket_selection.py verification/test_of_lgbm_manifest_integrity.py verification/test_of_lgbm_history_completeness.py verification/test_of_lgbm_power_date_reconcile.py -v
+          python -m unittest verification/test_of_lgbm_isolation.py verification/test_of_lgbm_all_operator_e2e.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_full_history_install.py verification/test_of_lgbm_ticket_selection.py verification/test_of_lgbm_manifest_integrity.py verification/test_of_lgbm_history_completeness.py verification/test_of_lgbm_power_date_reconcile.py verification/test_of_lgbm_power_date_reconcile_issue118.py -v
       - name: Real-history three-view OpenFE LightGBM E2E
         shell: bash
         run: |
