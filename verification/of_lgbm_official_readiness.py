@@ -57,6 +57,9 @@ def audit(manifest, snapshot_root=None):
             ids = set()
             first_id = last_id = None
             previous_num = None
+            previous_year = previous_sequence = None
+            missing_sequence_events = 0
+            invalid_year_rollovers = 0
             previous_date = None
             malformed_ids = 0
             unordered_ids = 0
@@ -98,7 +101,18 @@ def audit(manifest, snapshot_root=None):
                     current_num = int(draw_id)
                     if previous_num is not None and current_num <= previous_num:
                         unordered_ids += 1
+                    year, sequence = divmod(current_num, 1000000)
+                    if year < 1 or sequence < 1:
+                        malformed_ids += 1
+                    elif previous_year is not None:
+                        if year == previous_year and sequence > previous_sequence + 1:
+                            missing_sequence_events += 1
+                        elif year != previous_year and (
+                            year != previous_year + 1 or sequence != 1
+                        ):
+                            invalid_year_rollovers += 1
                     previous_num = current_num
+                    previous_year, previous_sequence = year, sequence
                 if first_id is None:
                     first_id = draw_id
                 last_id = draw_id
@@ -123,11 +137,13 @@ def audit(manifest, snapshot_root=None):
                         'malformed_dates': malformed_dates,
                         'malformed_ids': malformed_ids,
                         'unordered_ids': unordered_ids,
+                        'missing_sequence_events': missing_sequence_events,
+                        'invalid_year_rollovers': invalid_year_rollovers,
                         'unordered_dates': unordered_dates,
                         'date_year_mismatches': date_year_mismatches,
                         'invalid_number_rows': invalid_number_rows}
         if duplicate_ids:
-            blockers.append(f'{game}: missing or duplicate draw IDs ({duplicate_ids})')
+            blockers.append(f'{game}: empty or duplicate draw IDs ({duplicate_ids})')
         if invalid_number_rows:
             blockers.append(f'{game}: invalid winning-number rows ({invalid_number_rows})')
         if malformed_dates:
@@ -136,6 +152,10 @@ def audit(manifest, snapshot_root=None):
             blockers.append(f'{game}: malformed draw IDs ({malformed_ids})')
         if unordered_ids:
             blockers.append(f'{game}: draw IDs not strictly increasing ({unordered_ids})')
+        if missing_sequence_events:
+            blockers.append(f'{game}: gaps in consecutive same-year draw IDs ({missing_sequence_events})')
+        if invalid_year_rollovers:
+            blockers.append(f'{game}: invalid ROC year rollover ({invalid_year_rollovers})')
         if unordered_dates:
             blockers.append(f'{game}: draw dates not strictly increasing ({unordered_dates})')
         if date_year_mismatches:
