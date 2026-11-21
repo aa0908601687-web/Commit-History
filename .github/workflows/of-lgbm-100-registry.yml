@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'verification/of_lgbm_100_candidate_configs.json'
+      - 'verification/of_lgbm_candidate_registry.py'
       - 'verification/test_of_lgbm_100_candidate_configs.py'
       - '.github/workflows/of-lgbm-100-registry.yml'
   workflow_dispatch:
