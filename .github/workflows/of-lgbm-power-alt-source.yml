@@ -25,6 +25,28 @@ jobs:
           old='<table><tr><td>97000098</td><td>2008-12-29</td><td>02 10 15 19 28 31 01</td></tr></table>'
           assert rows_from_html(old) == [('097000098', '2008-12-29', (2,10,15,19,28,31), 1)]
           print('PASS: parser regression including 8-digit ROC draw IDs')
+          for bad_date in ('2026-02-30', '2026-13-01'):
+              invalid=f'<table><tr><td>115000093</td><td>{bad_date}</td><td>01 12 13 18 30 33 03</td></tr></table>'
+              try:
+                  rows_from_html(invalid)
+              except ValueError:
+                  pass
+              else:
+                  raise AssertionError(f'invalid date accepted: {bad_date}')
+          from verification.of_lgbm_novice_power_date_stage import load_archive
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          with TemporaryDirectory() as directory:
+              archive=Path(directory)/'archive.csv'
+              for bad_row in ('115000093,01 01 13 18 30 33,03', '115000093,01 12 13 18 30 39,03', '115000093,01 12 13 18 30 33,09'):
+                  archive.write_text('draw_id,first,second\\n'+bad_row+'\\n', encoding='utf-8')
+                  try:
+                      load_archive(archive)
+                  except ValueError:
+                      pass
+                  else:
+                      raise AssertionError(f'invalid archive row accepted: {bad_row}')
+          print('PASS: invalid dates and invalid archive numbers rejected')
           PY
       - name: Fetch alternative source and compare to pinned archive (fail closed)
         run: |
