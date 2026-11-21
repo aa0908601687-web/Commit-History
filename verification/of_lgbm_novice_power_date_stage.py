@@ -49,8 +49,8 @@ def rows_from_html(html):
             continue
         ident = cells[0].strip()
         day = cells[1].strip()
-        numbers = re.findall(r"(?<!\\d)\\d{1,2}(?!\\d)", cells[2])
-        if re.fullmatch(r"\\d{9}", ident) and re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", day):
+        numbers = re.findall(r"(?<!\d)\d{1,2}(?!\d)", cells[2])
+        if re.fullmatch(r"\d{9}", ident) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
             if len(numbers) != 7:
                 raise ValueError(f"unexpected number format for {ident}: {cells[2]!r}")
             first = tuple(sorted(map(int, numbers[:6])))
@@ -124,14 +124,14 @@ def main():
         "original_archive_preserved": True,
     }
     Path(args.report).parent.mkdir(parents=True,exist_ok=True)
-    Path(args.report).write_text(json.dumps(report,indent=2,ensure_ascii=False)+"\\n",encoding="utf-8")
+    Path(args.report).write_text(json.dumps(report,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
     if missing or conflicts:
         raise ValueError(f"REJECT: missing={len(missing)}, conflicts={len(conflicts)}; no CSV created")
     out = Path(args.output)
     if out.exists():
         raise ValueError("refuse overwrite")
     buffer = io.StringIO()
-    writer = csv.writer(buffer,lineterminator="\\n")
+    writer = csv.writer(buffer,lineterminator="\n")
     writer.writerow(FIELDS)
     for ident in sorted(archive):
         day, first, second = found[ident]
@@ -140,7 +140,7 @@ def main():
     with out.open("xb") as f:
         f.write(body)
     report["staged_sha256"] = hashlib.sha256(body).hexdigest()
-    Path(args.report).write_text(json.dumps(report,indent=2,ensure_ascii=False)+"\\n",encoding="utf-8")
+    Path(args.report).write_text(json.dumps(report,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
     print(f"Staged {len(archive)} structurally matched dates, NOT officially authenticated")
 
 if __name__ == "__main__":
