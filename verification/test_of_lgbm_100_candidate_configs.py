@@ -31,5 +31,37 @@ class TestStandaloneCandidateRegistry(unittest.TestCase):
             self.assertEqual(row["selection"], "train_fold_only")
             self.assertEqual(row["status"], "proposed_not_integrated")
 
+
+    def test_fail_closed_stage_filtered_loader(self):
+        import of_lgbm_candidate_registry as registry
+        pre = registry.load_candidates(registry.PRE_DRAW)
+        tickets = registry.load_candidates(registry.TICKET)
+        self.assertEqual(len(pre), 80)
+        self.assertEqual(len(tickets), 20)
+        self.assertTrue(all(x["stage"] == registry.PRE_DRAW for x in pre))
+        self.assertTrue(all(x["stage"] == registry.TICKET for x in tickets))
+        with self.assertRaises(ValueError):
+            registry.load_candidates("all")
+
+    def test_mutated_metadata_is_rejected(self):
+        import copy
+        import of_lgbm_candidate_registry as registry
+        altered = copy.deepcopy(self.data)
+        altered["configurations"][60]["stage"] = registry.PRE_DRAW
+        with self.assertRaises(ValueError):
+            registry.validate_manifest(altered)
+        altered = copy.deepcopy(self.data)
+        altered["configurations"][0]["selection"] = "heldout_validation"
+        with self.assertRaises(ValueError):
+            registry.validate_manifest(altered)
+        altered = copy.deepcopy(self.data)
+        altered["configurations"][0]["status"] = "active"
+        with self.assertRaises(ValueError):
+            registry.validate_manifest(altered)
+        altered = copy.deepcopy(self.data)
+        altered["configurations"][0]["name"] = altered["configurations"][1]["name"]
+        with self.assertRaises(ValueError):
+            registry.validate_manifest(altered)
+
 if __name__ == "__main__":
     unittest.main()
