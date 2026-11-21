@@ -18,6 +18,6 @@ python -m unittest discover -s of_lgbm -p 'test_*.py'
 ```
 
 ## Usage and limitations
-`train_openfe_lightgbm(train_x, train_y, valid_x, valid_y)` fits OpenFE on training rows only and transforms validation data. Caller must implement chronological splitting, leakage-safe historical feature construction, the 100 independent candidate feature sets, 8-number candidate pool, exact combination search, and end-to-end lottery validation. Those components are **not** implemented or connected here.
+`train_openfe_lightgbm(train_x, train_y, valid_x, valid_y)` fits OpenFE on training rows only and transforms validation data. Caller must implement chronological splitting, leakage-safe historical feature construction, the 100 independent candidate feature sets, 8-number candidate scoring, and end-to-end lottery validation. Those components are **not** implemented or connected here.\n\nAn optional standalone `exact_search.select_six_from_eight(scores)` helper now exhaustively checks all 28 six-number combinations from exactly eight first-area candidates (01–38) using an **additive score objective**. It is not wired into the existing V6 workflow, does not model second-area numbers, and must not be represented as the complete V6 exact-search objective.
 
 This is an integration scaffold, not proof of successful GitHub Actions execution, package installation on the user's phone, or improved lottery predictions. Never use future draw outcomes to construct earlier features.
