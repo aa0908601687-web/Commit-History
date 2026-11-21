@@ -108,6 +108,46 @@ class OfficialReadinessTests(unittest.TestCase):
                 self.assertEqual(result['snapshot_checks'][game]['invalid_number_rows'], 1)
                 self.assertFalse(result['production_official_data_ready'])
 
+    def test_missing_draw_sequence_and_year_rollover(self):
+        cases = [
+            (['115000001', '115000003'], 'missing_sequence_events'),
+            (['115000099', '116000002'], 'invalid_year_rollovers'),
+        ]
+        for ids, field in cases:
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as d:
+                root = Path(d)
+                data = root / 'power.csv'
+                lines = ['draw_id,draw_date,first,second']
+                for index, draw_id in enumerate(ids):
+                    year = int(draw_id[:3]) + 1911
+                    lines.append(f'{draw_id},{year}-01-0{index + 1},1 2 3 4 5 6,1')
+                data.write_text('\\n'.join(lines) + '\\n', encoding='utf-8')
+                manifest = {'datasets': {'power': {
+                    'path': 'power.csv', 'rows': 2,
+                    'sha256': hashlib.sha256(data.read_bytes()).hexdigest()
+                }}}
+                result = module.audit(manifest, snapshot_root=root)
+                self.assertEqual(result['snapshot_checks']['power'][field], 1)
+                self.assertFalse(result['production_official_data_ready'])
+
+    def test_valid_year_rollover_is_not_flagged(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            data = root / 'power.csv'
+            data.write_text(
+                'draw_id,draw_date,first,second\\n'
+                '115000099,2026-12-31,1 2 3 4 5 6,1\\n'
+                '116000001,2027-01-01,1 2 3 4 5 6,1\\n',
+                encoding='utf-8')
+            manifest = {'datasets': {'power': {
+                'path': 'power.csv', 'rows': 2,
+                'sha256': hashlib.sha256(data.read_bytes()).hexdigest()
+            }}}
+            result = module.audit(manifest, snapshot_root=root)
+            check = result['snapshot_checks']['power']
+            self.assertEqual(check['missing_sequence_events'], 0)
+            self.assertEqual(check['invalid_year_rollovers'], 0)
+
     def test_directory_escape_is_blocked(self):
         with tempfile.TemporaryDirectory() as d:
             m = {'datasets': {'power': {'path': '../not-in-repo.csv', 'sha256': 'a'*64},
