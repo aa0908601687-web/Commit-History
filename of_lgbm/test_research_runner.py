@@ -1,4 +1,5 @@
 import csv
+import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +8,8 @@ from research_runner import run_research_csv
 
 
 class ResearchRunnerTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("pandas") is not None,
+                         "pandas is required for the CSV-to-model integration test")
     def test_csv_to_model_to_selection(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sample.csv"
