@@ -142,5 +142,29 @@ class PowerDateReconcileTests(unittest.TestCase):
         self.assertFalse(self.report.exists())
 
 
+    def test_invalid_first_zone_fails_without_outputs(self):
+        self.source_rows([
+            ["115000001", "2026-01-01", "01 01 03 04 05 06", "01"],
+            ["115000002", "2026-01-05", self.first, "02"],
+        ])
+        with self.assertRaisesRegex(ValueError, "invalid Power number"):
+            reconcile(self.archive, self.source, self.output, self.report)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.report.exists())
+
+    def test_conflicting_source_never_mutates_inputs(self):
+        self.source_rows([
+            ["115000001", "2026-01-01", self.first, "02"],
+            ["115000002", "2026-01-05", self.first, "02"],
+        ])
+        archive_before = self.archive.read_bytes()
+        source_before = self.source.read_bytes()
+        with self.assertRaisesRegex(ValueError, "drawn numbers differ"):
+            reconcile(self.archive, self.source, self.output, self.report)
+        self.assertEqual(self.archive.read_bytes(), archive_before)
+        self.assertEqual(self.source.read_bytes(), source_before)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.report.exists())
+
 if __name__ == "__main__":
     unittest.main()
