@@ -60,7 +60,7 @@ def rows_from_html(html):
             out.append((ident, day, first, second))
     return out
 
-def collect(fetch=download_page, max_pages=120):
+def collect(fetch=download_page, max_pages=300):
     found = {}
     for page in range(1, max_pages + 1):
         rows = rows_from_html(fetch(page))
@@ -98,6 +98,22 @@ def load_archive(path):
             out[ident] = (first, second)
     return out
 
+def compact_ranges(identifiers):
+    """Summarize gaps to distinguish a source coverage gap from pagination failure."""
+    if not identifiers:
+        return []
+    values = sorted(int(x) for x in identifiers)
+    ranges = []
+    start = previous = values[0]
+    for n in values[1:]:
+        if n == previous + 1:
+            previous = n
+        else:
+            ranges.append([str(start).zfill(9), str(previous).zfill(9)])
+            start = previous = n
+    ranges.append([str(start).zfill(9), str(previous).zfill(9)])
+    return ranges
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--archive", required=True)
@@ -114,6 +130,11 @@ def main():
         "source_status": "third_party_not_independently_officially_authenticated",
         "archive_count": len(archive),
         "source_count": len(found),
+        "source_first_id": min(found) if found else None,
+        "source_last_id": max(found) if found else None,
+        "archive_first_id": min(archive) if archive else None,
+        "archive_last_id": max(archive) if archive else None,
+        "missing_id_ranges": compact_ranges(missing),
         "missing_archive_ids_in_source": missing[:30],
         "missing_count": len(missing),
         "number_conflict_ids": conflicts[:30],
