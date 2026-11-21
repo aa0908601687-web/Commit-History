@@ -1,0 +1,34 @@
+name: OF-LGBM official provenance readiness audit
+on:
+  pull_request:
+    paths:
+      - "verification/of_lgbm_official_readiness.py"
+      - "verification/test_of_lgbm_official_readiness.py"
+      - "verification/of_lgbm_data/SOURCE_MANIFEST.json"
+      - ".github/workflows/of-lgbm-official-readiness.yml"
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Regression tests
+        run: python -m unittest discover -s verification -p 'test_of_lgbm_official_readiness.py' -v
+      - name: Emit provenance readiness report (NOT official certification)
+        run: |
+          python verification/of_lgbm_official_readiness.py --report official-readiness.json
+          python - <<'PY'
+          import json
+          report = json.load(open("official-readiness.json", encoding="utf-8"))
+          if not report["production_official_data_ready"]:
+              print("::warning::Official data provenance NOT verified; production data release remains blocked.")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-official-readiness-review-only
+          path: official-readiness.json
