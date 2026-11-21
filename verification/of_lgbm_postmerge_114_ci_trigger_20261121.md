@@ -11,3 +11,7 @@ Required acceptance:
 - Do not merge this validation-only PR; it provides a CI trigger/audit record.
 
 Limitations: the 100 candidate configurations are registry-only and not activated as model inputs. No official historical CSV import has occurred. The Power archive has 1,964 missing dates, and there is no established predictive advantage over fair random tickets.
+
+## Fresh verification request — 2026-11-21
+
+Re-run unchanged main-derived OpenFE/LightGBM CPU installation, three-game E2E, and three-game five-refit chronological holdout on this validation branch. No official CSV import, model activation, or production changes. CI pass/fail is determined only from new workflow run IDs and job conclusions.
