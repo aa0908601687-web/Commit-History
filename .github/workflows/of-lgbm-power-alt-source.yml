@@ -109,7 +109,7 @@ jobs:
               "archive_sha256": source_audit["archive_sha256"],
               "requires": "independent official original export and row-by-row matching before main import"
           }
-          (stage / "IMPORT_AUDIT.json").write_text(json.dumps(summary, indent=2) + "\\n", encoding="utf-8")
+          (stage / "IMPORT_AUDIT.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
           print("STAGED REVIEW-ONLY 1964 Power draws; canonical archive unchanged; NOT official certified")
           PY
       - name: Upload REVIEW-ONLY candidate and audit (never rewrite canonical CSV)
