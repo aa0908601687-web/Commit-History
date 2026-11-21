@@ -46,6 +46,21 @@ class OfficialReadinessTests(unittest.TestCase):
             self.assertTrue(any('SHA-256 mismatch' in b for b in report['blockers']))
             self.assertTrue(any('incomplete draw dates' in b for b in report['blockers']))
 
+    def test_duplicate_id_and_invalid_date_are_blocked(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            data = root / 'power.csv'
+            data.write_text('draw_id,draw_date\n115000001,2026-13-01\n115000001,2026-01-02\n', encoding='utf-8')
+            m = {'datasets': {'power': {'path': 'power.csv', 'rows': 2,
+                                        'sha256': hashlib.sha256(data.read_bytes()).hexdigest(),
+                                        'first': '115000001', 'cutoff': '115000002'},
+                              'lotto': {}, '539': {}}}
+            report = module.audit(m, snapshot_root=root)
+            self.assertFalse(report['production_official_data_ready'])
+            self.assertEqual(report['snapshot_checks']['power']['invalid_or_duplicate_ids'], 1)
+            self.assertEqual(report['snapshot_checks']['power']['malformed_dates'], 1)
+            self.assertTrue(any('last draw ID differs' in b for b in report['blockers']))
+
     def test_directory_escape_is_blocked(self):
         with tempfile.TemporaryDirectory() as d:
             m = {'datasets': {'power': {'path': '../not-in-repo.csv', 'sha256': 'a'*64},
