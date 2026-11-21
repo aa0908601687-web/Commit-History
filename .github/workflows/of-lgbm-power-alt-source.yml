@@ -30,6 +30,14 @@ jobs:
             --archive verification/of_lgbm_data/power_history_archive.csv \
             --output candidate-dated-power.csv \
             --report alt-source-audit.json
+      - name: Print missing draw ID ranges from source audit
+        if: always()
+        run: |
+          if [ -f alt-source-audit.json ]; then
+            python -m json.tool alt-source-audit.json
+          else
+            echo "No source audit file generated"
+          fi
       - name: If matched, run strict existing reconciler without publishing
         run: |
           python verification/of_lgbm_power_date_reconcile.py \
