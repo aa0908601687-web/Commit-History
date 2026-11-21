@@ -30,3 +30,6 @@ This is an integration scaffold, not proof of successful GitHub Actions executio
 
 ## Historical CSV format adapter
 `history_adapter.load_verified_format(path)` validates an explicitly normalized local CSV with columns `draw_id,date,n1,n2,n3,n4,n5,n6,second`, ISO dates, first-area 1–38, second-area 1–8, and strict chronological ordering. `historical_windows(rows, target_index)` returns last-10, last-20, and all-prior views without including the target draw. This validates **format only**, not official-source authenticity. The adapter is not yet connected to a pre-draw per-number feature builder or model training. It does not assume raw Taiwanese lottery CSV exports already match this schema.
+
+## Three-view pre-draw feature builder
+`feature_builder.build_number_features(rows, target_index, area)` builds per-number counts and rates from the last 10, last 20, and all earlier draws, never the target draw. `build_supervised_history(rows, target_indices, area)` builds labeled historical training examples using only past draw labels. This is a minimal deterministic baseline; OpenFE's full automatic feature generation, the 100 independent feature sets, actual training and prediction on verified lottery draws, and CI end-to-end data/model validation remain to be completed. No fixed cross-view weights are imposed.
