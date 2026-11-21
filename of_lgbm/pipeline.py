@@ -16,12 +16,12 @@ def train_openfe_lightgbm(train_x, train_y, valid_x, valid_y, *, seed=42, n_jobs
     Inputs must be chronologically split by the caller, with labels and
     all input features available as of the prediction timestamp.
     """
-    from openfe import OpenFE, transform
-    import lightgbm as lgb
     if len(train_x) != len(train_y) or len(valid_x) != len(valid_y):
         raise ValueError("Feature and label row counts must match")
     if len(train_x) == 0 or len(valid_x) == 0:
         raise ValueError("Train and validation sets must not be empty")
+    from openfe import OpenFE, transform
+    import lightgbm as lgb
     generator = OpenFE()
     features = generator.fit(data=train_x, label=train_y, n_jobs=n_jobs)
     transformed_train, transformed_valid = transform(
