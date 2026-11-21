@@ -2,6 +2,7 @@
 """Stage third-party Power draw dates for review; never certify official provenance."""
 import argparse
 import csv
+from datetime import date
 import hashlib
 import io
 import json
@@ -52,6 +53,12 @@ def rows_from_html(html):
         numbers = re.findall(r"(?<!\d)\d{1,2}(?!\d)", cells[2])
         if re.fullmatch(r"\d{8,9}", ident) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
             ident = ident.zfill(9)
+            try:
+                parsed_day = date.fromisoformat(day)
+            except ValueError as exc:
+                raise ValueError(f"invalid draw date for {ident}: {day}") from exc
+            if parsed_day.isoformat() != day:
+                raise ValueError(f"noncanonical draw date for {ident}: {day}")
             if len(numbers) != 7:
                 raise ValueError(f"unexpected number format for {ident}: {cells[2]!r}")
             first = tuple(sorted(map(int, numbers[:6])))
@@ -113,8 +120,12 @@ def load_archive(path):
         out = {}
         for row in reader:
             ident = row["draw_id"].strip()
+            if not re.fullmatch(r"\\d{9}", ident):
+                raise ValueError(f"invalid archive draw id {ident!r}")
             first = tuple(sorted(int(x) for x in row["first"].replace(","," ").split()))
             second = int(row["second"])
+            if len(first) != 6 or len(set(first)) != 6 or any(n < 1 or n > 38 for n in first) or not 1 <= second <= 8:
+                raise ValueError(f"invalid archive numbers for {ident}")
             if ident in out:
                 raise ValueError(f"duplicate archive id {ident}")
             out[ident] = (first, second)
