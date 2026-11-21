@@ -4,6 +4,8 @@ on:
     paths:
       - "verification/of_lgbm_official_readiness.py"
       - "verification/test_of_lgbm_official_readiness.py"
+      - "verification/test_of_lgbm_power_date_reconcile.py"
+      - "verification/of_lgbm_power_date_reconcile.py"
       - "verification/of_lgbm_data/SOURCE_MANIFEST.json"
       - ".github/workflows/of-lgbm-official-readiness.yml"
   workflow_dispatch:
@@ -19,6 +21,8 @@ jobs:
           python-version: "3.11"
       - name: Regression tests
         run: python -m unittest discover -s verification -p 'test_of_lgbm_official_readiness.py' -v
+      - name: Power date reconciliation fail-closed regression tests
+        run: python -m unittest discover -s verification -p 'test_of_lgbm_power_date_reconcile.py' -v
       - name: Emit provenance readiness report (NOT official certification)
         run: |
           python verification/of_lgbm_official_readiness.py --report official-readiness.json
