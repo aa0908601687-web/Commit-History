@@ -40,18 +40,18 @@ class BackfillCoverageAdditions(unittest.TestCase):
         self.assertIn("097000001,01 02 03 04 05 06,08", self.module.render(rows))
 
     def test_second_zone_by_header_when_columns_reordered(self):
-        raw = ("遊戲名稱,期別,第二區,銷售總額,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6\\n"
-               "威力彩,097000001,8,999,6,5,4,3,2,1\\n")
+        raw = ("遊戲名稱,期別,第二區,銷售總額,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6\n"
+               "威力彩,097000001,8,999,6,5,4,3,2,1\n")
         self.assertEqual(
             self.module.parse_annual_zip(2008, self.zipped(raw)),
             [("097000001", [1, 2, 3, 4, 5, 6], 8)]
         )
 
     def test_missing_or_ambiguous_second_zone_header_rejected(self):
-        missing = ("遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,銷售總額\\n"
-                   "威力彩,097000001,1,2,3,4,5,6,8\\n")
-        ambiguous = ("遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區,特別號\\n"
-                     "威力彩,097000001,1,2,3,4,5,6,8,2\\n")
+        missing = ("遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,銷售總額\n"
+                   "威力彩,097000001,1,2,3,4,5,6,8\n")
+        ambiguous = ("遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區,特別號\n"
+                     "威力彩,097000001,1,2,3,4,5,6,8,2\n")
         for raw in (missing, ambiguous):
             with self.subTest(raw=raw):
                 with self.assertRaisesRegex(ValueError, "unambiguous second-zone header"):
@@ -230,7 +230,7 @@ class BackfillCoverageAdditions(unittest.TestCase):
         header = "遊戲名稱,期別,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,第二區\n"
         with self.assertRaisesRegex(ValueError, "No 威力彩 records"):
             self.module.parse_annual_zip(2008, self.zipped(""))
-        with self.assertRaisesRegex(ValueError, "No 威力彩 records"):
+        with self.assertRaisesRegex(ValueError, "missing columns"):
             self.module.parse_annual_zip(2008, self.zipped(header + "威力彩,097000001,01\n"))
 
     def test_existing_history_missing_is_rejected_before_write(self):
