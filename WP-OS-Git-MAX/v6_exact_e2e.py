@@ -2,8 +2,9 @@
 """V6 deterministic exact-search selector with optional OpenFE feature modes.
 
 No QPU, ABE, Bayesian calibration layer, or V3 cache dependency. --openfe preserves the 30% fusion mode.
---openfe-three-views uses OpenFE/LightGBM scores from latest-5, latest-10 and
-full-archive training views (all selection features capped at 10 draws) at 100%, before exhaustive eight-choose-six combination search.
+--openfe-three-views uses OpenFE/LightGBM on latest-10, latest-20 and
+all-prior views, with model-based scoring (no fixed three-view averaging),
+before exhaustive eight-choose-six combination search.
 """
 import argparse,csv,hashlib,json,math,sys
 from pathlib import Path
@@ -30,7 +31,7 @@ def validate(path):
 
 def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,use_cudaq=False,require_cudaq=False,ising_qubo_check=False,ortools_check=False):
     """Finish deterministic exact-search selection from supplied scores."""
-    five=rows[-5:];ten=rows[-10:]
+    five=rows[-5:];ten=rows[-10:];twenty=rows[-20:]
     if set(scores) != set(range(1, 39)) or any(not math.isfinite(scores[n]) for n in scores):
         raise ValueError("first-zone feature scores must be finite for every number 1..38")
     pool=sorted(scores,key=lambda n:(-scores[n],n))[:8]
@@ -88,6 +89,7 @@ def complete_result(path,rows,scores,feature_layer,high_fidelity_verify=False,us
     return {"candidate_pool":pool,"first_zone":list(best[1]),"second_zone":second,"last_draw":rows[-1][0],
       "views":{"latest_5":{"rows":5,"from":five[0][0],"to":five[-1][0]},
                "latest_10":{"rows":10,"from":ten[0][0],"to":ten[-1][0]},
+               "latest_20":{"rows":len(twenty),"from":twenty[0][0],"to":twenty[-1][0]},
                "complete_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]},
                "full_archive":{"rows":len(rows),"from":rows[0][0],"to":rows[-1][0]}},
       "sha256":hashlib.sha256(Path(path).read_bytes()).hexdigest(),
