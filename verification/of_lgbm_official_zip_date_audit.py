@@ -12,11 +12,13 @@ import io
 import json
 import re
 import zipfile
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 from pathlib import Path
 
 def parse_date(value):
-    value = value.strip()
+    value = value.strip().split("T")[0].split(" ")[0]
     value = re.sub(r"[年月]", "/", value).replace("日", "")
     parts = re.split(r"[-/.]", value)
     if len(parts) != 3 or any(not p.isdigit() for p in parts):
@@ -70,6 +72,40 @@ def extract_year(year, zip_path):
         raise ValueError(f"{year}: no dated Power Lotto rows found")
     return dates, hashlib.sha256(source).hexdigest()
 
+def fetch_live_dates(month, expected):
+    endpoint = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/SuperLotto638Result"
+    params = urlencode({"period":"","month":month,"pageNum":1,"pageSize":50})
+    url = endpoint + "?" + params
+    request = Request(url, headers={"User-Agent":"Mozilla/5.0","Accept":"application/json"})
+    with urlopen(request,timeout=30) as response:
+        raw=response.read()
+    payload=json.loads(raw)
+    entries=payload.get("content",{}).get("superLotto638Res")
+    if not isinstance(entries,list) or not entries:
+        raise ValueError("official live API returned no draws")
+    found={}
+    for entry in entries:
+        draw_id=str(entry.get("period","")).strip()
+        if draw_id not in expected:
+            continue
+        nums=entry.get("drawNumberSize")
+        if not isinstance(nums,list) or len(nums)!=7:
+            raise ValueError(f"{draw_id}: malformed official API numbers")
+        actual=(tuple(sorted(int(n) for n in nums[:6])),int(nums[6]))
+        saved=expected[draw_id]
+        canonical=(tuple(sorted(int(n) for n in saved["first"].split())),int(saved["second"]))
+        if actual!=canonical:
+            raise ValueError(f"{draw_id}: official API numbers conflict with canonical record")
+        draw_date=parse_date(str(entry.get("lotteryDate","")))
+        if int(draw_id[:3])!=int(draw_date[:4])-1911:
+            raise ValueError(f"{draw_id}: official API date/year mismatch")
+        if draw_id in found and found[draw_id]!=draw_date:
+            raise ValueError(f"{draw_id}: conflicting official live dates")
+        found[draw_id]=draw_date
+    return found,{"month":month,"url":url,
+                  "response_sha256":hashlib.sha256(raw).hexdigest(),
+                  "matched_draws":len(found)}
+
 def audit(archive_dir, current_archive, output):
     archive_dir = Path(archive_dir)
     with Path(current_archive).open(encoding="utf-8-sig", newline="") as fp:
@@ -92,6 +128,18 @@ def audit(archive_dir, current_archive, output):
                 raise ValueError(f"cross-year date conflict {draw_id}")
             dates[draw_id] = dt
         sources.append({"year":year,"archive_sha256":sha,"dated_power_rows":len(result)})
+    # Monthly official annual ZIPs can lag recent draws. Require both official
+    # API number zones to match before accepting a live draw date.
+    missing_before_live = sorted(set(expected) - set(dates), key=int)
+    live_source = None
+    if missing_before_live:
+        taiwan_now = datetime.now(timezone(timedelta(hours=8)))
+        month = taiwan_now.strftime("%Y-%m")
+        live, live_source = fetch_live_dates(month, expected)
+        for draw_id, draw_date in live.items():
+            if draw_id in dates and dates[draw_id] != draw_date:
+                raise ValueError(f"{draw_id}: official ZIP / API date conflict")
+            dates[draw_id] = draw_date
     ordered = sorted(expected, key=int)
     last_date = None
     for draw_id in ordered:
@@ -111,11 +159,27 @@ def audit(archive_dir, current_archive, output):
         "first_draw_id":ordered[0],
         "last_draw_id":ordered[-1],
         "annual_sources":sources,
+        "live_api_source":live_source,
+        "missing_before_live_api":missing_before_live,
         "all_canonical_dates_present":not missing,
         "provenance_independently_authenticated":False,
         "of_lgbm_production_import_completed":False,
         "note":"Original downloaded ZIPs checked structurally; annual ZIPs may lag live draws. No dates were inferred or production data overwritten."
     }
+    # A complete matching set is staged only as an evidence artifact, never
+    # copied over the canonical OF-LGBM source or its pinned manifest.
+    if not missing:
+        candidate = Path(output).with_name("power-official-dated-candidate.csv")
+        if candidate.exists():
+            raise ValueError("candidate output exists; refusing overwrite")
+        with candidate.open("x",encoding="utf-8",newline="") as fp:
+            writer=csv.writer(fp,lineterminator="\\n")
+            writer.writerow(["draw_id","draw_date","first","second"])
+            for draw_id in ordered:
+                row=expected[draw_id]
+                writer.writerow([draw_id,dates[draw_id],row["first"],row["second"]])
+        report["dated_candidate_path"]=str(candidate)
+        report["dated_candidate_sha256"]=hashlib.sha256(candidate.read_bytes()).hexdigest()
     Path(output).write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     return report
 
