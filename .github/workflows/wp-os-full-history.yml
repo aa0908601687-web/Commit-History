@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/wp-os-full-history.yml'
       - 'WP-OS-Git-MAX/backfill_official_history.py'
+      - 'verification/of_lgbm_official_zip_date_audit.py'
       - 'WP-OS-Git-MAX/test_evidence_audit.py'
       - 'WP-OS-Git-MAX/test_backfill_coverage_additions.py'
   workflow_dispatch:
@@ -91,7 +92,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wp-os-official-date-coverage
-          path: power-official-date-coverage.json
+          path: |
+            power-official-date-coverage.json
+            power-official-dated-candidate.csv
           if-no-files-found: warn
       - name: Verify archive with existing tests and evidence audit
         run: |
