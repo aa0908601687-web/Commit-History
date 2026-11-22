@@ -173,7 +173,7 @@ def audit(archive_dir, current_archive, output):
         if candidate.exists():
             raise ValueError("candidate output exists; refusing overwrite")
         with candidate.open("x",encoding="utf-8",newline="") as fp:
-            writer=csv.writer(fp,lineterminator="\\n")
+            writer=csv.writer(fp,lineterminator="\n")
             writer.writerow(["draw_id","draw_date","first","second"])
             for draw_id in ordered:
                 row=expected[draw_id]
