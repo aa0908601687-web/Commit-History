@@ -52,8 +52,8 @@ jobs:
           rows = validate('WP-OS-Git-MAX/historical_archive.csv')
           scores, meta = score_three_history_views_tabprep(rows)
           assert meta['tabprep_executed'] is True
-          assert meta['history_views'] == ['latest_5', 'latest_10', 'full_archive']
-          assert meta['feature_window'] == [5, 10]
+          assert meta['history_views'] == ['latest_10', 'latest_20', 'full_archive']
+          assert meta['feature_window'] == [10, 20]
           assert set(scores) == set(range(1,39))
           assert all(math.isfinite(s) and 0 <= s <= 1 for s in scores.values())
           assert all(set(meta['per_view_scores'][v]) == set(range(1,39)) for v in meta['history_views'])
