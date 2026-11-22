@@ -82,7 +82,11 @@ jobs:
           if-no-files-found: warn
       - name: Verify archive with existing tests and evidence audit
         run: |
-          python -m unittest discover -s WP-OS-Git-MAX -p 'test_*.py'
+          # This job validates history ingestion; unrelated optional feature-engine
+          # suites require additional ML dependencies and run in their own CI.
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_backfill_*.py' -v
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_official_data.py' -v
+          python -m unittest discover -s WP-OS-Git-MAX -p 'test_evidence_audit.py' -v
           python WP-OS-Git-MAX/evidence_audit.py --csv WP-OS-Git-MAX/historical_archive.csv --backtest-count 100 --output evidence-report.json > /dev/null
       - name: Upload audit report
         uses: actions/upload-artifact@v4

@@ -81,19 +81,24 @@ def parse_annual_zip(year, payload):
                 number_i = [normalized.index(f"獎號{i}") for i in range(1, 7)]
             except ValueError:
                 continue
+            # The published schema names the extra field; its location is not
+            # guaranteed. Never guess that it follows 獎號6, especially if
+            # annual exports add or reorder sales/prize columns.
+            extra_columns = [i for i, name in enumerate(normalized)
+                             if name in ("第二區", "特別號")]
             for line in reader:
-                if len(line) <= max(period_i, *number_i):
+                if len(line) <= game_i or line[game_i].strip() != "威力彩":
                     continue
-                if line[game_i].strip() != "威力彩":
-                    continue
+                if len(extra_columns) != 1:
+                    raise ValueError(f"Official {year} 威力彩 CSV lacks an unambiguous second-zone header")
+                second_i = extra_columns[0]
+                if len(line) <= max(period_i, second_i, *number_i):
+                    raise ValueError(f"Official {year} 威力彩 row has missing columns")
                 period = line[period_i].strip()
                 if period.isdigit() and len(period) == 8:
                     period = period.zfill(9)
                 first = sorted(int(line[i].strip()) for i in number_i)
-                # The official common schema stores the second-zone number
-                # immediately after the six first-zone numbers.
-                second_i = number_i[-1] + 1
-                if len(line) <= second_i or not line[second_i].strip():
+                if not line[second_i].strip():
                     raise ValueError(f"Official {year} 威力彩 row lacks second-zone number: {period}")
                 second = int(line[second_i].strip())
                 if not (period.isdigit() and len(period) == 9):

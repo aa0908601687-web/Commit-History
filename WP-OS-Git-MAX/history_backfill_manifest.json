@@ -94,14 +94,14 @@
     {
       "year": 2026,
       "path": "https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/2026.zip",
-      "draws": 78
+      "draws": 87
     }
   ],
-  "live_month": "2026-10",
-  "draw_count": 1958,
+  "live_month": "2026-11",
+  "draw_count": 1965,
   "first_draw": "097000001",
-  "last_draw": "115000086",
-  "archive_sha256": "96f7eabd9b587cca718ee6e8af1d5d7c3506993b8c9e6b286be756514bd62a50",
+  "last_draw": "115000093",
+  "archive_sha256": "f1a992cc266c5751d920f71fe44239508f9124b2fc6afba8baf0cbff17829d5e",
   "feature_window": "last 5/10 draws only",
   "backtest_window": 15
 }
