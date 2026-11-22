@@ -40,6 +40,44 @@ jobs:
       - name: Run OF-LGBM integration unit tests
         run: |
           python -m unittest verification/test_of_lgbm_isolation.py verification/test_of_lgbm_all_operator_e2e.py verification/test_of_lgbm_real_history_gate.py verification/test_of_lgbm_full_history_install.py verification/test_of_lgbm_ticket_selection.py verification/test_of_lgbm_manifest_integrity.py verification/test_of_lgbm_history_completeness.py verification/test_of_lgbm_power_date_reconcile.py -v
+      - name: Cross-check Power full-history snapshot against updated official-download archive
+        if: env.GAME == 'power'
+        run: |
+          python - <<'PY'
+          import csv, hashlib, json
+          from pathlib import Path
+          snapshot=Path("verification/of_lgbm_data/power_history_archive.csv")
+          archive=Path("WP-OS-Git-MAX/historical_archive.csv")
+          def read(path):
+              with path.open(encoding="utf-8-sig",newline="") as fp:
+                  return list(csv.DictReader(fp))
+          old, official=read(snapshot), read(archive)
+          old_by_id={r["draw_id"]:r for r in old}
+          official_by_id={r["draw_id"]:r for r in official}
+          assert len(old_by_id)==len(old) and len(official_by_id)==len(official), "duplicate draw IDs"
+          def normalize(row):
+              first=tuple(sorted(int(x) for x in row["first"].replace(","," ").split()))
+              return first,int(row["second"])
+          missing=sorted(set(old_by_id)-set(official_by_id))
+          mismatches=sorted(k for k in old_by_id.keys() & official_by_id.keys()
+                            if normalize(old_by_id[k])!=normalize(official_by_id[k]))
+          report={
+              "status":"cross_archive_consistency_not_official_provenance_certification",
+              "of_lgbm_snapshot_rows":len(old),
+              "download_archive_rows":len(official),
+              "overlap_count":len(set(old_by_id)&set(official_by_id)),
+              "missing_snapshot_ids_in_download":missing,
+              "number_conflicts":mismatches,
+              "snapshot_missing_date_rows":sum(not r.get("draw_date") for r in old),
+              "official_record_by_record_authenticated":False,
+              "of_lgbm_full_official_import_completed":False,
+              "snapshot_sha256":hashlib.sha256(snapshot.read_bytes()).hexdigest(),
+              "download_archive_sha256":hashlib.sha256(archive.read_bytes()).hexdigest()
+          }
+          Path("power-cross-archive-audit.json").write_text(json.dumps(report,indent=2)+"\\n")
+          print(json.dumps({k:v for k,v in report.items() if k not in ("snapshot_sha256","download_archive_sha256")},indent=2))
+          assert not missing and not mismatches, "Power snapshot conflicts with downloaded archive"
+          PY
       - name: Real-history three-view OpenFE LightGBM E2E
         shell: bash
         run: |
@@ -85,4 +123,5 @@ jobs:
             history-audit.json
             history-completeness.json
             of-lgbm-evidence.json
+            power-cross-archive-audit.json
           if-no-files-found: warn
