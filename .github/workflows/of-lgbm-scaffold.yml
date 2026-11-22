@@ -1,5 +1,9 @@
 name: OpenFE LightGBM isolated scaffold checks
 on:
+  push:
+    paths:
+      - "of_lgbm/**"
+      - ".github/workflows/of-lgbm-scaffold.yml"
   pull_request:
     paths:
       - "of_lgbm/**"
