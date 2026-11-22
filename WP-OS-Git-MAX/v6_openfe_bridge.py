@@ -9,33 +9,32 @@ from __future__ import annotations
 import random
 
 SEED = 20261103
-VIEW_LIMITS = {"latest_5": 5, "latest_10": 10, "full_archive": None}
+VIEW_LIMITS = {"latest_10": 10, "latest_20": 20, "full_archive": None}
 
 
 def _base_row(history, number, view_limit=None):
-    view = history[-10:] if view_limit is None else history[-view_limit:]
-    # Full archive supplies historical training anchors, never >10-draw features.
-    five = history[-5:]
+    view = history if view_limit is None else history[-view_limit:]
+    # All-prior view uses only draws already completed before this target.
     ten = history[-10:]
+    twenty = history[-20:]
     last_seen = next(
         (age for age, draw in enumerate(reversed(view), 1) if number in draw[1]),
         len(view) + 1,
     )
-    # Full-archive is a training-anchor view; its current statistics use a
-    # distinct time-decayed 10-draw signal rather than duplicating latest_10.
+    # Full-archive features genuinely span all available earlier draws.
     weighted = sum((i + 1) * (number in draw[1]) for i, draw in enumerate(view))
     weighted_denominator = sum(range(1, len(view) + 1))
     view_frequency = (weighted / weighted_denominator) if view_limit is None else (sum(number in draw[1] for draw in view) / len(view))
     return {
         "number": float(number),
         "number_scaled": number / 38.0,
-        "freq_5": float(sum(number in draw[1] for draw in five)),
+        "freq_20": float(sum(number in draw[1] for draw in twenty)),
         "freq_10": float(sum(number in draw[1] for draw in ten)),
         "freq_view": float(view_frequency),
-        "gap_view": float(min(last_seen, 10)),
+        "gap_view": float(last_seen),
         "view_rows": float(len(view)),
         "view_is_10": float(view_limit == 10),
-        "view_is_5": float(view_limit == 5),
+        "view_is_20": float(view_limit == 20),
         "view_is_full": float(view_limit is None),
         "odd": float(number % 2),
         "low_zone": float(number <= 19),
@@ -121,7 +120,7 @@ def score_first_zone(rows, *, n_jobs=1, max_features=12):
         number: float(probabilities[number - 1]) for number in range(1, 39)
     }, {
         "engine": "OpenFE+LightGBM",
-        "feature_window": [5, 10],
+        "feature_window": [10, 20],
         "generated_features": generated,
         "used_features": used,
         "seed": SEED,
@@ -131,7 +130,7 @@ def score_first_zone(rows, *, n_jobs=1, max_features=12):
 
 
 def score_three_history_views(rows, *, n_jobs=1, max_features=12):
-    """Score 5/10/full-archive-training views. All prediction features use <=10 prior draws."""
+    """Learn from 10/20/all-prior views, scoring with all-prior trained model features."""
     if len(rows) < 12:
         raise ValueError("three-view OpenFE requires at least 12 completed draws")
     import pandas as pd
@@ -156,14 +155,13 @@ def score_three_history_views(rows, *, n_jobs=1, max_features=12):
         }
         offset += 38
     assert len(probabilities) == 38 * len(VIEW_LIMITS), "view-score alignment mismatch"
-    fused = {
-        number: sum(by_view[name][number] for name in VIEW_LIMITS) / len(VIEW_LIMITS)
-        for number in range(1, 39)
-    }
+    # Use model predictions for the all-prior feature view; do not assign
+    # an arbitrary fixed 1/3 weight to three predictions from the same model.
+    fused = dict(by_view["full_archive"])
     return fused, {
-        "feature_window": [5, 10],
+        "feature_window": [10, 20],
         "v3_cache_features_used": False,
-        "full_archive_role": "training_anchors_only",
+        "full_archive_role": "all_prior_training_and_inference_features",
         "engine": "OpenFE+LightGBM",
         "mode": "three_history_views_100_percent",
         "generated_features": generated,
@@ -171,8 +169,9 @@ def score_three_history_views(rows, *, n_jobs=1, max_features=12):
         "seed": SEED,
         "leakage_safe": True,
         "history_views": list(VIEW_LIMITS),
-        "view_weights": {name: 1 / 3 for name in VIEW_LIMITS},
+        "view_weights": None,
+        "view_score_policy": "lightgbm_all_prior_feature_view_no_fixed_averaging",
         "per_view_scores": by_view,
-        "training_anchor_count": len(train_x) // (38 * len(VIEW_LIMITS)),
+        "training_sample_rows": len(train_x),
         "training_anchor_strategy": "uniform_across_full_archive",
     }
