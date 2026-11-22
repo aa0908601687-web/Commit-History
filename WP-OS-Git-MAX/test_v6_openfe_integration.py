@@ -37,14 +37,14 @@ class V6OpenFEIntegrationTests(unittest.TestCase):
         self.assertEqual(len(result["first_zone"]),6)
 
     def test_three_history_views_are_openfe_100_percent(self):
-        views=["latest_5","latest_10","full_archive"]
+        views=["latest_10","latest_20","full_archive"]
         class Fake:
             @staticmethod
             def score_three_history_views(rows,n_jobs=1):
                 per={name:{n:float(n) for n in range(1,39)} for name in views}
                 return ({n:float(n) for n in range(1,39)},
                         {"engine":"fake-openfe","mode":"three_history_views_100_percent",
-                         "history_views":views,"view_weights":{name:1/3 for name in views},
+                         "history_views":views,"view_weights":None,
                          "per_view_scores":per,"leakage_safe":True})
         with patch.dict(sys.modules,{"v6_openfe_bridge":Fake}):
             result=mod.run(self.csv,openfe_three_views=True)
@@ -75,12 +75,16 @@ class V6OpenFEIntegrationTests(unittest.TestCase):
         bridge = importlib.util.module_from_spec(bridge_spec)
         bridge_spec.loader.exec_module(bridge)
         self.assertNotIn("v3_cache", inspect.signature(bridge.score_three_history_views).parameters)
-        rows = [(str(115000001 + i), [1, 2, 3, 4, 5, 6] if i < 5 else [7, 8, 9, 10, 11, 12], 1) for i in range(10)]
+        rows = [(str(115000001 + i), [1, 2, 3, 4, 5, 6] if i < 10 else [7, 8, 9, 10, 11, 12], 1) for i in range(30)]
         ten = bridge._base_row(rows, 1, 10)
+        twenty = bridge._base_row(rows, 1, 20)
         archive = bridge._base_row(rows, 1, None)
-        self.assertNotEqual(ten["freq_view"], archive["freq_view"])
-        self.assertEqual(ten["freq_view"], 0.5)
-        self.assertAlmostEqual(archive["freq_view"], 15 / 55)
+        self.assertEqual(ten["freq_view"], 0.0)
+        self.assertEqual(twenty["freq_view"], 0.0)
+        self.assertNotEqual(archive["freq_view"], twenty["freq_view"])
+        self.assertEqual(archive["view_rows"], 30.0)
+        self.assertEqual(archive["freq_20"], 0.0)
+        self.assertAlmostEqual(archive["freq_view"], 55 / 465)
 
     def test_number_and_view_alignment(self):
         from types import SimpleNamespace
@@ -98,8 +102,10 @@ class V6OpenFEIntegrationTests(unittest.TestCase):
              patch.object(bridge, "_fit_and_score", side_effect=fake_fit):
             scores, meta = bridge.score_three_history_views(rows)
         self.assertEqual(len(scores), 38)
-        self.assertAlmostEqual(scores[1], (0 + 38 + 76) / 3)
-        self.assertAlmostEqual(scores[38], (37 + 75 + 113) / 3)
+        self.assertAlmostEqual(scores[1], 76)
+        self.assertAlmostEqual(scores[38], 113)
+        self.assertIsNone(meta["view_weights"])
+        self.assertEqual(meta["history_views"], ["latest_10", "latest_20", "full_archive"])
         self.assertFalse(meta["v3_cache_features_used"])
 
 if __name__=="__main__":unittest.main()
