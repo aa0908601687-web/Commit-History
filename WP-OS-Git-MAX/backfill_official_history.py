@@ -86,12 +86,12 @@ def parse_annual_zip(year, payload):
             # annual exports add or reorder sales/prize columns.
             extra_columns = [i for i, name in enumerate(normalized)
                              if name in ("第二區", "特別號")]
-            if len(extra_columns) != 1:
-                raise ValueError(f"Official {year} 威力彩 CSV lacks an unambiguous second-zone header")
-            second_i = extra_columns[0]
             for line in reader:
                 if len(line) <= game_i or line[game_i].strip() != "威力彩":
                     continue
+                if len(extra_columns) != 1:
+                    raise ValueError(f"Official {year} 威力彩 CSV lacks an unambiguous second-zone header")
+                second_i = extra_columns[0]
                 if len(line) <= max(period_i, second_i, *number_i):
                     raise ValueError(f"Official {year} 威力彩 row has missing columns")
                 period = line[period_i].strip()
