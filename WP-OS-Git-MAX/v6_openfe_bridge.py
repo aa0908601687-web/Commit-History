@@ -16,7 +16,7 @@ def _base_row(history, number, view_limit=None):
     view = history if view_limit is None else history[-view_limit:]
     # All-prior view uses only draws already completed before this target.
     ten = history[-10:]
-    twenty = history[-20:]
+    twenty = view[-20:] if len(view) >= 20 else []
     last_seen = next(
         (age for age, draw in enumerate(reversed(view), 1) if number in draw[1]),
         len(view) + 1,
