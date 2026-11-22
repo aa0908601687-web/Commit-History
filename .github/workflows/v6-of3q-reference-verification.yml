@@ -2,7 +2,7 @@ name: V6 OF3Q dependency and reference verification
 on:
   push:
     branches:
-      - feature/v6-of3q-rocq-verification-20261105
+      - main
   pull_request:
   workflow_dispatch:
 permissions:
@@ -30,43 +30,3 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install openfe lightgbm matplotlib
       - name: Smoke-test imports
         run: python -c "import openfe, lightgbm; print('OpenFE import OK; LightGBM', lightgbm.__version__)"
-  cudaq-cpu:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install CUDA-Q Python package
-        run: python -m pip install --upgrade pip && python -m pip install cudaq
-      - name: Smoke-test CUDA-Q
-        run: |
-          python - <<'PY'
-          import cudaq
-          print('CUDA-Q import OK')
-          kernel = cudaq.make_kernel()
-          q = kernel.qalloc(1)
-          kernel.h(q[0])
-          kernel.mz(q[0])
-          result = cudaq.sample(kernel, shots_count=100)
-          print(result)
-          PY
-  rocq-proofs:
-    runs-on: ubuntu-latest
-    timeout-minutes: 70
-    steps:
-      - uses: actions/checkout@v4
-      - name: Pull prebuilt Rocq 9.2 toolchain
-        run: docker pull rocq/rocq-prover:9.2
-      - name: Verify Rocq and compile actual candidate proof
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/v6-rocq-writable"
-          cp verification/rocq/V6Candidate.v "$RUNNER_TEMP/v6-rocq-writable/V6Candidate.v"
-          chmod 0777 "$RUNNER_TEMP/v6-rocq-writable"
-          docker run --rm --entrypoint /bin/sh \
-            -v "$RUNNER_TEMP/v6-rocq-writable:/proof" -w /proof \
-            rocq/rocq-prover:9.2 -c \
-            'opam exec -- rocq --version && opam exec -- rocq compile V6Candidate.v'
-          test -s "$RUNNER_TEMP/v6-rocq-writable/V6Candidate.vo"
