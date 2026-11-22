@@ -80,6 +80,19 @@ jobs:
             full-history-backfill.log
             WP-OS-Git-MAX/history_backfill_manifest.json
           if-no-files-found: warn
+      - name: Audit Power draw dates directly from official annual ZIP headers
+        run: |
+          python verification/of_lgbm_official_zip_date_audit.py \
+            --archive-dir annual-archives \
+            --current-archive WP-OS-Git-MAX/historical_archive.csv \
+            --output power-official-date-coverage.json
+      - name: Upload official ZIP date coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wp-os-official-date-coverage
+          path: power-official-date-coverage.json
+          if-no-files-found: warn
       - name: Verify archive with existing tests and evidence audit
         run: |
           # This job validates history ingestion; unrelated optional feature-engine
