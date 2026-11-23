@@ -15,6 +15,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Regression check exact eight-number pool enumeration
+        run: |
+          python - <<'PY'
+          import sys
+          from itertools import combinations
+          from pathlib import Path
+          sys.path.insert(0, str(Path("verification").resolve()))
+          from of_lgbm_ticket_selection import select_ticket
+          history = [tuple(range(1, 7)) for _ in range(20)]
+          scores = [float(39 - n) for n in range(1, 39)]
+          ticket, audit = select_ticket(scores, history, count=6, maximum=38, pool_size=8)
+          assert len(tuple(combinations(range(8), 6))) == 28
+          assert audit["candidate_combinations"] == 28
+          assert audit["pool_size"] == 8
+          assert len(ticket) == len(set(ticket)) == 6
+          assert all(1 <= n <= 38 for n in ticket)
+          assert set(ticket).issubset(set(range(1, 9)))
+          print("PASS: exact 8-choose-6 candidate count, legal unique ticket and bounded pool")
+          PY
       - name: Check 20-row fixture against canonical archive and audit dynamic boundaries
         run: |
           python - <<'PY'
