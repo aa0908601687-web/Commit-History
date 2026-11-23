@@ -32,16 +32,21 @@ def audit_all(data_dir, manifest_path):
             raise ValueError("SHA-256 mismatch for " + game)
         if info["rows"] != item["rows"] or info["last_id"] != cutoff:
             raise ValueError("count or cutoff mismatch for " + game)
-        if item.get("official_row_verification") != "not_completed":
+        if game == "power":
+            if item.get("official_row_verification") != "cross_checked_not_release_approved":
+                raise ValueError("unsubstantiated official attestation")
+            if manifest.get("power_date_backfill_20261124", {}).get("official_source_release_approval") is not False:
+                raise ValueError("unsubstantiated official attestation")
+        elif item.get("official_row_verification") != "not_completed":
             raise ValueError("unsubstantiated official attestation")
         if not info["chronological_and_legal_range_verified"]:
             raise ValueError("sequence integrity failed")
         dates_missing = info["rows"] - info["date_coverage"]
-        expected_status = ("missing_all_dates" if game == "power"
+        expected_status = ("all_1964_dates_restored_original_source_crosschecked" if game == "power"
                            else "format_consistent_not_officially_verified")
         if item["date_status"] != expected_status:
             raise ValueError("incorrect date provenance marker for " + game)
-        if (game == "power" and info["date_coverage"] != 0 or
+        if (game == "power" and info["date_coverage"] != info["rows"] or
             game != "power" and info["date_coverage"] != info["rows"]):
             raise ValueError("date coverage contradicts pinned manifest for " + game)
         output[game] = {
@@ -58,15 +63,17 @@ def audit_all(data_dir, manifest_path):
             "date_status": item["date_status"],
             "sha256": info["sha256"],
         }
-    if output["power"]["missing_draw_dates"] != manifest["integrity_audit_20261119"]["missing_power_draw_dates"]:
-        raise ValueError("Power missing-date tally contradicts pinned disclosure")
+    if manifest["integrity_audit_20261119"]["missing_power_draw_dates"] != manifest.get("power_date_backfill_20261124",{}).get("rows"):
+        raise ValueError("historical Power missing-date tally contradicts original pinned disclosure")
+    if output["power"]["missing_draw_dates"] != manifest.get("power_date_backfill_20261124",{}).get("missing_dates"):
+        raise ValueError("Power missing-date tally contradicts pinned backfill")
     return {
         "audit_type": "local_snapshot_only_not_official_certification",
         "dataset_count": len(output),
         "official_full_history_verified": False,
         "complete_to_today_verified": False,
         "datasets": output,
-        "next_step": "import original official annual downloads, independently compare every period and both number zones, repair dated Power archive only after source review, then repin checksums and rerun E2E"
+        "next_step": "Power draw dates restored and original-source crosschecked; formal provenance release approval and full-history freshness validation remain required"
     }
 
 def main():

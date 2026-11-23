@@ -29,11 +29,18 @@
       "rows": 1964,
       "cutoff": "115000092",
       "third_party_matching_overlap": 370,
-      "source": "prior repository archive, not authenticated against full official data",
-      "sha256": "de92a6019d8efa300f4cbb0e96b7badd9babfea9889b5e7657f0b10a01a80e5b",
-      "date_status": "missing_all_dates",
-      "official_row_verification": "not_completed",
-      "path": "verification/of_lgbm_data/power_history_archive.csv"
+      "source": "Taiwan Lottery original annual ZIP CDN, re-downloaded and cross-checked with official API supplement; independent release approval pending",
+      "sha256": "fc97277d45817f1a673bf2ae02857fc0e7903a871f6ae376c57fcef510d77e68",
+      "date_status": "all_1964_dates_restored_original_source_crosschecked",
+      "official_row_verification": "cross_checked_not_release_approved",
+      "path": "verification/of_lgbm_data/power_history_archive.csv",
+      "first": "097000001",
+      "first_date": "2008-01-24",
+      "last_date": "2026-11-16",
+      "source_audit_run": "https://github.com/aa0908601687-web/Commit-History/actions/runs/45214322634",
+      "source_comparison_run": "https://github.com/aa0908601687-web/Commit-History/actions/runs/45215425965",
+      "legacy_undated_archive_path": "verification/of_lgbm_data/power_history_archive_undated_legacy.csv",
+      "legacy_undated_archive_sha256": "de92a6019d8efa300f4cbb0e96b7badd9babfea9889b5e7657f0b10a01a80e5b"
     }
   },
   "update_notice_20261119": {
@@ -69,6 +76,16 @@
     "official_reference": "https://www.taiwanlottery.com/lotto/history/result_download/",
     "official_files_imported": false,
     "missing_power_draw_dates": 1964,
-    "notes": "Never reconstruct missing official dates merely from draw sequences. Update SHA-256 pins only after approved data review and rerun E2E."
+    "notes": "Historical 2026-11-19 snapshot: dates were missing then. See power_date_backfill_20261124 for subsequent date restoration; official release remains blocked."
+  },
+  "power_date_backfill_20261124": {
+    "rows": 1964,
+    "missing_dates": 0,
+    "source_sha256": "fc97277d45817f1a673bf2ae02857fc0e7903a871f6ae376c57fcef510d77e68",
+    "semantic_match_with_prior_candidate": true,
+    "official_source_independent_recheck_complete": true,
+    "official_source_release_approval": false,
+    "production_release_certified": false,
+    "note": "Power primary archive now contains recovered ISO dates. Official provenance release gate stays blocked for all games."
   }
 }

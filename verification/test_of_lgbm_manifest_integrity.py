@@ -50,14 +50,18 @@ def verify_manifest(metadata, data_root=DATA):
         if result["rows"] != item["rows"] or result["last_id"] != expected_last:
             raise ValueError("row count or cutoff mismatch for " + game)
         if game == "power":
-            if result["date_coverage"] != 0 or item["date_status"] != "missing_all_dates":
-                raise ValueError("Power dates must remain explicitly unverified")
+            if result["date_coverage"] != item["rows"] or item["date_status"] != "all_1964_dates_restored_original_source_crosschecked":
+                raise ValueError("Power dates must be complete and explicitly release-unapproved")
+            if item["official_row_verification"] != "cross_checked_not_release_approved":
+                raise ValueError("Power independent source review has not approved official release")
+            if metadata.get("power_date_backfill_20261124", {}).get("official_source_release_approval") is not False:
+                raise ValueError("unsupported official source release approval")
         else:
             if result["date_coverage"] != item["rows"]:
                 raise ValueError("partial date coverage for " + game)
             if item["date_status"] != "format_consistent_not_officially_verified":
                 raise ValueError("unsubstantiated date status for " + game)
-        if item["official_row_verification"] != "not_completed":
+        if game != "power" and item["official_row_verification"] != "not_completed":
             raise ValueError("unsupported provenance claim for " + game)
         results[game] = {"rows": result["rows"], "sha256": digest,
                          "cutoff": result["last_id"], "date_coverage": result["date_coverage"]}
@@ -71,14 +75,16 @@ class ManifestIntegrityTests(unittest.TestCase):
     def test_all_three_csvs_match_pinned_manifest(self):
         result = verify_manifest(self.metadata)
         self.assertEqual(set(result), {"power", "lotto", "539"})
-        self.assertEqual(result["power"]["date_coverage"], 0)
+        self.assertEqual(result["power"]["date_coverage"], 1964)
 
     def test_date_gaps_and_official_provenance_not_misrepresented(self):
         self.assertFalse(self.metadata["record_by_record_officially_authenticated"])
         self.assertTrue(self.metadata["update_notice_20261119"]["power_dates_missing"])
         self.assertFalse(self.metadata["update_notice_20261119"]["independent_prospective_edge_verified"])
         self.assertEqual(self.metadata["integrity_audit_20261119"]["missing_power_draw_dates"],
-                         self.metadata["datasets"]["power"]["rows"])
+                         self.metadata["power_date_backfill_20261124"]["rows"])
+        self.assertEqual(self.metadata["power_date_backfill_20261124"]["missing_dates"], 0)
+        self.assertFalse(self.metadata["power_date_backfill_20261124"]["official_source_release_approval"])
 
     def test_wrong_sha_is_rejected(self):
         data = json.loads(json.dumps(self.metadata))

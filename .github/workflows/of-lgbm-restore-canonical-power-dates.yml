@@ -1,0 +1,78 @@
+name: OF-LGBM restore Power dates into canonical primary CSV
+on:
+  push:
+    branches:
+      - data/of-lgbm-restore-canonical-power-dates-20261124
+    paths:
+      - 'verification/of_lgbm_promote_dated_canonical.py'
+      - '.github/workflows/of-lgbm-restore-canonical-power-dates.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  restore-dates-on-branch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    if: github.ref == 'refs/heads/data/of-lgbm-restore-canonical-power-dates-20261124'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download original-date and independently verified-date evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 45192552658 --repo aa0908601687-web/Commit-History --name of-lgbm-official-power-date-stage --dir prior-stage
+          gh run download 45214322634 --repo aa0908601687-web/Commit-History --name of-lgbm-independent-official-zip-review --dir fresh-official
+      - name: Require 1964-row semantic identity before changing primary CSV
+        run: |
+          python verification/of_lgbm_compare_dated_sources.py prior-stage/power-history-dated-candidate.csv fresh-official/official-reviewed-Power-dated.csv stage-semantic-audit.json
+      - name: Restore complete draw dates with a preserved original snapshot
+        run: |
+          python verification/of_lgbm_promote_dated_canonical.py
+      - name: Verify canonical data and unapproved provenance release gate
+        run: |
+          python verification/of_lgbm_real_history_gate.py --game power --csv verification/of_lgbm_data/power_history_archive.csv
+          python verification/of_lgbm_official_readiness.py --report official-release-blocker-report.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest=json.loads(Path('verification/of_lgbm_data/SOURCE_MANIFEST.json').read_text())
+          info=manifest['datasets']['power']
+          report=json.loads(Path('official-release-blocker-report.json').read_text())
+          assert info['date_status'] == 'all_1964_dates_restored_original_source_crosschecked'
+          assert report['snapshot_checks']['power']['dated_rows'] == 1964
+          assert report['snapshot_checks']['power']['sha256_matches_manifest'] is True
+          assert report['snapshot_checks']['power']['invalid_number_rows'] == 0
+          assert report['production_official_data_ready'] is False
+          assert manifest['record_by_record_officially_authenticated'] is False
+          print("PASS: canonical dates restored, formal production attestation remains blocked")
+          PY
+      - name: Commit dated primary CSV, immutable old archive and audit to update branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add verification/of_lgbm_data/power_history_archive.csv \
+                  verification/of_lgbm_data/power_history_archive_undated_legacy.csv \
+                  verification/of_lgbm_data/SOURCE_MANIFEST.json \
+                  verification/of_lgbm_data/POWER_DATE_CANONICAL_RECONCILIATION.json
+          git diff --cached --check
+          git commit -m 'data(power): restore 1964 verified draw dates with preserved legacy archive'
+          git push origin HEAD:data/of-lgbm-restore-canonical-power-dates-20261124
+      - name: Upload complete restoration review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-power-canonical-dates-restoration-report
+          path: |
+            verification/of_lgbm_data/POWER_DATE_CANONICAL_RECONCILIATION.json
+            official-release-blocker-report.json
+            stage-semantic-audit.json
+          if-no-files-found: warn
+          retention-days: 30
