@@ -24,11 +24,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Re-download pinned Actions artifact and validate all 1964 rows
+      - name: Retrieve pinned historical Actions artifact
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python verification/of_lgbm_power_dated_staging_from_artifact.py --output-dir power-dated-QUARANTINE
+          gh run download 45192552658 --repo aa0908601687-web/Commit-History --name of-lgbm-official-power-date-stage --dir downloaded-archive
+      - name: Verify artifact and stage all 1964 dated rows
+        run: |
+          python verification/of_lgbm_power_dated_staging_from_artifact.py --artifact-dir downloaded-archive --output-dir power-dated-QUARANTINE
       - name: Confirm not marked as official or production
         run: |
           python - <<'PY'
