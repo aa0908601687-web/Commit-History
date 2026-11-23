@@ -18,7 +18,9 @@ python -m unittest discover -s of_lgbm -p 'test_*.py'
 ```
 
 ## Usage and limitations
-`train_openfe_lightgbm(train_x, train_y, valid_x, valid_y)` fits OpenFE on training rows only and transforms validation data. Callers must enforce chronological splits and leakage-safe features. Research-only CSV adapters, feature generation, and selection modules are provided separately, but official-source authentication, production integration, and prospective validation are not complete.\n\nAn optional standalone `exact_search.select_six_from_eight(scores)` helper now exhaustively checks all 28 six-number combinations from exactly eight first-area candidates (01–38) using an **additive score objective**. It is not wired into the existing V6 workflow, does not model second-area numbers, and must not be represented as the complete V6 exact-search objective.
+`train_openfe_lightgbm(train_x, train_y, valid_x, valid_y)` fits OpenFE on training rows only and transforms validation data. Callers must enforce chronological splits and leakage-safe features. Research-only CSV adapters, feature generation, and selection modules are provided separately, but official-source authentication, production integration, and prospective validation are not complete.
+
+An optional standalone `exact_search.select_six_from_eight(scores)` helper now exhaustively checks all 28 six-number combinations from exactly eight first-area candidates (01–38) using an **additive score objective**. It is not wired into the existing V6 workflow, does not model second-area numbers, and must not be represented as the complete V6 exact-search objective.
 
 This is an integration scaffold, not proof of successful GitHub Actions execution, package installation on the user's phone, or improved lottery predictions. Never use future draw outcomes to construct earlier features.
 
