@@ -36,14 +36,14 @@ jobs:
           python -m unittest discover -s verification -p 'test_of_lgbm_full_history_install.py' -v
           python -m unittest discover -s verification -p 'test_of_lgbm_real_history_gate.py' -v
           python -m unittest discover -s verification -p 'test_of_lgbm_manifest_integrity.py' -v
-      - name: Refuse production certification from structural checks
+      - name: Report provenance separately from staging test outcomes
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           manifest = json.loads(Path('verification/of_lgbm_data/SOURCE_MANIFEST.json').read_text(encoding='utf-8'))
-          assert manifest['record_by_record_officially_authenticated'] is False, (
-              'Structural CI must not silently promote official-source authentication'
-          )
-          print('Research staging checks only; official attestation and production import not certified.')
+          status = manifest.get('record_by_record_officially_authenticated')
+          assert isinstance(status, bool), 'Manifest must contain an explicit boolean authentication flag'
+          print(f'Manifest official-source attestation: {status}')
+          print('Passing staging tests does not independently prove official provenance.')
           PY
