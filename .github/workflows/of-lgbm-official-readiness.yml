@@ -1,0 +1,56 @@
+name: OF-LGBM official provenance readiness audit
+on:
+  pull_request:
+    paths:
+      - "verification/of_lgbm_official_readiness.py"
+      - "verification/test_of_lgbm_official_readiness.py"
+      - "verification/test_of_lgbm_power_date_reconcile.py"
+      - "verification/of_lgbm_power_date_reconcile.py"
+      - "verification/of_lgbm_data/SOURCE_MANIFEST.json"
+      - ".github/workflows/of-lgbm-official-readiness.yml"
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Regression tests
+        run: python -m unittest discover -s verification -p 'test_of_lgbm_official_readiness.py' -v
+      - name: Power date reconciliation fail-closed regression tests
+        run: python -m unittest discover -s verification -p 'test_of_lgbm_power_date_reconcile.py' -v
+      - name: Emit provenance readiness report (NOT official certification)
+        run: |
+          python verification/of_lgbm_official_readiness.py --report official-readiness.json
+          python - <<'PY'
+          import json
+          report = json.load(open("official-readiness.json", encoding="utf-8"))
+          if not report["production_official_data_ready"]:
+              print("::warning::Official data provenance NOT verified; production data release remains blocked.")
+          PY
+      - name: Assert unverified history cannot pass production release gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if python verification/of_lgbm_official_readiness.py --require-ready > release-gate.log 2>&1; then
+            cat release-gate.log
+            echo "::error::UNSAFE: unverified official history passed release gate"
+            exit 1
+          fi
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          report = json.loads(Path("release-gate.log").read_text(encoding="utf-8"))
+          assert report["production_official_data_ready"] is False
+          assert report["official_authentication_performed_by_this_check"] is False
+          assert any("official" in item for item in report["blockers"])
+          print("PASS: unverified history rejected by production release gate")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-official-readiness-review-only
+          path: official-readiness.json
