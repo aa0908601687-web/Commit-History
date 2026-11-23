@@ -71,3 +71,56 @@ jobs:
         with:
           name: v6-three-view-fixture-audit
           path: v6-three-view-audit.json
+
+      - name: Import existing Power draw CSV into isolated research SQLite
+        run: |
+          python - <<'PY'
+          import csv, hashlib, json, sqlite3
+          from pathlib import Path
+          source=Path("verification/of_lgbm_data/power_history_archive.csv")
+          expected="de92a6019d8efa300f4cbb0e96b7badd9babfea9889b5e7657f0b10a01a80e5b"
+          digest=hashlib.sha256(source.read_bytes()).hexdigest()
+          assert digest==expected, "Source changed: require fresh review"
+          with source.open(encoding="utf-8-sig",newline="") as f:
+              rows=list(csv.DictReader(f))
+          assert len(rows)==1964, "Unexpected row count"
+          ids=set()
+          db=Path("of-lgbm-power-research.sqlite")
+          with sqlite3.connect(db) as conn:
+              conn.execute("CREATE TABLE draws (draw_id TEXT PRIMARY KEY, draw_date TEXT, n1 INTEGER NOT NULL, n2 INTEGER NOT NULL, n3 INTEGER NOT NULL, n4 INTEGER NOT NULL, n5 INTEGER NOT NULL, n6 INTEGER NOT NULL, second INTEGER NOT NULL)")
+              for row in rows:
+                  draw_id=row["draw_id"].strip()
+                  assert draw_id not in ids, "Duplicate draw ID"
+                  ids.add(draw_id)
+                  nums=[int(v) for v in row["first"].replace(","," ").split()]
+                  assert len(nums)==6 and len(set(nums))==6 and all(1<=v<=38 for v in nums)
+                  second=int(row["second"])
+                  assert 1<=second<=8
+                  conn.execute("INSERT INTO draws VALUES (?,?,?,?,?,?,?,?,?)",(draw_id,None,*nums,second))
+              conn.execute("CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+              entries={
+                  "source_path":str(source),
+                  "source_sha256":digest,
+                  "source_row_count":str(len(rows)),
+                  "official_source_authenticated":"false",
+                  "official_row_by_row_verified":"false",
+                  "draw_dates_complete":"false",
+                  "use":"research_snapshot_only"}
+              conn.executemany("INSERT INTO metadata VALUES (?,?)",entries.items())
+              count=conn.execute("SELECT COUNT(*) FROM draws").fetchone()[0]
+              assert count==1964
+              assert conn.execute("PRAGMA integrity_check").fetchone()[0]=="ok"
+          result={"imported_rows":count,"sqlite_sha256":hashlib.sha256(db.read_bytes()).hexdigest(),
+              "source_sha256":digest,"source_file":str(source),
+              "officially_authenticated":False,"missing_dates":1964,
+              "database":"of-lgbm-power-research.sqlite"}
+          Path("of-lgbm-sqlite-import-report.json").write_text(json.dumps(result,indent=2)+"\n")
+          print(json.dumps(result,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-power-research-sqlite
+          path: |
+            of-lgbm-power-research.sqlite
+            of-lgbm-sqlite-import-report.json
+          if-no-files-found: error
