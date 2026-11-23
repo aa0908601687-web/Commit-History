@@ -152,9 +152,22 @@ def main():
                    default=Path("verification/of_lgbm_data/power_history_archive.csv"))
     p.add_argument("--artifact-zip", type=Path,
                    help="Optional pre-downloaded GitHub artifact ZIP")
+    p.add_argument("--artifact-dir", type=Path,
+                   help="Directory unpacked by gh run download")
     p.add_argument("--output-dir", type=Path, required=True)
     args = p.parse_args()
-    if args.artifact_zip:
+    if args.artifact_dir:
+        expected = ("power-history-dated-candidate.csv",
+                    "power-history-dated-research.sqlite", "DATE_AUDIT.json")
+        with io.BytesIO() as buffer:
+            with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as z:
+                for name in expected:
+                    p = args.artifact_dir / name
+                    if not p.is_file() or p.stat().st_size > 2_000_000:
+                        raise ValueError("missing or oversized download artifact member: " + name)
+                    z.write(p, arcname=name)
+            raw = buffer.getvalue()
+    elif args.artifact_zip:
         raw = args.artifact_zip.read_bytes()
     else:
         token = os.environ.get("GITHUB_TOKEN")
