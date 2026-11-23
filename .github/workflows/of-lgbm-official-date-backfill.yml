@@ -91,6 +91,18 @@ jobs:
                           total+=1
               sources.append({"year":year,"url":url,"zip_sha256":hashlib.sha256(raw).hexdigest(),"power_rows":total})
               print(f"{year}: found {total} official Power rows; matched accumulated {len(found)}/1964",flush=True)
+          missing_before_live=sorted(set(indexed)-set(found),key=int)
+          if missing_before_live:
+              import sys
+              sys.path.insert(0,str(Path("verification").resolve()))
+              from of_lgbm_official_zip_date_audit import fetch_live_dates
+              live,live_source=fetch_live_dates("2026-11",{r["draw_id"]:r for r in expected})
+              for draw_id,day in live.items():
+                  if draw_id in found and found[draw_id]!=day:
+                      raise ValueError(f"Official annual/API date conflict: {draw_id}")
+                  found[draw_id]=day
+              sources.append({"kind":"official_live_api","details":live_source})
+              print(f"Official live API: matched {len(live)} extra draws, combined {len(found)}/1964",flush=True)
           missing=sorted(set(indexed)-set(found),key=int)
           if missing:
               raise ValueError(f"Official annual archives have {len(missing)} unmatched draw IDs (first few: {missing[:10]}); refusing to publish incomplete dated candidate")
