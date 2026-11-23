@@ -1,0 +1,124 @@
+name: OF-LGBM recover Power dates from official annual archives
+on:
+  push:
+    paths:
+      - '.github/workflows/of-lgbm-official-date-backfill.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verified-date-stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download official annual ZIPs and reconcile every existing draw and date
+        run: |
+          python - <<'PY'
+          import csv,hashlib,io,json,re,time,zipfile
+          from pathlib import Path
+          from datetime import date
+          from urllib.request import Request,urlopen
+          output=Path("power-dates-stage")
+          output.mkdir(exist_ok=True)
+          original=Path("verification/of_lgbm_data/power_history_archive.csv")
+          with original.open(encoding="utf-8-sig",newline="") as f:
+              expected=list(csv.DictReader(f))
+          assert len(expected)==1964
+          indexed={r["draw_id"]:(tuple(sorted(map(int,r["first"].replace(","," ").split()))),int(r["second"])) for r in expected}
+          assert len(indexed)==1964
+          def iso(value):
+              v=value.strip().split("T")[0].split(" ")[0]
+              v=re.sub(r"[年月]","/",v).replace("日","")
+              y,m,d=map(int,re.split(r"[-/.]",v))
+              if y<=1911:y+=1911
+              return date(y,m,d).isoformat()
+          def text_data(data):
+              for encoding in ("utf-8-sig","cp950","big5","utf-16"):
+                  try:return data.decode(encoding)
+                  except UnicodeDecodeError:pass
+              raise ValueError("Unsupported CSV encoding")
+          found={}
+          sources=[]
+          for year in range(2008,2027):
+              url=f"https://cdn.taiwanlottery.com.tw/app/FilesForDownload/Download/LottoResult/{year}.zip"
+              failure=None
+              for attempt in range(3):
+                  try:
+                      req=Request(url,headers={"User-Agent":"Mozilla/5.0","Referer":"https://www.taiwanlottery.com/lotto/history/result_download/"})
+                      with urlopen(req,timeout=45) as response:raw=response.read()
+                      break
+                  except Exception as ex:
+                      failure=ex
+                      if attempt<2:time.sleep(3*(attempt+1))
+              else:raise RuntimeError(f"Official {year} ZIP inaccessible: {failure}; no canonical files changed")
+              total=0
+              with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                  for name in z.namelist():
+                      if not name.lower().endswith(".csv"):continue
+                      reader=csv.reader(io.StringIO(text_data(z.read(name))))
+                      headers=next(reader,None)
+                      if not headers:continue
+                      cols=[c.strip().lstrip("\ufeff") for c in headers]
+                      required=["遊戲名稱","期別","開獎日期"]+[f"獎號{i}" for i in range(1,7)]
+                      if not all(c in cols for c in required):continue
+                      game,period,dt=[cols.index(c) for c in required[:3]]
+                      first=[cols.index(c) for c in required[3:]]
+                      extras=[i for i,c in enumerate(cols) if c in ("第二區","特別號")]
+                      if len(extras)!=1:raise ValueError(f"{year}: ambiguous second-area column in {name}")
+                      for row in reader:
+                          if len(row)<=max(game,period,dt,*first,extras[0]) or row[game].strip()!="威力彩":continue
+                          draw_id=row[period].strip().zfill(9)
+                          date_value=iso(row[dt])
+                          nums=tuple(sorted(int(row[i]) for i in first))
+                          second=int(row[extras[0]])
+                          if int(draw_id[:3])!=int(date_value[:4])-1911:raise ValueError(f"{draw_id}: date/year mismatch")
+                          if draw_id in indexed:
+                              if indexed[draw_id]!=(nums,second):
+                                  raise ValueError(f"{draw_id}: official numbers conflict with repository data")
+                              if draw_id in found and found[draw_id]!=date_value:
+                                  raise ValueError(f"{draw_id}: conflicting official dates")
+                              found[draw_id]=date_value
+                          total+=1
+              sources.append({"year":year,"url":url,"zip_sha256":hashlib.sha256(raw).hexdigest(),"power_rows":total})
+              print(f"{year}: found {total} official Power rows; matched accumulated {len(found)}/1964",flush=True)
+          missing=sorted(set(indexed)-set(found),key=int)
+          if missing:
+              raise ValueError(f"Official annual archives have {len(missing)} unmatched draw IDs (first few: {missing[:10]}); refusing to publish incomplete dated candidate")
+          previous=None
+          for r in expected:
+              current=found[r["draw_id"]]
+              if previous and current<=previous:raise ValueError(f"Dates not increasing at {r['draw_id']}")
+              previous=current
+          dated=output/"power-history-dated-candidate.csv"
+          with dated.open("w",newline="",encoding="utf-8") as f:
+              writer=csv.writer(f)
+              writer.writerow(["draw_id","draw_date","first","second"])
+              for r in expected:writer.writerow([r["draw_id"],found[r["draw_id"]],r["first"],r["second"]])
+          import sqlite3
+          db=output/"power-history-dated-research.sqlite"
+          with sqlite3.connect(db) as c:
+              c.execute("CREATE TABLE draws (draw_id TEXT PRIMARY KEY, draw_date TEXT NOT NULL, first TEXT NOT NULL, second INTEGER NOT NULL)")
+              c.executemany("INSERT INTO draws VALUES (?,?,?,?)",[(r["draw_id"],found[r["draw_id"]],r["first"],int(r["second"])) for r in expected])
+              assert c.execute("SELECT COUNT(*) FROM draws WHERE draw_date IS NOT NULL").fetchone()[0]==1964
+              assert c.execute("PRAGMA integrity_check").fetchone()[0]=="ok"
+          report={"source":"Taiwan Lottery annual ZIP archive download","source_urls_and_hashes":sources,
+                  "dated_rows":1964,"missing_dates":0,"numbers_match_repository":True,
+                  "source_snapshot_sha256":hashlib.sha256(original.read_bytes()).hexdigest(),
+                  "dated_csv_sha256":hashlib.sha256(dated.read_bytes()).hexdigest(),
+                  "sqlite_sha256":hashlib.sha256(db.read_bytes()).hexdigest(),
+                  "official_provenance_independently_authenticated":False,
+                  "production_import_completed":False,
+                  "note":"Staging candidate only: files were fetched via published CDN URLs; independent source review and production approval still required."}
+          (output/"DATE_AUDIT.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps({"dated_rows":1964,"missing_dates":0,"staged_only":True},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: of-lgbm-official-power-date-stage
+          path: power-dates-stage/
+          if-no-files-found: warn
