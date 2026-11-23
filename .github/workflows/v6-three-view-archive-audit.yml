@@ -124,3 +124,54 @@ jobs:
             of-lgbm-power-research.sqlite
             of-lgbm-sqlite-import-report.json
           if-no-files-found: error
+
+      - name: Install OF-LGBM CPU dependencies for SQLite-to-model E2E
+        run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
+      - name: SQLite import to real OpenFE and LightGBM holdout, eight-pool exact selection
+        run: |
+          python - <<'PY'
+          import csv, hashlib, json, sqlite3, subprocess, sys
+          from pathlib import Path
+          source=Path("verification/of_lgbm_data/power_history_archive.csv")
+          db=Path("of-lgbm-power-research.sqlite")
+          assert db.exists(), "SQLite import missing"
+          with sqlite3.connect(db) as conn:
+              assert conn.execute("PRAGMA integrity_check").fetchone()[0]=="ok"
+              rows=conn.execute("SELECT draw_id,n1,n2,n3,n4,n5,n6,second FROM draws ORDER BY rowid").fetchall()
+              meta=dict(conn.execute("SELECT key,value FROM metadata").fetchall())
+          assert len(rows)==1964
+          assert meta["source_sha256"]==hashlib.sha256(source.read_bytes()).hexdigest()
+          assert meta["official_source_authenticated"]=="false"
+          export=Path("of-lgbm-power-sqlite-export.csv")
+          with export.open("w",newline="",encoding="utf-8") as out:
+              writer=csv.writer(out)
+              writer.writerow(["draw_id","first","second"])
+              for draw_id,*nums in rows:
+                  writer.writerow([draw_id," ".join(map(str,nums[:6])),nums[6]])
+          with source.open(newline="",encoding="utf-8-sig") as f:
+              canonical=list(csv.DictReader(f))
+          with export.open(newline="",encoding="utf-8") as f:
+              exported=list(csv.DictReader(f))
+          assert len(canonical)==len(exported)
+          for original,again in zip(canonical,exported):
+              assert original["draw_id"]==again["draw_id"]
+              assert tuple(sorted(map(int,original["first"].replace(","," ").split())))==tuple(sorted(map(int,again["first"].split())))
+              assert int(original["second"])==int(again["second"])
+          subprocess.run([sys.executable,"verification/of_lgbm_forward_audit.py","--game","power","--csv",str(export),"--folds","1","--output","of-lgbm-sqlite-real-e2e.json"],check=True)
+          report=json.loads(Path("of-lgbm-sqlite-real-e2e.json").read_text())
+          w=report["walk_forward"]
+          assert w["folds"]==1 and w["mode"]=="actual OpenFE+LightGBM refit for each held-out draw"
+          assert w["feature_window_lengths"]==[10,20]
+          assert not w["official_data_verified"] and not w["predictive_advantage_verified"]
+          assert len(w["outcomes"][0]["ticket"])==6
+          assert len(set(w["outcomes"][0]["ticket"]))==6
+          assert 1<=w["outcomes"][0]["second_pick"]<=8
+          print("PASS: SQLite -> CSV -> chronological OpenFE+LightGBM -> 8-pool exact selection -> one historical holdout")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: of-lgbm-power-sqlite-model-e2e
+          path: |
+            of-lgbm-sqlite-real-e2e.json
+          if-no-files-found: warn
