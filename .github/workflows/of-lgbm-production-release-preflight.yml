@@ -1,0 +1,43 @@
+name: OF-LGBM production and official-source release preflight
+on:
+  push:
+    paths:
+      - 'verification/of_lgbm_production_release_preflight.py'
+      - '.github/workflows/of-lgbm-production-release-preflight.yml'
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_production_release_preflight.py'
+      - '.github/workflows/of-lgbm-production-release-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only-preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check primary history, source approval, and production blockers
+        run: |
+          python verification/of_lgbm_production_release_preflight.py --output of-lgbm-production-preflight.json
+      - name: Verify release remains blocked and no deployment is attempted
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('of-lgbm-production-preflight.json'))
+          assert d['production_ready'] is False
+          assert d['deployment_attempted'] is False
+          assert d['official_certification_granted_by_this_check'] is False
+          assert d['power_research_snapshot_rows']==1964
+          assert d['power_research_snapshot_all_dates_present'] is True
+          assert d['power_research_snapshot_sha256_valid'] is True
+          assert len(d['blockers'])>=4
+          print('PASS: production is correctly blocked; provenance and deployment approval remain separate.')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-production-release-preflight-review-only
+          path: of-lgbm-production-preflight.json
+          retention-days: 30
