@@ -58,7 +58,7 @@ jobs:
           d=json.loads(Path("forward.json").read_text())
           w=d["walk_forward"]
           c=json.loads(Path("history-completeness.json").read_text())
-          assert c["datasets"]["power"]["missing_draw_dates"] == 1964
+          assert c["datasets"]["power"]["missing_draw_dates"] == 0
           assert not c["official_full_history_verified"] and not c["complete_to_today_verified"]
           assert a["game"]==os.environ["GAME"]
           assert a["chronological_and_legal_range_verified"]
