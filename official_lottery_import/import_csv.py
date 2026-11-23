@@ -4,6 +4,7 @@ import argparse
 import csv
 import hashlib
 import json
+from datetime import date
 from pathlib import Path
 
 GAMES = {"威力彩": (6, 38), "大樂透": (6, 49), "今彩539": (5, 39)}
@@ -17,6 +18,13 @@ def load_csv(path):
         except UnicodeDecodeError:
             continue
     raise ValueError("Unsupported CSV encoding")
+def date_from_source(value):
+    """Validate actual Gregorian draw dates in YYYY-MM-DD or YYYY/MM/DD."""
+    cleaned = value.replace("/", "-")
+    if len(cleaned) != 10 or cleaned[4] != "-" or cleaned[7] != "-":
+        raise ValueError("expected YYYY-MM-DD or YYYY/MM/DD")
+    return date.fromisoformat(cleaned)
+
 def normalize(rows):
     result = {"威力彩": [], "大樂透": [], "今彩539": []}
     seen = set()
@@ -31,6 +39,10 @@ def normalize(rows):
         if not issue or not date:
             raise ValueError(f"row {i}: missing issue/date")
         try:
+            date_from_source(date)
+        except ValueError as exc:
+            raise ValueError(f"row {i}: invalid draw date {date!r}") from exc
+        try:
             nums = [int(row[f"獎號{j}"]) for j in range(1, count + 1)]
         except (ValueError, KeyError) as exc:
             raise ValueError(f"row {i}: invalid numbers") from exc
@@ -38,10 +50,18 @@ def normalize(rows):
             raise ValueError(f"row {i}: out-of-range or duplicate numbers")
         extra = row.get("特別號", "")
         if game == "威力彩":
-            if not extra or not 1 <= int(extra) <= 8:
+            try:
+                second = int(extra)
+            except (ValueError, TypeError) as exc:
+                raise ValueError(f"row {i}: invalid second-area number") from exc
+            if not 1 <= second <= 8:
                 raise ValueError(f"row {i}: invalid second-area number")
         elif game == "大樂透" and extra:
-            if not 1 <= int(extra) <= 49 or int(extra) in nums:
+            try:
+                special = int(extra)
+            except (ValueError, TypeError) as exc:
+                raise ValueError(f"row {i}: invalid special number") from exc
+            if not 1 <= special <= 49 or special in nums:
                 raise ValueError(f"row {i}: invalid special number")
         key = (game, issue)
         if key in seen:
