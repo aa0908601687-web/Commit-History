@@ -97,9 +97,11 @@ jobs:
           import csv, hashlib, json, sqlite3
           from pathlib import Path
           source=Path("verification/of_lgbm_data/power_history_archive.csv")
-          expected="de92a6019d8efa300f4cbb0e96b7badd9babfea9889b5e7657f0b10a01a80e5b"
+          manifest=json.loads(Path("verification/of_lgbm_data/SOURCE_MANIFEST.json").read_text(encoding="utf-8"))
+          expected=manifest["datasets"]["power"]["sha256"]
+          assert manifest["record_by_record_officially_authenticated"] is False
           digest=hashlib.sha256(source.read_bytes()).hexdigest()
-          assert digest==expected, "Source changed: require fresh review"
+          assert digest==expected, "Source changed without manifest review"
           with source.open(encoding="utf-8-sig",newline="") as f:
               rows=list(csv.DictReader(f))
           assert len(rows)>0, "Empty canonical Power archive"
@@ -115,7 +117,12 @@ jobs:
                   assert len(nums)==6 and len(set(nums))==6 and all(1<=v<=38 for v in nums)
                   second=int(row["second"])
                   assert 1<=second<=8
-                  conn.execute("INSERT INTO draws VALUES (?,?,?,?,?,?,?,?,?)",(draw_id,None,*nums,second))
+                  draw_date=row.get("draw_date","").strip()
+                  assert draw_date, "Canonical date missing"
+                  from datetime import date
+                  parsed=date.fromisoformat(draw_date)
+                  assert parsed.isoformat()==draw_date and parsed.year-1911==int(draw_id[:3])
+                  conn.execute("INSERT INTO draws VALUES (?,?,?,?,?,?,?,?,?)",(draw_id,draw_date,*nums,second))
               conn.execute("CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
               entries={
                   "source_path":str(source),
@@ -123,7 +130,7 @@ jobs:
                   "source_row_count":str(len(rows)),
                   "official_source_authenticated":"false",
                   "official_row_by_row_verified":"false",
-                  "draw_dates_complete":"false",
+                  "draw_dates_complete":"true",
                   "use":"research_snapshot_only"}
               conn.executemany("INSERT INTO metadata VALUES (?,?)",entries.items())
               count=conn.execute("SELECT COUNT(*) FROM draws").fetchone()[0]
@@ -131,7 +138,7 @@ jobs:
               assert conn.execute("PRAGMA integrity_check").fetchone()[0]=="ok"
           result={"imported_rows":count,"sqlite_sha256":hashlib.sha256(db.read_bytes()).hexdigest(),
               "source_sha256":digest,"source_file":str(source),
-              "officially_authenticated":False,"missing_dates":count,
+              "officially_authenticated":False,"missing_dates":0,
               "database":"of-lgbm-power-research.sqlite"}
           Path("of-lgbm-sqlite-import-report.json").write_text(json.dumps(result,indent=2)+"\n")
           print(json.dumps(result,indent=2))
@@ -168,16 +175,18 @@ jobs:
           assert db.exists(), "SQLite import missing"
           with sqlite3.connect(db) as conn:
               assert conn.execute("PRAGMA integrity_check").fetchone()[0]=="ok"
-              rows=conn.execute("SELECT draw_id,n1,n2,n3,n4,n5,n6,second FROM draws ORDER BY rowid").fetchall()
+              rows=conn.execute("SELECT draw_id,draw_date,n1,n2,n3,n4,n5,n6,second FROM draws ORDER BY rowid").fetchall()
               meta=dict(conn.execute("SELECT key,value FROM metadata").fetchall())
           assert len(rows)==int(meta["source_row_count"]), "SQLite count / metadata mismatch"
           assert meta["source_sha256"]==hashlib.sha256(source.read_bytes()).hexdigest()
           assert meta["official_source_authenticated"]=="false"
+          assert meta["draw_dates_complete"]=="true"
+          assert all(row[1] for row in rows), "SQLite must retain all canonical draw dates"
           export=Path("of-lgbm-power-sqlite-export.csv")
           with export.open("w",newline="",encoding="utf-8") as out:
               writer=csv.writer(out)
               writer.writerow(["draw_id","first","second"])
-              for draw_id,*nums in rows:
+              for draw_id,draw_date,*nums in rows:
                   writer.writerow([draw_id," ".join(map(str,nums[:6])),nums[6]])
           with source.open(newline="",encoding="utf-8-sig") as f:
               canonical=list(csv.DictReader(f))
