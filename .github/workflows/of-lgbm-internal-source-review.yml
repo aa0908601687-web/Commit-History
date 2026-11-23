@@ -1,0 +1,47 @@
+name: OF-LGBM research source approval evidence gate
+on:
+  push:
+    paths:
+      - 'verification/of_lgbm_data/POWER_SOURCE_INTERNAL_REVIEW_20261124.json'
+      - 'verification/of_lgbm_data/SOURCE_MANIFEST.json'
+      - 'verification/of_lgbm_internal_source_review_gate.py'
+      - '.github/workflows/of-lgbm-internal-source-review.yml'
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_data/POWER_SOURCE_INTERNAL_REVIEW_20261124.json'
+      - 'verification/of_lgbm_data/SOURCE_MANIFEST.json'
+      - 'verification/of_lgbm_internal_source_review_gate.py'
+      - '.github/workflows/of-lgbm-internal-source-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check all scoped source evidence and fixed dataset hash
+        run: python verification/of_lgbm_internal_source_review_gate.py
+      - name: Verify global official data release remains blocked
+        run: |
+          python verification/of_lgbm_official_readiness.py --report internal-review-readiness.json
+          python - <<'PY'
+          import json
+          x=json.load(open('internal-review-readiness.json'))
+          assert x['production_official_data_ready'] is False
+          assert x['official_authentication_performed_by_this_check'] is False
+          assert x['snapshot_checks']['power']['dated_rows']==1964
+          assert x['snapshot_checks']['power']['sha256_matches_manifest'] is True
+          print('PASS: only internal research snapshot approval; official production blocked')
+          PY
+      - name: Upload internal research review report
+        uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-internal-research-source-review
+          path: |
+            verification/of_lgbm_data/POWER_SOURCE_INTERNAL_REVIEW_20261124.json
+            internal-review-readiness.json
+          retention-days: 30
