@@ -83,10 +83,10 @@ jobs:
           c=json.loads(Path("history-completeness.json").read_text())
           assert not c["official_full_history_verified"] and not c["complete_to_today_verified"]
           assert c["datasets"][game]["sha256_matches_manifest"]
-          assert c["datasets"]["power"]["missing_draw_dates"] == 1964
+          assert c["datasets"]["power"]["missing_draw_dates"] == 0
           assert a["game"]==game and a["chronological_and_legal_range_verified"]
           assert not a["record_by_record_official_provenance_verified"]
-          assert a["csv_dates_consistent"]==(game!="power")
+          assert a["csv_dates_consistent"] is True
           assert d["game"]==game and not d["synthetic_data"]
           assert d["history_draws"]==a["rows"] and d["data_cutoff"]==a["last_id"]
           assert d["feature_window_lengths"]==[10,20]
