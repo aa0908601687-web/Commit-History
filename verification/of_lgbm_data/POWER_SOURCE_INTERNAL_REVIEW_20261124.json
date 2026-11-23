@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "review_id": "OF-LGBM-POWER-SOURCE-REVIEW-20261124",
+  "decision": "APPROVED_FOR_INTERNAL_RESEARCH_SNAPSHOT_USE",
+  "scope": {
+    "game": "power",
+    "start_issue": "097000001",
+    "end_issue": "115000092",
+    "records": 1964,
+    "all_dates_present": true,
+    "as_of_last_draw": "2026-11-16",
+    "canonical_csv": "verification/of_lgbm_data/power_history_archive.csv",
+    "sha256": "fc97277d45817f1a673bf2ae02857fc0e7903a871f6ae376c57fcef510d77e68"
+  },
+  "evidence": {
+    "independent_annual_zip_recheck": "https://github.com/aa0908601687-web/Commit-History/actions/runs/45214322634",
+    "independent_source_semantic_comparison": "https://github.com/aa0908601687-web/Commit-History/actions/runs/45215425965",
+    "date_snapshot_canonical_merge": "https://github.com/aa0908601687-web/Commit-History/pull/137",
+    "post_merge_model_e2e": "https://github.com/aa0908601687-web/Commit-History/actions/runs/45218440060",
+    "post_merge_holdout": "https://github.com/aa0908601687-web/Commit-History/actions/runs/45218439980"
+  },
+  "verification": {
+    "annual_archives_retrieved": 19,
+    "sha256_cross_run_match": true,
+    "records_cross_checked": 1964,
+    "semantic_row_disagreements": 0,
+    "date_missing": 0,
+    "winning_numbers_preserved": true,
+    "legacy_snapshot_preserved": true,
+    "snapshot_checksum_matches": true
+  },
+  "restrictions": {
+    "taiwan_lottery_official_endorsement_or_certification": false,
+    "full_current_history_as_of_review_verified": false,
+    "production_release_approved": false,
+    "all_three_games_officially_authenticated": false,
+    "deployment_performed": false
+  },
+  "decision_basis": "Automated evidence-based internal research snapshot acceptance, not a signed human review or an official source certificate.",
+  "next_required_steps": [
+    "Independently review authoritative provider provenance and source licensing",
+    "Refresh Power draws after 115000092 and verify no new gaps",
+    "Verify Lotto and 539 sources independently before global release",
+    "Approve actual production target and perform transactional import, rollback and final production E2E"
+  ]
+}
