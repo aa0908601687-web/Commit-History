@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "game": "power",
+  "status": "STAGED_REVIEW_ONLY",
+  "source_workflow_run": "https://github.com/aa0908601687-web/Commit-History/actions/runs/45192552658",
+  "source_artifact_id": 14826352289,
+  "range": {
+    "first_draw_id": "097000001",
+    "last_draw_id": "115000092",
+    "first_draw_date": "2008-01-24",
+    "last_draw_date": "2026-11-16"
+  },
+  "reconciled_rows": 1964,
+  "missing_dates": 0,
+  "numbers_match_existing_repository": true,
+  "source_snapshot_sha256": "de92a6019d8efa300f4cbb0e96b7badd9babfea9889b5e7657f0b10a01a80e5b",
+  "dated_csv_sha256": "84b26e6fbdf740dae94ce5105eb4c463c3dde14ae1f5bd5469b4801f753483de",
+  "dated_sqlite_sha256": "308072c836008a85d266f0d45feec752de4ce3d447c5a670d7385c8d1cc64b8e",
+  "official_annual_zip_years": "2008-2026",
+  "official_api_supplement_month": "2026-11",
+  "official_provenance_independently_authenticated": false,
+  "full_current_history_verified": false,
+  "production_import_completed": false,
+  "required_for_promotion": [
+    "Independently re-download official original ZIPs and validate source hashes against DATE_AUDIT.json",
+    "Inspect and independently verify all archived year/date/number rows and November 2026 API supplement",
+    "Approve any corpus changes and the source manifest explicitly",
+    "Run production import and final data-driven E2E on main"
+  ],
+  "note": "Historical reconciliation artifact review pointer, not an assertion of official attestation or a production import."
+}
