@@ -1,0 +1,15 @@
+{
+  "status": "CANONICAL_DATES_RESTORED_PENDING_OFFICIAL_RELEASE_APPROVAL",
+  "rows": 1964,
+  "missing_dates": 0,
+  "numbers_preserved": true,
+  "source_semantic_match": true,
+  "first_draw_id": "097000001",
+  "last_draw_id": "115000092",
+  "first_date": "2008-01-24",
+  "last_date": "2026-11-16",
+  "legacy_sha256": "de92a6019d8efa300f4cbb0e96b7badd9babfea9889b5e7657f0b10a01a80e5b",
+  "new_canonical_sha256": "fc97277d45817f1a673bf2ae02857fc0e7903a871f6ae376c57fcef510d77e68",
+  "official_release_approved": false,
+  "production_official_certification": false
+}
