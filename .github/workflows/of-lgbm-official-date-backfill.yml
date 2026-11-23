@@ -27,7 +27,8 @@ jobs:
           original=Path("verification/of_lgbm_data/power_history_archive.csv")
           with original.open(encoding="utf-8-sig",newline="") as f:
               expected=list(csv.DictReader(f))
-          assert expected, "Canonical archive is empty"\n          expected_count=len(expected)
+          assert expected, "Canonical archive is empty"
+          expected_count=len(expected)
           indexed={r["draw_id"]:(tuple(sorted(map(int,r["first"].replace(","," ").split()))),int(r["second"])) for r in expected}
           assert len(indexed)==expected_count, "Duplicate draw IDs in canonical archive"
           def iso(value):
