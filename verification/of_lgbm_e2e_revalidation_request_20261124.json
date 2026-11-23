@@ -1,0 +1,26 @@
+{
+  "kind": "of_lgbm_full_e2e_validation_request",
+  "requested_date": "2026-11-24",
+  "baseline_main_sha": "0155061f765ec90fd86b974d7c14df6747ccd98d",
+  "datasets": {
+    "power": {
+      "rows": 1964,
+      "cutoff": "115000092",
+      "dated_rows": 1964,
+      "sha256": "fc97277d45817f1a673bf2ae02857fc0e7903a871f6ae376c57fcef510d77e68"
+    }
+  },
+  "required_validation": [
+    "three_game_OpenFE_23_operator_LightGBM_CPU_E2E",
+    "three_game_five_holdout_refits",
+    "V6_three_view_archive_audit",
+    "V6_8_candidate_exact_search_E2E",
+    "official_source_production_preflight_fail_closed"
+  ],
+  "claims": {
+    "official_authentication": false,
+    "production_deployed": false,
+    "predictive_advantage_demonstrated": false
+  },
+  "note": "PR-triggered on-demand CI validation of unchanged model and data; a successful CI does not attest official status or production deployment."
+}
