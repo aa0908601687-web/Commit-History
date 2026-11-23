@@ -67,7 +67,10 @@ jobs:
           assert 0 < layer["used_features"] <= 12
           assert layer["used_features"] <= layer["generated_features"]
           assert layer["leakage_safe"] is True
-          assert layer["history_views"] == ["latest_5", "latest_10", "full_archive"]
+          assert layer["history_views"] == ["latest_10", "latest_20", "full_archive"]
+          assert layer["feature_window"] == [10, 20]
+          assert layer["view_weights"] is None
+          assert layer["full_archive_role"] == "all_prior_training_and_inference_features"
           assert set(layer["per_view_scores"]) == set(layer["history_views"])
           assert all(len(scores) == 38 for scores in layer["per_view_scores"].values())
           assert result["exact_optimization_layer"]["globally_optimal_within_pool"] is True

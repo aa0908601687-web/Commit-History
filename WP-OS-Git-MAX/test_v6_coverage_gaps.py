@@ -21,10 +21,10 @@ def sample_rows(n=24):
 class OpenFECoverageTests(unittest.TestCase):
     def test_base_rows_and_view_limits(self):
         rows = sample_rows()
-        for limit in (None, 5, 10):
+        for limit in (None, 10, 20):
             v = bridge._base_row(rows, 1, limit)
             self.assertEqual(v["number"], 1.0)
-            self.assertEqual(v["view_rows"], float(10 if limit is None else limit))
+            self.assertEqual(v["view_rows"], float(len(rows) if limit is None else limit))
             self.assertIn("freq_10", v)
             self.assertIn("gap_view", v)
 
@@ -39,7 +39,7 @@ class OpenFECoverageTests(unittest.TestCase):
         fake_pandas = SimpleNamespace(DataFrame=list, Series=lambda values, name=None: values)
         with patch.dict(sys.modules, {"pandas": fake_pandas}):
             x, y = bridge._training_frame(rows, three_views=True)
-            self.assertEqual(len(x), 15 * 3 * 38)
+            self.assertEqual(len(x), (15 * 2 + 5) * 38)
             self.assertEqual(len(y), len(x))
             x2, y2 = bridge._training_frame(rows)
             self.assertEqual(len(x2), 15 * 38)
@@ -58,8 +58,8 @@ class OpenFECoverageTests(unittest.TestCase):
             self.assertEqual(meta1["used_features"], 8)
             three, meta2 = bridge.score_three_history_views(rows)
             self.assertEqual(len(three), 38)
-            self.assertAlmostEqual(three[1], .2)
-            self.assertEqual(meta2["view_weights"], {"latest_5": 1 / 3, "latest_10": 1 / 3, "full_archive": 1 / 3})
+            self.assertAlmostEqual(three[1], .3)
+            self.assertIsNone(meta2["view_weights"])
 
 
     def test_anchor_sampling_large_history(self):
@@ -67,7 +67,7 @@ class OpenFECoverageTests(unittest.TestCase):
         fake_pandas = SimpleNamespace(DataFrame=list, Series=lambda values, name=None: values)
         with patch.dict(sys.modules, {"pandas": fake_pandas}):
             x, y = bridge._training_frame(rows, three_views=True, max_anchors=8)
-        self.assertEqual(len(x), 8 * 3 * 38)
+        self.assertEqual(len(x), 23 * 38)
         self.assertEqual(len(y), len(x))
 
     def test_fit_scoring_with_fake_dependencies(self):

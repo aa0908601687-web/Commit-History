@@ -3,8 +3,8 @@
 
 Upstream: https://github.com/atschalz/tabprep (Apache-2.0).
 This module does NOT vendor upstream code or silently fall back to OpenFE.
-Training uses completed past draws only; each prediction feature uses <=10 prior
-draws even when older draws supply training anchors. No lottery advantage claim.
+Training uses completed past draws only; prediction features use 10/20/all-prior
+views. No lottery advantage claim.
 """
 from __future__ import annotations
 
@@ -59,17 +59,16 @@ def score_three_history_views_tabprep(rows):
             number: float(predictions[view_idx * 38 + number - 1])
             for number in range(1, 39)
         }
-    fused = {
-        number: sum(by_view[name][number] for name in VIEW_LIMITS) / len(VIEW_LIMITS)
-        for number in range(1, 39)
-    }
+    # Single trained LightGBM output for all-prior features, not fixed view averaging.
+    fused = dict(by_view["full_archive"])
     return fused, {
         "engine": "TabPrep+LightGBM",
         "experimental": True,
         "tabprep_executed": True,
-        "feature_window": [5, 10],
-        "full_archive_role": "training_anchors_only",
+        "feature_window": [10, 20],
+        "full_archive_role": "all_prior_training_and_inference_features",
         "history_views": list(VIEW_LIMITS),
+        "view_weights": None,
         "per_view_scores": by_view,
         "generated_feature_columns": int(train_features.shape[1]),
         "seed": SEED,
