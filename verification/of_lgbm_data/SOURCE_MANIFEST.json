@@ -40,7 +40,11 @@
       "source_audit_run": "https://github.com/aa0908601687-web/Commit-History/actions/runs/45214322634",
       "source_comparison_run": "https://github.com/aa0908601687-web/Commit-History/actions/runs/45215425965",
       "legacy_undated_archive_path": "verification/of_lgbm_data/power_history_archive_undated_legacy.csv",
-      "legacy_undated_archive_sha256": "de92a6019d8efa300f4cbb0e96b7badd9babfea9889b5e7657f0b10a01a80e5b"
+      "legacy_undated_archive_sha256": "de92a6019d8efa300f4cbb0e96b7badd9babfea9889b5e7657f0b10a01a80e5b",
+      "internal_source_review_status": "approved_for_research_snapshot_only",
+      "internal_source_review_record": "verification/of_lgbm_data/POWER_SOURCE_INTERNAL_REVIEW_20261124.json",
+      "research_snapshot_use_approved": true,
+      "production_use_approved": false
     }
   },
   "update_notice_20261119": {
@@ -86,6 +90,8 @@
     "official_source_independent_recheck_complete": true,
     "official_source_release_approval": false,
     "production_release_certified": false,
-    "note": "Power primary archive now contains recovered ISO dates. Official provenance release gate stays blocked for all games."
+    "note": "Power primary archive now contains recovered ISO dates. Official provenance release gate stays blocked for all games.",
+    "internal_research_source_review_approved": true,
+    "internal_research_source_review_record": "verification/of_lgbm_data/POWER_SOURCE_INTERNAL_REVIEW_20261124.json"
   }
 }
