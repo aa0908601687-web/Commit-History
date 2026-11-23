@@ -68,7 +68,7 @@ jobs:
                       game,period,dt=[cols.index(c) for c in required[:3]]
                       first=[cols.index(c) for c in required[3:]]
                       extras=[i for i,c in enumerate(cols) if c in ("第二區","特別號")]
-                      if len(extras)!=1:raise ValueError(f"{year}: ambiguous second-area column in {name}")
+                      if len(extras)!=1:raise ValueError(f"{year}: ambiguous second-area column in {name}; headers={cols!r}")
                       for row in reader:
                           if len(row)<=max(game,period,dt,*first,extras[0]) or row[game].strip()!="威力彩":continue
                           draw_id=row[period].strip().zfill(9)
