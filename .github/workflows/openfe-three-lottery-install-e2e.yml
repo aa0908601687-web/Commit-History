@@ -110,7 +110,7 @@ jobs:
           assert not ev["official_data_verified"]
           assert not ev["out_of_sample_predictive_advantage_verified"]
           if game=="power":
-              assert comp["datasets"]["power"]["missing_draw_dates"]==1964
+              assert comp["datasets"]["power"]["missing_draw_dates"]==0
               assert 1<=ev["second_zone"]<=8
           print("PASS: real-history OF-LGBM E2E; official data provenance remains unverified")
           PY
