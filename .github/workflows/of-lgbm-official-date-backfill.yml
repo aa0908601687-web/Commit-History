@@ -67,13 +67,15 @@ jobs:
                       if not all(c in cols for c in required):continue
                       game,period,dt=[cols.index(c) for c in required[:3]]
                       first=[cols.index(c) for c in required[3:]]
+                      power_rows=[row for row in reader if len(row)>game and row[game].strip()=="威力彩"]
+                      if not power_rows:continue
                       extras=[i for i,c in enumerate(cols) if c in ("第二區","特別號")]
                       if len(extras)!=1 and len(extras)==0 and cols[-1]=="" and len(cols)==max(first)+2:
                           # Legacy archive ends with an unnamed seventh winning number.
                           # It is accepted only when it exactly matches the stored second area.
                           extras=[len(cols)-1]
                       if len(extras)!=1:raise ValueError(f"{year}: ambiguous second-area column in {name}; headers={cols!r}")
-                      for row in reader:
+                      for row in power_rows:
                           if len(row)<=max(game,period,dt,*first,extras[0]) or row[game].strip()!="威力彩":continue
                           draw_id=row[period].strip().zfill(9)
                           date_value=iso(row[dt])
