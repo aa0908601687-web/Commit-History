@@ -1,0 +1,51 @@
+name: OF-LGBM compare independently dated candidates
+on:
+  push:
+    paths:
+      - 'verification/of_lgbm_compare_dated_sources.py'
+      - '.github/workflows/of-lgbm-compare-dated-sources.yml'
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_compare_dated_sources.py'
+      - '.github/workflows/of-lgbm-compare-dated-sources.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download earlier dated staging artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 45192552658 --repo aa0908601687-web/Commit-History --name of-lgbm-official-power-date-stage --dir stage-prior
+      - name: Download freshly cross-checked independent artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 45214322634 --repo aa0908601687-web/Commit-History --name of-lgbm-independent-official-zip-review --dir stage-fresh
+      - name: Validate every dated row agrees between both official-source workflows
+        run: |
+          python verification/of_lgbm_compare_dated_sources.py stage-prior/power-history-dated-candidate.csv stage-fresh/official-reviewed-Power-dated.csv of-lgbm-dated-content-comparison.json
+      - name: Preserve explicit no-production-approval flags
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('of-lgbm-dated-content-comparison.json'))
+          assert d['previous_rows']==1964 and d['fresh_rows']==1964
+          assert d['semantic_differences']==0
+          assert d['official_source_independently_approved'] is False
+          assert d['production_import_completed'] is False
+          print("PASS: 1964 normalized rows match, production gate unchanged")
+          PY
+      - name: Save review report only
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: of-lgbm-dated-source-semantic-comparison
+          path: of-lgbm-dated-content-comparison.json
+          if-no-files-found: warn
