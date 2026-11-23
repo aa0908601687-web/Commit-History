@@ -1,0 +1,49 @@
+name: OF-LGBM staged import safety checks
+
+on:
+  push:
+    paths:
+      - 'verification/of_lgbm_full_history_install.py'
+      - 'verification/of_lgbm_real_history_gate.py'
+      - 'verification/test_of_lgbm_full_history_install.py'
+      - 'verification/test_of_lgbm_real_history_gate.py'
+      - 'verification/test_of_lgbm_manifest_integrity.py'
+      - '.github/workflows/of-lgbm-staging-regression.yml'
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_full_history_install.py'
+      - 'verification/of_lgbm_real_history_gate.py'
+      - 'verification/test_of_lgbm_full_history_install.py'
+      - 'verification/test_of_lgbm_real_history_gate.py'
+      - 'verification/test_of_lgbm_manifest_integrity.py'
+      - '.github/workflows/of-lgbm-staging-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  staging-fail-closed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check staging and real-history validation regression tests
+        run: |
+          python -m unittest discover -s verification -p 'test_of_lgbm_full_history_install.py' -v
+          python -m unittest discover -s verification -p 'test_of_lgbm_real_history_gate.py' -v
+          python -m unittest discover -s verification -p 'test_of_lgbm_manifest_integrity.py' -v
+      - name: Refuse production certification from structural checks
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path('verification/of_lgbm_data/SOURCE_MANIFEST.json').read_text(encoding='utf-8'))
+          assert manifest['record_by_record_officially_authenticated'] is False, (
+              'Structural CI must not silently promote official-source authentication'
+          )
+          print('Research staging checks only; official attestation and production import not certified.')
+          PY
