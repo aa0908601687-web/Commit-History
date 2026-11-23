@@ -1,0 +1,53 @@
+name: OF-LGBM independent official Power provenance recheck
+on:
+  push:
+    paths:
+      - 'verification/of_lgbm_independent_official_redownload.py'
+      - '.github/workflows/of-lgbm-independent-official-redownload.yml'
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_independent_official_redownload.py'
+      - '.github/workflows/of-lgbm-independent-official-redownload.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independent-source-recheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Retrieve original audit evidence for independent cross-check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 45192552658 --repo aa0908601687-web/Commit-History --name of-lgbm-official-power-date-stage --dir downloaded-official-stage
+      - name: Re-download all 19 Taiwan Lottery ZIPs and verify independently
+        run: |
+          python verification/of_lgbm_independent_official_redownload.py
+      - name: Check coverage, leave official certification fail-closed
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('independent-official-audit.json',encoding='utf-8'))
+          assert d['fresh_annual_zip_downloads']==19
+          assert d['annual_zip_sha256_matched_prior'] is True
+          assert d['records_independently_compared_with_canonical']==1964
+          assert d['missing_dates']==0
+          assert d['production_import_completed'] is False
+          assert d['official_provenance_independently_authenticated'] is False
+          print('PASS: independent ZIP evidence collected, release still requires review')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: of-lgbm-independent-official-zip-review
+          path: |
+            independent-official-audit.json
+            official-reviewed-Power-dated.csv
+          if-no-files-found: warn
+          retention-days: 30
