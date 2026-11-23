@@ -35,5 +35,24 @@ class ImportTests(unittest.TestCase):
             rows,digest,encoding=load_csv(p)
             self.assertEqual(len(rows),1)
             self.assertEqual(len(digest),64)
+
+    def test_impossible_date_rejected(self):
+        row = {"遊戲名稱":"威力彩","期別":"115000001","開獎日期":"2026/02/30","特別號":"3"}
+        row.update({f"獎號{i}":str(i) for i in range(1,7)})
+        with self.assertRaisesRegex(ValueError, "invalid draw date"):
+            normalize([row])
+
+    def test_non_numeric_second_zone_rejected(self):
+        row = {"遊戲名稱":"威力彩","期別":"115000002","開獎日期":"2026/11/20","特別號":"not_a_number"}
+        row.update({f"獎號{i}":str(i) for i in range(1,7)})
+        with self.assertRaisesRegex(ValueError, "invalid second-area number"):
+            normalize([row])
+
+    def test_non_numeric_special_rejected(self):
+        row = {"遊戲名稱":"大樂透","期別":"115000003","開獎日期":"2026/11/20","特別號":"oops"}
+        row.update({f"獎號{i}":str(i) for i in range(1,7)})
+        with self.assertRaisesRegex(ValueError, "invalid special number"):
+            normalize([row])
+
 if __name__=="__main__":
     unittest.main()
