@@ -1,0 +1,51 @@
+name: OF-LGBM dated Power stage import verification
+
+on:
+  push:
+    paths:
+      - 'verification/of_lgbm_power_dated_staging_from_artifact.py'
+      - '.github/workflows/of-lgbm-dated-stage-import.yml'
+  pull_request:
+    paths:
+      - 'verification/of_lgbm_power_dated_staging_from_artifact.py'
+      - '.github/workflows/of-lgbm-dated-stage-import.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  dated-stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Re-download pinned Actions artifact and validate all 1964 rows
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python verification/of_lgbm_power_dated_staging_from_artifact.py --output-dir power-dated-QUARANTINE
+      - name: Confirm not marked as official or production
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("power-dated-QUARANTINE/STAGING_VERIFICATION.json")
+          x = json.loads(p.read_text(encoding="utf-8"))
+          assert x["rows_verified"] == 1964
+          assert x["missing_dates"] == 0
+          assert x["canonical_numbers_preserved"] is True
+          assert x["official_provenance_independently_authenticated"] is False
+          assert x["production_import_completed"] is False
+          print("PASS: quarantine staged only; no official authentication asserted")
+          PY
+      - name: Publish quarantine artifact for manual review
+        uses: actions/upload-artifact@v4
+        with:
+          name: of-lgbm-dated-power-1964-QUARANTINE
+          path: power-dated-QUARANTINE/
+          retention-days: 30
