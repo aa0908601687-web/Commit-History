@@ -127,6 +127,15 @@ jobs:
 
       - name: Install OF-LGBM CPU dependencies for SQLite-to-model E2E
         run: python -m pip install --disable-pip-version-check -r verification/of_lgbm_requirements.txt
+      - name: Verify installed OpenFE LightGBM PyArrow imports
+        run: |
+          python - <<'PY'
+          import importlib
+          from importlib.metadata import version
+          for package, module in (("openfe", "openfe"), ("lightgbm", "lightgbm"), ("pyarrow", "pyarrow")):
+              imported = importlib.import_module(module)
+              print(f"PASS {package} {version(package)}: {getattr(imported, '__file__', 'built-in')}")
+          PY
       - name: SQLite import to real OpenFE and LightGBM holdout, eight-pool exact selection
         run: |
           python - <<'PY'
